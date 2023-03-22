@@ -25,10 +25,13 @@ data Token
   | Equals
   | Pipe
   | Dot
+  | BackSlash
   | LParen
   | RParen
   | LBrack
   | RBrack
+  | LCurly
+  | RCurly
 
   -- primitives
   | Number Int

@@ -44,6 +44,8 @@ tokens :-
     <0> ")"                 { tok RParen }
     <0> "["                 { tok LBrack }
     <0> "]"                 { tok RBrack }
+    <0> "{"                 { tok LCurly }
+    <0> "}"                 { tok RCurly }
 
     <0> ":"                 { tok Colon }
     <0> ","                 { tok Comma }
@@ -51,6 +53,7 @@ tokens :-
     <0> "="                 { tok Equals }
     <0> "|"                 { tok Pipe }
     <0> "."                 { tok Dot }
+    <0> "\\"                { tok BackSlash }
 
     -- comments
     <0>       "/*" { nestComment `andBegin` comment }

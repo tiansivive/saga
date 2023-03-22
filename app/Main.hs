@@ -1,4 +1,9 @@
 module Main where
 
+import           Saga.Parser.Parser (runSaga)
+
 main :: IO ()
-main = putStrLn "Hello, Haskell!"
+main = do
+    putStrLn "Starting Saga..."
+    line <- getLine
+
