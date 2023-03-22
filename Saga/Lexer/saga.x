@@ -32,7 +32,6 @@ tokens :-
     <0> match               { tok Match }
 
 
-
     <0> $digit+             { tokNumber }
     <0> (\"[^\"]*\")        { tokString }
     <0> yes | on  | true    { tokBoolean True }
