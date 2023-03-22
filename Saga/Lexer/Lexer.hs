@@ -9,6 +9,8 @@ module Saga.Lexer.Lexer where
 import Control.Monad (when)
 import Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
+
+import Saga.Lexer.Tokens
 #if __GLASGOW_HASKELL__ >= 603
 #include "ghcconfig.h"
 #elif defined(__GLASGOW_HASKELL__)
@@ -11309,7 +11311,18 @@ alex_actions = array (0 :: Int, 58)
   , (0,alex_action_13)
   ]
 
-{-# LINE 66 "Saga/Lexer/saga.x" #-}
+{-# LINE 67 "Saga/Lexer/saga.x" #-}
+data Range = Range
+  { start :: AlexPosn
+  , stop :: AlexPosn
+  } deriving (Eq, Show)
+
+data RangedToken = RangedToken
+  { rtToken :: Token
+  , rtRange :: Range
+  } deriving (Eq, Show)
+
+
 -- At the bottom, we may insert more Haskell definitions, such as data structures, auxiliary functions, etc.
 data AlexUserState = AlexUserState
   { nestLevel :: Int
@@ -11337,51 +11350,6 @@ alexEOF = do
   (pos, _, _, _) <- alexGetInput
   pure $ RangedToken EOF (Range pos pos)
 
-data Range = Range
-  { start :: AlexPosn
-  , stop :: AlexPosn
-  } deriving (Eq, Show)
-
-data RangedToken = RangedToken
-  { rtToken :: Token
-  , rtRange :: Range
-  } deriving (Eq, Show)
-
-
--- Lexer
-
-
-data Token
-  = Id ByteString
-  --  Keywords
-  | Let
-  | In
-  | Where
-  | With
-  | If
-  | Then
-  | Else
-  | Match
-
-  -- reserved symbols
-  | Arrow
-  | Colon
-  | Comma
-  | Equals
-  | Pipe
-  | Dot
-  | LParen
-  | RParen
-  | LBrack
-  | RBrack
-
-  -- primitives
-  | Number Int
-  | String ByteString
-  | Boolean Bool
-
-  | EOF
-  deriving (Show, Eq)
 
 mkRange :: AlexInput -> Int64 -> Range
 mkRange (start, _, str, _) len = Range{start = start, stop = stop}

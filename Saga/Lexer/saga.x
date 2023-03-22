@@ -8,6 +8,8 @@ import Control.Monad (when)
 import Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
 
+import Saga.Lexer.Tokens 
+
 
 }
 -- In the middle, we insert our definitions for the lexer, which will generate the lexemes for our grammar.
@@ -63,6 +65,18 @@ tokens :-
 
 
 {
+
+data Range = Range
+  { start :: AlexPosn
+  , stop :: AlexPosn
+  } deriving (Eq, Show)
+
+data RangedToken = RangedToken
+  { rtToken :: Token
+  , rtRange :: Range
+  } deriving (Eq, Show)
+
+
 -- At the bottom, we may insert more Haskell definitions, such as data structures, auxiliary functions, etc.
 data AlexUserState = AlexUserState
   { nestLevel :: Int
@@ -90,51 +104,6 @@ alexEOF = do
   (pos, _, _, _) <- alexGetInput
   pure $ RangedToken EOF (Range pos pos)
 
-data Range = Range
-  { start :: AlexPosn
-  , stop :: AlexPosn
-  } deriving (Eq, Show)
-
-data RangedToken = RangedToken
-  { rtToken :: Token
-  , rtRange :: Range
-  } deriving (Eq, Show)
-
-
--- Lexer
-
-
-data Token
-  = Id ByteString
-  --  Keywords
-  | Let
-  | In
-  | Where
-  | With
-  | If
-  | Then
-  | Else
-  | Match
-
-  -- reserved symbols
-  | Arrow
-  | Colon
-  | Comma
-  | Equals
-  | Pipe
-  | Dot
-  | LParen
-  | RParen
-  | LBrack
-  | RBrack
-
-  -- primitives
-  | Number Int
-  | String ByteString
-  | Boolean Bool
-
-  | EOF
-  deriving (Show, Eq)
 
 mkRange :: AlexInput -> Int64 -> Range
 mkRange (start, _, str, _) len = Range{start = start, stop = stop}
@@ -197,6 +166,5 @@ scanMany input = runAlex (BS.pack input) go
       if rtToken output == EOF
         then pure [output]
         else (output :) <$> go
-
 
 }

@@ -2,10 +2,12 @@
 module Saga.Parser.Parser where
 
 import Data.ByteString.Lazy.Char8 (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Maybe (fromJust)
 import Data.Monoid (First (..))
 
 import qualified Saga.Lexer.Lexer as L
+import qualified Saga.Lexer.Tokens as T
 import qualified Saga.AST.Syntax as AST
 import qualified Data.Array as Happy_Data_Array
 import qualified Data.Bits as Bits
@@ -85,7 +87,7 @@ action_11 _ = happyReduce_2
 happyReduce_1 = happySpecReduce_1  4 happyReduction_1
 happyReduction_1 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn4
-		 (unTok happy_var_1 (\range (L.Id name) -> AST.Name range name)
+		 (unTok happy_var_1 (\range (T.Id name) -> AST.Name range name)
 	)
 happyReduction_1 _  = notHappyAtAll 
 
@@ -101,21 +103,21 @@ happyReduction_2 _ _ _  = notHappyAtAll
 happyReduce_3 = happySpecReduce_1  6 happyReduction_3
 happyReduction_3 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn6
-		 (unTok happy_var_1 (\range (L.Number int) -> AST.LInt range int)
+		 (unTok happy_var_1 (\range (T.Number int) -> AST.LInt range int)
 	)
 happyReduction_3 _  = notHappyAtAll 
 
 happyReduce_4 = happySpecReduce_1  6 happyReduction_4
 happyReduction_4 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn6
-		 (unTok happy_var_1 (\range (L.String string) -> AST.LString range string)
+		 (unTok happy_var_1 (\range (T.String string) -> AST.LString range string)
 	)
 happyReduction_4 _  = notHappyAtAll 
 
 happyReduce_5 = happySpecReduce_1  6 happyReduction_5
 happyReduction_5 (HappyTerminal happy_var_1)
 	 =  HappyAbsSyn6
-		 (unTok happy_var_1 (\range (L.Boolean boolean) -> AST.LBool range boolean)
+		 (unTok happy_var_1 (\range (T.Boolean boolean) -> AST.LBool range boolean)
 	)
 happyReduction_5 _  = notHappyAtAll 
 
@@ -137,29 +139,29 @@ happyNewToken action sts stk
 	= lexer(\tk -> 
 	let cont i = action i i tk (HappyState action) sts stk in
 	case tk of {
-	L.RangedToken L.EOF _ -> action 30 30 tk (HappyState action) sts stk;
-	L.RangedToken (L.Id _) _ -> cont 8;
-	L.RangedToken (L.Number _) _ -> cont 9;
-	L.RangedToken (L.String _) _ -> cont 10;
-	L.RangedToken (L.Boolean _) _ -> cont 11;
-	L.RangedToken L.Let _ -> cont 12;
-	L.RangedToken L.In _ -> cont 13;
-	L.RangedToken L.Where _ -> cont 14;
-	L.RangedToken L.With _ -> cont 15;
-	L.RangedToken L.If _ -> cont 16;
-	L.RangedToken L.Then _ -> cont 17;
-	L.RangedToken L.Else _ -> cont 18;
-	L.RangedToken L.Match _ -> cont 19;
-	L.RangedToken L.LParen _ -> cont 20;
-	L.RangedToken L.RParen _ -> cont 21;
-	L.RangedToken L.LBrack _ -> cont 22;
-	L.RangedToken L.RBrack _ -> cont 23;
-	L.RangedToken L.Colon _ -> cont 24;
-	L.RangedToken L.Comma _ -> cont 25;
-	L.RangedToken L.Arrow _ -> cont 26;
-	L.RangedToken L.Equals _ -> cont 27;
-	L.RangedToken L.Pipe _ -> cont 28;
-	L.RangedToken L.Dot _ -> cont 29;
+	L.RangedToken T.EOF _ -> action 30 30 tk (HappyState action) sts stk;
+	L.RangedToken (T.Id _) _ -> cont 8;
+	L.RangedToken (T.Number _) _ -> cont 9;
+	L.RangedToken (T.String _) _ -> cont 10;
+	L.RangedToken (T.Boolean _) _ -> cont 11;
+	L.RangedToken T.Let _ -> cont 12;
+	L.RangedToken T.In _ -> cont 13;
+	L.RangedToken T.Where _ -> cont 14;
+	L.RangedToken T.With _ -> cont 15;
+	L.RangedToken T.If _ -> cont 16;
+	L.RangedToken T.Then _ -> cont 17;
+	L.RangedToken T.Else _ -> cont 18;
+	L.RangedToken T.Match _ -> cont 19;
+	L.RangedToken T.LParen _ -> cont 20;
+	L.RangedToken T.RParen _ -> cont 21;
+	L.RangedToken T.LBrack _ -> cont 22;
+	L.RangedToken T.RBrack _ -> cont 23;
+	L.RangedToken T.Colon _ -> cont 24;
+	L.RangedToken T.Comma _ -> cont 25;
+	L.RangedToken T.Arrow _ -> cont 26;
+	L.RangedToken T.Equals _ -> cont 27;
+	L.RangedToken T.Pipe _ -> cont 28;
+	L.RangedToken T.Dot _ -> cont 29;
 	_ -> happyError' (tk, [])
 	})
 
@@ -183,7 +185,7 @@ happySeq = happyDontSeq
 
 
 -- | Build a simple node by extracting its token type and range.
-unTok :: L.RangedToken -> (L.Range -> L.Token -> a) -> a
+unTok :: L.RangedToken -> (L.Range -> T.Token -> a) -> a
 unTok (L.RangedToken tok range) contructor = contructor range tok
 
 -- | Unsafely extracts the the metainformation field of a node.
@@ -205,6 +207,11 @@ parseError _ = do
 
 lexer :: (L.RangedToken -> L.Alex a) -> L.Alex a
 lexer = (=<< L.alexMonadScan)
+
+
+
+runSaga :: String -> Either String (AST.Expr L.Range)
+runSaga input = L.runAlex (BS.pack input) parseSaga
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 -- $Id: GenericTemplate.hs,v 1.26 2005/01/14 14:47:22 simonmar Exp $
 

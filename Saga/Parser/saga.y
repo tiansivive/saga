@@ -2,10 +2,12 @@
 module Saga.Parser.Parser where
 
 import Data.ByteString.Lazy.Char8 (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Maybe (fromJust)
 import Data.Monoid (First (..))
 
 import qualified Saga.Lexer.Lexer as L
+import qualified Saga.Lexer.Tokens as T
 import qualified Saga.AST.Syntax as AST
 
 }
@@ -14,41 +16,41 @@ import qualified Saga.AST.Syntax as AST
 %tokentype { L.RangedToken }
 %error { parseError }
 %monad { L.Alex } { >>= } { pure }
-%lexer { lexer } { L.RangedToken L.EOF _ }
+%lexer { lexer } { L.RangedToken T.EOF _ }
 %token
   -- Identifiers
-  id { L.RangedToken (L.Id _) _ }
+  id { L.RangedToken (T.Id _) _ }
   -- Constants
-  number     { L.RangedToken (L.Number _) _ }
-  string     { L.RangedToken (L.String _) _ }
-  boolean    { L.RangedToken (L.Boolean _) _ }
+  number     { L.RangedToken (T.Number _) _ }
+  string     { L.RangedToken (T.String _) _ }
+  boolean    { L.RangedToken (T.Boolean _) _ }
 
   -- Keywords
-  let        { L.RangedToken L.Let _ }
-  in         { L.RangedToken L.In _ }
-  where      { L.RangedToken L.Where _ }
-  with       { L.RangedToken L.With _ }
-  if         { L.RangedToken L.If _ }
-  then       { L.RangedToken L.Then _ }
-  else       { L.RangedToken L.Else _ }
-  match      { L.RangedToken L.Match _ }
+  let        { L.RangedToken T.Let _ }
+  in         { L.RangedToken T.In _ }
+  where      { L.RangedToken T.Where _ }
+  with       { L.RangedToken T.With _ }
+  if         { L.RangedToken T.If _ }
+  then       { L.RangedToken T.Then _ }
+  else       { L.RangedToken T.Else _ }
+  match      { L.RangedToken T.Match _ }
 
-  '('        { L.RangedToken L.LParen _ }
-  ')'        { L.RangedToken L.RParen _ }
-  '['        { L.RangedToken L.LBrack _ }
-  ']'        { L.RangedToken L.RBrack _ }
+  '('        { L.RangedToken T.LParen _ }
+  ')'        { L.RangedToken T.RParen _ }
+  '['        { L.RangedToken T.LBrack _ }
+  ']'        { L.RangedToken T.RBrack _ }
 
-  ':'        { L.RangedToken L.Colon _ }
-  ','        { L.RangedToken L.Comma _ }
-  '->'       { L.RangedToken L.Arrow _ }
-  '='        { L.RangedToken L.Equals _ }
-  '|'        { L.RangedToken L.Pipe _ }
-  '.'        { L.RangedToken L.Dot _ }
+  ':'        { L.RangedToken T.Colon _ }
+  ','        { L.RangedToken T.Comma _ }
+  '->'       { L.RangedToken T.Arrow _ }
+  '='        { L.RangedToken T.Equals _ }
+  '|'        { L.RangedToken T.Pipe _ }
+  '.'        { L.RangedToken T.Dot _ }
 
 %%
 
 identifier
-  : id { unTok $1 (\range (L.Id name) -> AST.Name range name) }
+  : id { unTok $1 (\range (T.Id name) -> AST.Name range name) }
  -- only to get the file compiling; we will remove this
 
 assign
@@ -56,9 +58,9 @@ assign
 
 
 literal 
-  : number    { unTok $1 (\range (L.Number int) -> AST.LInt range int) }
-  | string     { unTok $1 (\range (L.String string) -> AST.LString range string) }
-  | boolean    { unTok $1 (\range (L.Boolean boolean) -> AST.LBool range boolean) }
+  : number    { unTok $1 (\range (T.Number int) -> AST.LInt range int) }
+  | string     { unTok $1 (\range (T.String string) -> AST.LString range string) }
+  | boolean    { unTok $1 (\range (T.Boolean boolean) -> AST.LBool range boolean) }
 
 expr
   : assign   { AST.Assign $1 }
@@ -70,7 +72,7 @@ expr
 
 
 -- | Build a simple node by extracting its token type and range.
-unTok :: L.RangedToken -> (L.Range -> L.Token -> a) -> a
+unTok :: L.RangedToken -> (L.Range -> T.Token -> a) -> a
 unTok (L.RangedToken tok range) contructor = contructor range tok
 
 -- | Unsafely extracts the the metainformation field of a node.
@@ -92,5 +94,10 @@ parseError _ = do
 
 lexer :: (L.RangedToken -> L.Alex a) -> L.Alex a
 lexer = (=<< L.alexMonadScan)
+
+
+
+runSaga :: String -> Either String (AST.Expr L.Range)
+runSaga input = L.runAlex (BS.pack input) parseSaga
 
 }
