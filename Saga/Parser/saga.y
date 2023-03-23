@@ -50,14 +50,16 @@ import qualified Saga.AST.Syntax as AST
   '.'        { L.RangedToken T.Dot _ }
   '\\'       { L.RangedToken T.BackSlash _ } 
 
+  nl         { L.RangedToken T.Newline _ }
+
 %%
 
 identifier
   : id { unTok $1 (\range (T.Id name) -> AST.Name range name) }
  -- only to get the file compiling; we will remove this
 
-assign
-  : identifier '=' expr { AST.Assignment (info $1 <-> info $3) $1 $3 }
+definition
+  : identifier '=' expr { AST.Def (info $1 <-> info $3) $1 $3 }
 
 pairs
   :                                 { [] }
@@ -96,10 +98,26 @@ lambda
   : '|' args '->' expr { AST.Lambda (L.rtRange $1 <-> info $4) $2 $4 }
 
 
+declarations
+  :                            { [] }
+  | definition                 { [$1] }
+  | definition nl declarations { $1 : $3 }
+
+
+block 
+  : with declarations in expr  { AST.Block (L.rtRange $1 <-> info $4) $2 $4 }
+
+
 expr
-  : assign   { AST.Assign $1 }
-  | literal  { AST.Lit $1 }
-  | lambda   { $1 }
+  : definition  { AST.Declaration $1 }
+  | literal     { AST.Lit $1 }
+  | lambda      { $1 }
+  | block       { $1 }
+  | identifier  { AST.Identifier $1 }
+
+
+script
+  : moduleDef
 
 {
 

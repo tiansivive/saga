@@ -8,15 +8,37 @@ import Data.ByteString.Lazy.Char8 (ByteString)
 
 data Token
   = Id ByteString
+
   --  Keywords
   | Let
   | In
+  | As
   | Where
   | With
   | If
   | Then
   | Else
   | Match
+
+  -- Modules
+  | Module
+  | Import
+  | Qualified
+  | Hiding
+  | Hide
+
+  -- Data structures
+  | Data
+  | Derive
+
+  -- Types
+  | Type
+  | Kind
+
+  -- Interfaces
+  | Interface
+  | Protocol
+  | Instance
 
   -- reserved symbols
   | Arrow
@@ -38,5 +60,6 @@ data Token
   | String ByteString
   | Boolean Bool
 
+  | Newline
   | EOF
   deriving (Show, Eq)

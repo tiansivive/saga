@@ -15,53 +15,66 @@ import Saga.Lexer.Tokens
 -- In the middle, we insert our definitions for the lexer, which will generate the lexemes for our grammar.
 %wrapper "monadUserState-bytestring"
 
-$digit = [0-9]
-$alpha = [a-zA-Z]
+$digit      = [0-9]
+$alpha      = [a-zA-Z]
+$nl         = [\n]
+$backslash  = [\\]
+$ws         = [[\ \t\f\v\r]] -- whitespace char set without newline
 
 @id = ($alpha | \_) ($alpha | $digit | \_ | \' | \?)*
 
 tokens :-
 
-    <0> $white+             { skip }
+    <0> $white+                     { skip }
+    <block> $ws+                    { skip }
+    <block> $nl+                    { tok Newline }
 
-    <0> let                 { tok Let }
-    <0> in                  { tok In }
-    <0> where               { tok Where }
-    <0> with                { tok With }
-    <0> if                  { tok If }
-    <0> then                { tok Then }
-    <0> else                { tok Else }
-    <0> match               { tok Match }
+    <0> module                      { tok Module }
+    <0> import                      { tok Import } 
 
 
-    <0> $digit+             { tokNumber }
-    <0> (\"[^\"]*\")        { tokString }
-    <0> yes | on  | true    { tokBoolean True }
-    <0> no  | off | false   { tokBoolean False }
-    <0> @id                 { tokId }
+    <0, block> let                  { tok Let `andBegin` block }
+    <0, block> with                 { tok With `andBegin` block }
+    <block> in                      { tok In `andBegin` 0 }
+    <0, block> where                { tok Where }
+    <0, block> if                   { tok If }
+    <0, block> then                 { tok Then }
+    <0, block> else                 { tok Else }
+    <0, block> match                { tok Match }
+
+ 
+
     
-    <0> "("                 { tok LParen }
-    <0> ")"                 { tok RParen }
-    <0> "["                 { tok LBrack }
-    <0> "]"                 { tok RBrack }
-    <0> "{"                 { tok LCurly }
-    <0> "}"                 { tok RCurly }
 
-    <0> ":"                 { tok Colon }
-    <0> ","                 { tok Comma }
-    <0> "->"                { tok Arrow }
-    <0> "="                 { tok Equals }
-    <0> "|"                 { tok Pipe }
-    <0> "."                 { tok Dot }
-    <0> "\\"                { tok BackSlash }
+
+    <0, block> $digit+             { tokNumber }
+    <0, block> (\"[^\"]*\")        { tokString }
+    <0, block> yes | on  | true    { tokBoolean True }
+    <0, block> no  | off | false   { tokBoolean False }
+    <0, block> @id                 { tokId }
+    
+    <0, block> "("                 { tok LParen }
+    <0, block> ")"                 { tok RParen }
+    <0, block> "["                 { tok LBrack }
+    <0, block> "]"                 { tok RBrack }
+    <0, block> "{"                 { tok LCurly }
+    <0, block> "}"                 { tok RCurly }
+
+    <0, block> ":"                 { tok Colon }
+    <0, block> ","                 { tok Comma }
+    <0, block> "->"                { tok Arrow }
+    <0, block> "="                 { tok Equals }
+    <0, block> "|"                 { tok Pipe }
+    <0, block> "."                 { tok Dot }
+    <0, block> $backslash          { tok BackSlash }
 
     -- comments
-    <0>       "/*" { nestComment `andBegin` comment }
-    <0>       "*/" { \_ _ -> alexError "Error: unexpected closing comment" }
+    <0, block>       "/*" { nestComment `andBegin` comment }
+    <0, block>       "*/" { \_ _ -> alexError "Error: unexpected closing comment" }
     <comment> "/*" { nestComment }
     <comment> "*/" { unnestComment }
     <comment> .    ;
-    <comment> \n   ;
+    <comment> $nl  ;
 
 
 
