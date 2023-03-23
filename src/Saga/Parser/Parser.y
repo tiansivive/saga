@@ -1,7 +1,7 @@
 {
 module Saga.Parser.Parser  
-    ( parseSagaScript
-    , parseSagaExpr 
+    ( runSagaScript
+    , runSagaExpr 
     ) where
 
 import Data.ByteString.Lazy.Char8 (ByteString)
@@ -100,7 +100,7 @@ literal
   | string     { unTok $1 (\range (T.String string) -> AST.LString range string) }
   | boolean    { unTok $1 (\range (T.Boolean boolean) -> AST.LBool range boolean) }
   | tuple      { $1 }
-  | list      { $1 }
+  | list       { $1 }
   | record     { $1 }
 
 
@@ -109,7 +109,7 @@ args
   | identifier args  { $1 : $2 }
 
 lambda
-  : '|' args '->' expr { AST.Lambda (L.rtRange $1 <-> info $4) $2 $4 }
+  : '\\' args '->' expr { AST.Lambda (L.rtRange $1 <-> info $4) $2 $4 }
 
 
 declarations

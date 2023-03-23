@@ -1,7 +1,5 @@
 {
 -- At the top of the file, we define the module and its imports, similarly to Haskell.
-{-# LANGUAGE OverloadedStrings #-}
-
 module Saga.Lexer.Lexer where
 -- Using BS as they're more efficient for input streams
 import Control.Monad (when)
@@ -43,9 +41,6 @@ tokens :-
     <0, block> match                { tok Match }
 
  
-
-    
-
 
     <0, block> $digit+             { tokNumber }
     <0, block> (\"[^\"]*\")        { tokString }
