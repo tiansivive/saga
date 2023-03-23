@@ -1,1 +1,4 @@
 dist-newstyle/*
+
+Saga/Lexer/Lexer.hs
+Saga/Parser/Parser.hs
