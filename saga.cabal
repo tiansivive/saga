@@ -16,6 +16,7 @@ extra-source-files:
 library
   exposed-modules:
       Main
+      Saga.AST.Evaluation
       Saga.AST.Pretty
       Saga.AST.Syntax
       Saga.Lexer.Lexer

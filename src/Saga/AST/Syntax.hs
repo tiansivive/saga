@@ -24,9 +24,10 @@ data Literal a where
   LInt    :: a -> Int -> Literal a
   LBool   :: a -> Bool -> Literal a
   LString :: a -> ByteString -> Literal a
-  LList  :: a -> [Expr a] -> Literal a
+  LList   :: a -> [Expr a] -> Literal a
   LTuple  :: a -> [Expr a] -> Literal a
   LRecord :: a -> [(Name a, Expr a)] -> Literal a
+
 
 
 data Definition a = Def a (Name a) (Expr a)
@@ -49,4 +50,5 @@ deriving instance Show a => Show (Literal a)
 
 newtype Module = Mod [ByteString]
     deriving (Show)
+
 

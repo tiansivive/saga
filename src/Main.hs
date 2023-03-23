@@ -1,6 +1,8 @@
 module Main (main) where
 
 import Saga.Parser.Parser (runSagaScript, runSagaExpr)
+
+import qualified Saga.AST.Evaluation as E
 import System.IO
 
 main :: IO ()
@@ -15,7 +17,9 @@ eval :: IO ()
 eval = do
     putStr "Saga> "
     line <- getLine
-    putStrLn $ show $ runSagaExpr line
+    putStrLn $ case runSagaExpr line of
+        (Right expr) -> show $ E.eval expr
+        (Left err) -> show err
     eval
 
 script :: FilePath -> IO ()
