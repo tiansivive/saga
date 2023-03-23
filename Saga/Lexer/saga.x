@@ -77,21 +77,22 @@ tokens :-
     <comment> $nl  ;
 
 
-
-
-
 {
 
 data Range = Range
   { start :: AlexPosn
   , stop :: AlexPosn
-  } deriving (Eq, Show)
+  } deriving (Eq)
 
 data RangedToken = RangedToken
   { rtToken :: Token
   , rtRange :: Range
-  } deriving (Eq, Show)
+  } deriving (Eq)
 
+instance Show Range where
+  show _ = ""
+instance Show RangedToken where
+  show t =  show $ rtToken t
 
 -- At the bottom, we may insert more Haskell definitions, such as data structures, auxiliary functions, etc.
 data AlexUserState = AlexUserState

@@ -9,8 +9,10 @@ module Saga.AST.Syntax where
 import Data.ByteString.Lazy.Char8 (ByteString)
 
 
+
 data Script a = 
     Script a (ModuleDef a) [Definition a] [Import a]
+        deriving (Show)
 
 data Expr a where
   Declaration   :: Definition a -> Expr a
@@ -23,7 +25,7 @@ data Literal a where
   LInt    :: a -> Int -> Literal a
   LBool   :: a -> Bool -> Literal a
   LString :: a -> ByteString -> Literal a
-  LArray  :: a -> [Expr a] -> Literal a
+  LList  :: a -> [Expr a] -> Literal a
   LTuple  :: a -> [Expr a] -> Literal a
   LRecord :: a -> [(Name a, Expr a)] -> Literal a
 
@@ -35,8 +37,9 @@ data Name a = Name a ByteString
     deriving (Foldable, Show)
 
 data Import a = Import a Module
+  deriving (Foldable, Show)
 data ModuleDef a = DefMod a Module
-
+  deriving (Foldable, Show)
 
 deriving instance Foldable Expr
 deriving instance Foldable Literal
@@ -47,3 +50,4 @@ deriving instance Show a => Show (Literal a)
 
 newtype Module = Mod [ByteString]
     deriving (Show)
+

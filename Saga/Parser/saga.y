@@ -1,10 +1,14 @@
 {
-module Saga.Parser.Parser where
+module Saga.Parser.Parser  
+    ( parseSagaScript
+    , parseSagaExpr 
+    ) where
 
 import Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Maybe (fromJust)
 import Data.Monoid (First (..))
+import Data.List (last)
 
 import qualified Saga.Lexer.Lexer as L
 import qualified Saga.Lexer.Tokens as T
@@ -12,7 +16,8 @@ import qualified Saga.AST.Syntax as AST
 
 }
 
-%name parseSaga expr
+%name parseSagaScript script
+%name parseSagaExpr expr
 %tokentype { L.RangedToken }
 %error { parseError }
 %monad { L.Alex } { >>= } { pure }
@@ -35,6 +40,10 @@ import qualified Saga.AST.Syntax as AST
   else       { L.RangedToken T.Else _ }
   match      { L.RangedToken T.Match _ }
 
+  -- Modules
+  module     { L.RangedToken T.Module _ }
+  import     { L.RangedToken T.Import _ }
+
   '('        { L.RangedToken T.LParen _ }
   ')'        { L.RangedToken T.RParen _ }
   '['        { L.RangedToken T.LBrack _ }
@@ -51,12 +60,18 @@ import qualified Saga.AST.Syntax as AST
   '\\'       { L.RangedToken T.BackSlash _ } 
 
   nl         { L.RangedToken T.Newline _ }
+  eof        { L.RangedToken T.EOF _ }
 
 %%
 
 identifier
   : id { unTok $1 (\range (T.Id name) -> AST.Name range name) }
  -- only to get the file compiling; we will remove this
+
+path
+  : identifier          { [$1] }
+  | identifier '.' path { $1 : $3 }
+
 
 definition
   : identifier '=' expr { AST.Def (info $1 <-> info $3) $1 $3 }
@@ -74,8 +89,8 @@ listElements
   | expr                    { [$1] }
   | expr ',' listElements   { $1 : $3 }
 
-array 
-  : '[' listElements ']'    { AST.LArray (L.rtRange $1 <-> L.rtRange $3) $2 }
+list 
+  : '[' listElements ']'    { AST.LList (L.rtRange $1 <-> L.rtRange $3) $2 }
 
 tuple
   : '(' listElements ')'    { AST.LTuple (L.rtRange $1 <-> L.rtRange $3) $2 }
@@ -85,9 +100,8 @@ literal
   | string     { unTok $1 (\range (T.String string) -> AST.LString range string) }
   | boolean    { unTok $1 (\range (T.Boolean boolean) -> AST.LBool range boolean) }
   | tuple      { $1 }
-  | array      { $1 }
+  | list      { $1 }
   | record     { $1 }
-
 
 
 args
@@ -99,9 +113,8 @@ lambda
 
 
 declarations
-  :                            { [] }
-  | definition                 { [$1] }
-  | definition nl declarations { $1 : $3 }
+  : definition              { [$1] }
+  | definition declarations { $1 : $2 }
 
 
 block 
@@ -116,8 +129,21 @@ expr
   | identifier  { AST.Identifier $1 }
 
 
+moduleDef
+  : module path where { AST.DefMod (L.rtRange $1 <-> L.rtRange $3) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) } -- TODO: extract to named fn
+
+importMod
+  : import path { AST.Import (L.rtRange $1 <-> (info $ last $2)) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) }
+
+imports
+  :                    { [] }
+  | importMod imports  { $1 : $2 }
+ 
+
 script
-  : moduleDef
+-- : moduleDef declarations imports eof { AST.Script (info $1 <-> L.rtRange $4) $1 $2 $3 }
+  : moduleDef declarations imports { AST.Script (info $1 <-> (info $ last $2)) $1 $2 $3 }
+
 
 {
 
@@ -149,7 +175,10 @@ lexer = (=<< L.alexMonadScan)
 
 
 
-runSaga :: String -> Either String (AST.Expr L.Range)
-runSaga input = L.runAlex (BS.pack input) parseSaga
+runSagaScript :: String -> Either String (AST.Script L.Range)
+runSagaScript input = L.runAlex (BS.pack input) parseSagaScript
+
+runSagaExpr :: String -> Either String (AST.Expr L.Range)
+runSagaExpr input = L.runAlex (BS.pack input) parseSagaExpr
 
 }
