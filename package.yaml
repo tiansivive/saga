@@ -14,6 +14,7 @@ library:
   - array
   - base
   - bytestring
+  - prettyprinter
 
   build-tools:
   - alex

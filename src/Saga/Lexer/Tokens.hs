@@ -1,11 +1,8 @@
 module Saga.Lexer.Tokens where 
 
-
 import Data.ByteString.Lazy.Char8 (ByteString)
 
 -- Lexer
-
-
 data Token
   = Id ByteString
 
