@@ -1,0 +1,11 @@
+module M where
+
+foo = 
+    with 
+      x = \n -> n 
+      y = 2 
+    in x y
+
+o = { foo: 2  }
+
+import P

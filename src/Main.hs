@@ -28,7 +28,7 @@ repl =
             E.runEvaluation expr
 
     in do
-        putStr "Saga> "
+        putStr "Saga λ> "
         line <- getLine
         putStrLn $ case value line of
             (Right (v, env)) -> show v <> "\n" <> show env
@@ -54,3 +54,19 @@ script fp =
         hClose handle
         putStrLn "Bye!"
 
+
+parseScript :: FilePath -> IO ()
+parseScript fp = do
+    handle <- openFile fp ReadMode
+    contents <- hGetContents handle
+    print (runSagaScript contents)
+    hClose handle
+    putStrLn "Bye!"
+
+lexScript :: FilePath -> IO ()
+lexScript fp = do
+    handle <- openFile fp ReadMode
+    contents <- hGetContents handle
+    print (L.scanMany contents)
+    hClose handle
+    putStrLn "Bye!"

@@ -1,8 +1,0 @@
-module M where
-
-foo = 1
-bar = 2
-
-
-
-import P

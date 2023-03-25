@@ -67,9 +67,6 @@ eval (FnApp _ fnExpr argExprs) = do
 
 
 
-
-
-
 evalLit :: Literal a -> EvalState a
 evalLit (LInt _ int)    = return $ VInt int
 evalLit (LBool _ bool)  = return $ VBool bool

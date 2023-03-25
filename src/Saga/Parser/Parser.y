@@ -64,6 +64,11 @@ import qualified Saga.AST.Syntax as AST
 
 %%
 
+nls
+  :        { }
+  | nl     { }
+  | nl nls { }
+
 identifier
   : id { unTok $1 (\range (T.Id name) -> AST.Name range name) }
  -- only to get the file compiling; we will remove this
@@ -119,12 +124,12 @@ fnApplication
   : expr params   { AST.FnApp (info $1 <-> (info $ last $2)) $1 $2 }
 
 declarations
-  : definition              { [$1] }
-  | definition declarations { $1 : $2 }
+  :         { [] }
+  | definition nls declarations { $1 : $3 }
 
 
 block 
-  : with declarations in expr  { AST.Block (L.rtRange $1 <-> info $4) $2 $4 }
+  : with nls declarations nls in nls expr  { AST.Block (L.rtRange $1 <-> info $7) $3 $7 }
 
 
 expr
