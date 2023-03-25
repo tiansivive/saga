@@ -64,11 +64,6 @@ import qualified Saga.AST.Syntax as AST
 
 %%
 
-nls
-  :        { }
-  | nl     { }
-  | nl nls { }
-
 nl_
  :  {}
  | nl nl_ {}
@@ -83,7 +78,7 @@ path
 
 
 definition
-  : identifier '=' nl_ expr nl { AST.Def (info $1 <-> L.rtRange $5) $1 $4 }
+  : identifier '=' nl_ expr { AST.Def (info $1 <-> info $4) $1 $4 }
 
 
 pairs
@@ -131,15 +126,16 @@ fnApplication
 
 declarations
   :         { [] }
-  | definition declarations { $1 : $2 }
+  | definition nl declarations { $1 : $3 }
 
 block 
-  : with nls declarations nls in nls expr  { AST.Block (L.rtRange $1 <-> info $7) $3 $7 }
+  : with nl_ definition nl_ in nl_ expr    { AST.Block (L.rtRange $1 <-> info $7) [$3] $7 }
+  | with nl_ declarations nl_ in nl_ expr  { AST.Block (L.rtRange $1 <-> info $7) $3 $7 }
 
 
 expr
-  -- : definition    { AST.Declaration $1 }
-  : literal       { AST.Lit $1 }
+  : definition    { AST.Declaration $1 }
+  | literal       { AST.Lit $1 }
   | lambda        { $1 }
   | block         { $1 }
   | fnApplication { $1 }
