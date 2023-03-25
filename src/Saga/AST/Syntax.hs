@@ -17,6 +17,7 @@ data Expr a where
   Declaration   :: Definition a -> Expr a
   Lit           :: Literal a -> Expr a 
   Lambda        :: a -> [Name a] -> Expr a -> Expr a
+  FnApp         :: a -> Expr a -> [Expr a] -> Expr a
   Block         :: a -> [Definition a] -> Expr a -> Expr a
   Identifier    :: Name a -> Expr a
 

@@ -1,31 +1,56 @@
+{-# LANGUAGE BlockArguments #-}
+
 module Main (main) where
 
-import Saga.Parser.Parser (runSagaScript, runSagaExpr)
+import qualified Saga.AST.Syntax          as AST
+import qualified Saga.Lexer.Lexer         as L
+import           Saga.Parser.Parser       (runSagaExpr, runSagaScript)
 
-import qualified Saga.AST.Evaluation as E
-import System.IO
+import qualified Data.Map                 as Map
+import qualified Saga.AST.Evaluation      as E
+
+import           Control.Monad.State.Lazy
+import           System.IO
 
 main :: IO ()
 main = do
     putStrLn "Starting Saga..."
     line <- getLine
-    putStrLn $ show $ runSagaExpr line
+    print (runSagaExpr line)
 
 
 
-eval :: IO ()
-eval = do
-    putStr "Saga> "
-    line <- getLine
-    putStrLn $ case runSagaExpr line of
-        (Right expr) -> show $ E.eval expr
-        (Left err) -> show err
-    eval
+repl :: IO ()
+repl =
+    let
+        value line = do
+            expr <- runSagaExpr line
+            E.runEvaluation expr
+
+    in do
+        putStr "Saga> "
+        line <- getLine
+        putStrLn $ case value line of
+            (Right (v, env)) -> show v <> "\n" <> show env
+            (Left e)         -> e
+        repl
+
+
+
+
 
 script :: FilePath -> IO ()
-script fp = do
-    handle <- openFile fp ReadMode
-    contents <- hGetContents handle
-    putStrLn $ show $ runSagaScript contents
-    hClose handle
-    putStrLn "Bye!"
+script fp =
+    let
+        eval' def = E.eval (AST.Declaration def)
+        script' str = do
+            (AST.Script _ _ defs _) <- runSagaScript str
+            runStateT (mapM eval' defs) Map.empty
+
+    in do
+        handle <- openFile fp ReadMode
+        contents <- hGetContents handle
+        print (script' contents)
+        hClose handle
+        putStrLn "Bye!"
+

@@ -111,6 +111,12 @@ args
 lambda
   : '\\' args '->' expr { AST.Lambda (L.rtRange $1 <-> info $4) $2 $4 }
 
+params
+  : expr          { [$1] }
+  | expr params   { $1 : $2 }
+
+fnApplication 
+  : expr params   { AST.FnApp (info $1 <-> (info $ last $2)) $1 $2 }
 
 declarations
   : definition              { [$1] }
@@ -122,11 +128,12 @@ block
 
 
 expr
-  : definition  { AST.Declaration $1 }
-  | literal     { AST.Lit $1 }
-  | lambda      { $1 }
-  | block       { $1 }
-  | identifier  { AST.Identifier $1 }
+  : definition    { AST.Declaration $1 }
+  | literal       { AST.Lit $1 }
+  | lambda        { $1 }
+  | block         { $1 }
+  | fnApplication { $1 }
+  | identifier    { AST.Identifier $1 }
 
 
 moduleDef
