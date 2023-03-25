@@ -33,9 +33,15 @@ eval (Declaration (Def _ (Name _ name) e)) =
       modify $ Map.insert name' val
       return val
 eval (Block _ defs e) =
-  let eval' def = eval $ Declaration def in do
+  let
+    eval' def = eval $ Declaration def
+    eval'' = do
       mapM_ eval' defs
       eval e
+  in do
+      env <- get
+      lift $ evalStateT eval'' env
+
 eval (Lambda _ args body) = do
   VClosure args body <$> get
 eval (Identifier (Name _ name)) =

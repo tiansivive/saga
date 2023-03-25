@@ -6,6 +6,6 @@ foo =
       y = 2 
     in x y
 
-o = { foo: 2  }
+l = 7
 
 import P

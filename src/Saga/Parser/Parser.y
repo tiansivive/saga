@@ -69,6 +69,10 @@ nls
   | nl     { }
   | nl nls { }
 
+nl_
+ :  {}
+ | nl nl_ {}
+
 identifier
   : id { unTok $1 (\range (T.Id name) -> AST.Name range name) }
  -- only to get the file compiling; we will remove this
@@ -79,26 +83,27 @@ path
 
 
 definition
-  : identifier '=' expr { AST.Def (info $1 <-> info $3) $1 $3 }
+  : identifier '=' nl_ expr nl { AST.Def (info $1 <-> L.rtRange $5) $1 $4 }
+
 
 pairs
   :                                 { [] }
-  | identifier ':' expr ',' pairs   { ($1, $3) : $5 }
+  | identifier ':' expr  nl_ ',' nl_ pairs   { ($1, $3) : $7 }
   | identifier ':' expr             { [($1, $3)] }
 
 record 
-  : '{' pairs '}'   { AST.LRecord (L.rtRange $1 <-> L.rtRange $3) $2 }
+  : '{' nl_ pairs nl_ '}'   { AST.LRecord (L.rtRange $1 <-> L.rtRange $5) $3 }
 
 listElements
   :                         { [] }
   | expr                    { [$1] }
-  | expr ',' listElements   { $1 : $3 }
+  | expr nl_ ',' nl_ listElements   { $1 : $5 }
 
 list 
-  : '[' listElements ']'    { AST.LList (L.rtRange $1 <-> L.rtRange $3) $2 }
+  : '[' nl_ listElements nl_ ']'    { AST.LList (L.rtRange $1 <-> L.rtRange $5) $3 }
 
 tuple
-  : '(' listElements ')'    { AST.LTuple (L.rtRange $1 <-> L.rtRange $3) $2 }
+  : '(' nl_ listElements nl_ ')'    { AST.LTuple (L.rtRange $1 <-> L.rtRange $5) $3 }
 
 literal 
   : number     { unTok $1 (\range (T.Number int) -> AST.LInt range int) }
@@ -114,7 +119,8 @@ args
   | identifier args  { $1 : $2 }
 
 lambda
-  : '\\' args '->' expr { AST.Lambda (L.rtRange $1 <-> info $4) $2 $4 }
+  : '\\' args '->' nl_ expr { AST.Lambda (L.rtRange $1 <-> info $5) $2 $5 }
+
 
 params
   : expr          { [$1] }
@@ -125,16 +131,15 @@ fnApplication
 
 declarations
   :         { [] }
-  | definition nls declarations { $1 : $3 }
-
+  | definition declarations { $1 : $2 }
 
 block 
   : with nls declarations nls in nls expr  { AST.Block (L.rtRange $1 <-> info $7) $3 $7 }
 
 
 expr
-  : definition    { AST.Declaration $1 }
-  | literal       { AST.Lit $1 }
+  -- : definition    { AST.Declaration $1 }
+  : literal       { AST.Lit $1 }
   | lambda        { $1 }
   | block         { $1 }
   | fnApplication { $1 }
@@ -142,14 +147,16 @@ expr
 
 
 moduleDef
-  : module path where { AST.DefMod (L.rtRange $1 <-> L.rtRange $3) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) } -- TODO: extract to named fn
+  : module path where nl { AST.DefMod (L.rtRange $1 <-> L.rtRange $4) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) } -- TODO: extract to named fn
 
 importMod
   : import path { AST.Import (L.rtRange $1 <-> (info $ last $2)) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) }
 
+
 imports
   :                    { [] }
-  | importMod imports  { $1 : $2 }
+  | importMod nl_ imports  { $1 : $3 }
+ 
  
 
 script

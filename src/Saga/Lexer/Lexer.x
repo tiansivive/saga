@@ -23,49 +23,49 @@ $ws         = [[\ \t\f\v\r]] -- whitespace char set without newline
 
 tokens :-
 
-    <0> $white+                           { skip }
-    <declaration> $ws+                    { skip }
-    <declaration> $nl+                    { tok Newline }
+    --<0> $white+                           { skip }
+    <0> $ws+                    { skip }
+    <0> $nl+                    { tok Newline }
 
     <0> module                            { tok Module }
     <0> import                            { tok Import } 
 
 
-    <0, declaration> let                  { tok Let `andBegin` declaration }
-    <0, declaration> with                 { tok With `andBegin` declaration }
-    <declaration> in                      { tok In `andBegin` 0 }
-    <0, declaration> where                { tok Where }
-    <0, declaration> if                   { tok If }
-    <0, declaration> then                 { tok Then }
-    <0, declaration> else                 { tok Else }
-    <0, declaration> match                { tok Match }
+    <0> let                  { tok Let }
+    <0> with                 { tok With }
+    <0> in                      { tok In }
+    <0> where                { tok Where }
+    <0> if                   { tok If }
+    <0> then                 { tok Then }
+    <0> else                 { tok Else }
+    <0> match                { tok Match }
 
  
 
-    <0, declaration> $digit+             { tokNumber }
-    <0, declaration> (\"[^\"]*\")        { tokString }
-    <0, declaration> yes | on  | true    { tokBoolean True }
-    <0, declaration> no  | off | false   { tokBoolean False }
-    <0, declaration> @id                 { tokId }
+    <0> $digit+             { tokNumber }
+    <0> (\"[^\"]*\")        { tokString }
+    <0> yes | on  | true    { tokBoolean True }
+    <0> no  | off | false   { tokBoolean False }
+    <0> @id                 { tokId }
     
-    <0, declaration> "("                 { tok LParen }
-    <0, declaration> ")"                 { tok RParen }
-    <0, declaration> "["                 { tok LBrack }
-    <0, declaration> "]"                 { tok RBrack }
-    <0, declaration> "{"                 { tok LCurly }
-    <0, declaration> "}"                 { tok RCurly }
+    <0> "("                 { tok LParen }
+    <0> ")"                 { tok RParen }
+    <0> "["                 { tok LBrack }
+    <0> "]"                 { tok RBrack }
+    <0> "{"                 { tok LCurly }
+    <0> "}"                 { tok RCurly }
 
-    <0, declaration> ":"                 { tok Colon }
-    <0, declaration> ","                 { tok Comma }
-    <0, declaration> "->"                { tok Arrow }
-    <0, declaration> "="                 { tok Equals }
-    <0, declaration> "|"                 { tok Pipe }
-    <0, declaration> "."                 { tok Dot }
-    <0, declaration> $backslash          { tok BackSlash }
+    <0> ":"                 { tok Colon }
+    <0> ","                 { tok Comma }
+    <0> "->"                { tok Arrow }
+    <0> "="                 { tok Equals }
+    <0> "|"                 { tok Pipe }
+    <0> "."                 { tok Dot }
+    <0> $backslash          { tok BackSlash }
 
     -- comments
-    <0, declaration>       "/*" { nestComment `andBegin` comment }
-    <0, declaration>       "*/" { \_ _ -> alexError "Error: unexpected closing comment" }
+    <0>       "/*" { nestComment `andBegin` comment }
+    <0>       "*/" { \_ _ -> alexError "Error: unexpected closing comment" }
     <comment> "/*" { nestComment }
     <comment> "*/" { unnestComment }
     <comment> .    ;
