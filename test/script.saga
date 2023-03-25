@@ -1,5 +1,8 @@
 module M where
 
-foo = 2
+foo = 1
+bar = 2
+
+
 
 import P

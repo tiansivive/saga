@@ -35,5 +35,8 @@ library
       array
     , base
     , bytestring
+    , containers
+    , mtl
     , prettyprinter
+    , transformers
   default-language: Haskell2010

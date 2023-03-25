@@ -15,6 +15,9 @@ library:
   - base
   - bytestring
   - prettyprinter
+  - containers
+  - transformers
+  - mtl
 
   build-tools:
   - alex
