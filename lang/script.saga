@@ -1,9 +1,7 @@
 module M where
 
 
-foo = \x y -> x
-
-bar = foo 1 2
+foo = on && off
 
 
 
