@@ -1,13 +1,10 @@
 module M where
 
-foo = 
-    with 
-      x = \n -> n 
-      y = 2 
-    in x y
 
-bar = off
+foo = \x y -> x
 
-l = if bar then 10 else 20
+bar = foo 1 2
+
+
 
 import P

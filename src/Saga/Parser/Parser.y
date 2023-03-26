@@ -22,6 +22,8 @@ import qualified Saga.AST.Syntax as AST
 %error { parseError }
 %monad { L.Alex } { >>= } { pure }
 %lexer { lexer } { L.RangedToken T.EOF _ }
+
+
 %token
   -- Identifiers
   id { L.RangedToken (T.Id _) _ }
@@ -31,6 +33,7 @@ import qualified Saga.AST.Syntax as AST
   boolean    { L.RangedToken (T.Boolean _) _ }
 
   -- operators 
+  '!'         { L.RangedToken (T.Operator "!") _ } 
   op         { L.RangedToken (T.Operator _) _ }
 
   -- Keywords
@@ -62,14 +65,21 @@ import qualified Saga.AST.Syntax as AST
   '.'        { L.RangedToken T.Dot _ }
   '\\'       { L.RangedToken T.BackSlash _ } 
 
-  nl         { L.RangedToken T.Newline _ }
+
+
+  newline         { L.RangedToken T.Newline _ }
   eof        { L.RangedToken T.EOF _ }
 
+%nonassoc APP
 %%
+
 
 nl_
  :  {}
- | nl nl_ {}
+ | newline nl_ { }
+
+nl
+ : newline nl_ { $1 }
 
 identifier
   : id { unTok $1 (\range (T.Id name) -> AST.Name range name) }
@@ -121,11 +131,11 @@ lambda
 
 
 params
-  : expr          { [$1] }
-  | expr params   { $1 : $2 }
+  : expr          {        [$1] }
+  | expr params %prec APP  { $1 : $2 }
 
 fnApplication 
-  : expr params   { AST.FnApp (info $1 <-> (info $ last $2)) $1 $2 }
+  : expr params %prec APP { AST.FnApp (info $1 <-> (info $ last $2)) $1 $2 }
 
 declarations
   :         { [] }
@@ -140,14 +150,15 @@ controlFlow
 
 
 expr
-  : definition    { AST.Declaration $1 }
-  | literal       { AST.Lit $1 }
-  | controlFlow   { $1 }
-  | lambda        { $1 }
-  | block         { $1 }
-  | fnApplication { $1 }
-  | identifier    { AST.Identifier $1 }
+  : definition           { AST.Declaration $1 }
+  | literal              { AST.Lit $1 }
+  | controlFlow          { $1 }
+  | lambda               { $1 }
+  | block                { $1 }
+  | fnApplication        { $1 }
+  | identifier           { AST.Identifier $1 }
   | '(' nl_ expr nl_ ')' { AST.Parens $3 }
+  | expr op nl_ expr     { AST.FnApp (info $1 <-> info $4) (unTok $2 (\range (T.Operator char) -> AST.Identifier (AST.Name range char))) [$1, $4] }
 
 
 moduleDef
