@@ -6,6 +6,8 @@ foo =
       y = 2 
     in x y
 
-l = 7
+bar = off
+
+l = if bar then 10 else 20
 
 import P

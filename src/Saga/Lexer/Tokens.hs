@@ -1,6 +1,6 @@
-module Saga.Lexer.Tokens where 
+module Saga.Lexer.Tokens where
 
-import Data.ByteString.Lazy.Char8 (ByteString)
+import           Data.ByteString.Lazy.Char8 (ByteString)
 
 -- Lexer
 data Token
@@ -15,6 +15,7 @@ data Token
   | If
   | Then
   | Else
+  | Unless
   | Match
 
   -- Modules
@@ -39,6 +40,7 @@ data Token
 
   -- reserved symbols
   | Arrow
+  | BackArrow
   | Colon
   | Comma
   | Equals
@@ -51,6 +53,9 @@ data Token
   | RBrack
   | LCurly
   | RCurly
+  | LPacman
+  | RPacman
+  | Operator ByteString
 
   -- primitives
   | Number Int

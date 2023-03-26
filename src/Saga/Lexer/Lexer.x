@@ -19,11 +19,11 @@ $nl         = [\n]
 $backslash  = [\\]
 $ws         = [[\ \t\f\v\r]] -- whitespace char set without newline
 
-@id = ($alpha | \_) ($alpha | $digit | \_ | \' | \?)*
+@id = ($alpha | \_) ($alpha | $digit | \_ | \' | \? | \- )*
 
 tokens :-
 
-    --<0> $white+                           { skip }
+
     <0> $ws+                    { skip }
     <0> $nl+                    { tok Newline }
 
@@ -33,11 +33,13 @@ tokens :-
 
     <0> let                  { tok Let }
     <0> with                 { tok With }
-    <0> in                      { tok In }
     <0> where                { tok Where }
+    <0> in                   { tok In }
+    <0> as                   { tok As }
     <0> if                   { tok If }
     <0> then                 { tok Then }
     <0> else                 { tok Else }
+    <0> unless               { tok Unless }
     <0> match                { tok Match }
 
  
@@ -54,14 +56,46 @@ tokens :-
     <0> "]"                 { tok RBrack }
     <0> "{"                 { tok LCurly }
     <0> "}"                 { tok RCurly }
+    <0> "<"                 { tok LPacman }
+    <0> ">"                 { tok RPacman }
 
     <0> ":"                 { tok Colon }
     <0> ","                 { tok Comma }
     <0> "->"                { tok Arrow }
+    <0> "<-"                { tok BackArrow }
     <0> "="                 { tok Equals }
     <0> "|"                 { tok Pipe }
     <0> "."                 { tok Dot }
     <0> $backslash          { tok BackSlash }
+
+    <0> "+"                 { tok $ Operator "+" }
+    <0> "-"                 { tok $ Operator "-" }
+    <0> "*"                 { tok $ Operator "*" }
+    <0> "/"                 { tok $ Operator "/" }
+    <0> "%"                 { tok $ Operator "%" }
+    <0> "^"                 { tok $ Operator "^" }
+
+    <0> "||"                { tok $ Operator "||" }
+    <0> "&&"                { tok $ Operator "&&" }
+    <0> "!"                 { tok $ Operator "!" }
+    
+    <0> "=="                { tok $ Operator "==" }
+    <0> "!="                { tok $ Operator "!=" }
+
+    <0> ">>"                { tok $ Operator ">>" }
+    <0> "<<"                { tok $ Operator "<<" }
+    
+    <0> "|>"                { tok $ Operator "|>" }
+    <0> "<|"                { tok $ Operator "<|" }
+
+    <0> "$"                 { tok $ Operator "$" }
+    <0> "#"                 { tok $ Operator "#" }
+    <0> "@"                 { tok $ Operator "#" }
+
+    
+
+
+
 
     -- comments
     <0>       "/*" { nestComment `andBegin` comment }

@@ -1,25 +1,27 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE DeriveFoldable     #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE GADTs              #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DeriveFoldable #-}
 
 module Saga.AST.Syntax where
 
-import Data.ByteString.Lazy.Char8 (ByteString)
+import           Data.ByteString.Lazy.Char8 (ByteString)
 
 
 
-data Script a = 
+data Script a =
     Script a (ModuleDef a) [Definition a] [Import a]
         deriving (Show)
 
 data Expr a where
   Declaration   :: Definition a -> Expr a
-  Lit           :: Literal a -> Expr a 
+  Lit           :: Literal a -> Expr a
+  Flow          :: a -> Expr a -> Expr a -> Expr a -> Expr a
   Lambda        :: a -> [Name a] -> Expr a -> Expr a
   FnApp         :: a -> Expr a -> [Expr a] -> Expr a
   Block         :: a -> [Definition a] -> Expr a -> Expr a
   Identifier    :: Name a -> Expr a
+  Parens        :: Expr a -> Expr a
 
 data Literal a where
   LInt    :: a -> Int -> Literal a

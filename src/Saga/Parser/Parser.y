@@ -30,6 +30,9 @@ import qualified Saga.AST.Syntax as AST
   string     { L.RangedToken (T.String _) _ }
   boolean    { L.RangedToken (T.Boolean _) _ }
 
+  -- operators 
+  op         { L.RangedToken (T.Operator _) _ }
+
   -- Keywords
   let        { L.RangedToken T.Let _ }
   in         { L.RangedToken T.In _ }
@@ -132,14 +135,19 @@ block
   : with nl_ definition nl_ in nl_ expr    { AST.Block (L.rtRange $1 <-> info $7) [$3] $7 }
   | with nl_ declarations nl_ in nl_ expr  { AST.Block (L.rtRange $1 <-> info $7) $3 $7 }
 
+controlFlow 
+  : if nl_ expr nl_ then nl_ expr nl_ else nl_ expr { AST.Flow (L.rtRange $1 <-> info $11) $3 $7 $11 }
+
 
 expr
   : definition    { AST.Declaration $1 }
   | literal       { AST.Lit $1 }
+  | controlFlow   { $1 }
   | lambda        { $1 }
   | block         { $1 }
   | fnApplication { $1 }
   | identifier    { AST.Identifier $1 }
+  | '(' nl_ expr nl_ ')' { AST.Parens $3 }
 
 
 moduleDef

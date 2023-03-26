@@ -26,12 +26,19 @@ type EvalState a = StateT (Env a) (Either String) (Value a)
 
 
 eval :: Expr a -> EvalState a
+eval (Parens e) = eval e
 eval (Lit l) = evalLit l
 eval (Declaration (Def _ (Name _ name) e)) =
   let name' = BS.unpack name in do
       val <- eval e
       modify $ Map.insert name' val
       return val
+eval (Flow _ cond onTrue onFalse) = do
+  val <- eval cond
+  case val of
+    (VBool True) -> eval onTrue
+    (VBool False) -> eval onFalse
+    _ -> lift $ Left "Could not evaluate non boolean expression as a if condition"
 eval (Block _ defs e) =
   let
     eval' def = eval $ Declaration def
