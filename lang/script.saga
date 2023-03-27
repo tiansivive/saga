@@ -1,8 +1,12 @@
 module M where
 
 
-foo = on && off
+fac = \n -> 
+    if n == 1
+    then n
+    else fac (n -1)
 
 
+res = fac 2
 
 import P

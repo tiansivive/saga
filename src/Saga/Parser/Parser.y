@@ -110,8 +110,12 @@ listElements
 list 
   : '[' nl_ listElements nl_ ']'    { AST.LList (L.rtRange $1 <-> L.rtRange $5) $3 }
 
+tupleElems
+  : ',' nl_ expr                  { [$3] }
+  | ',' nl_ expr nl_ tupleElems   { $3 : $5 }
+
 tuple
-  : '(' nl_ listElements nl_ ')'    { AST.LTuple (L.rtRange $1 <-> L.rtRange $5) $3 }
+  : '(' nl_ expr nl_ tupleElems nl_ ')'    { AST.LTuple (L.rtRange $1 <-> L.rtRange $7) ($3:$5) }
 
 literal 
   : number     { unTok $1 (\range (T.Number int) -> AST.LInt range int) }

@@ -9,6 +9,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Map                   as Map
 
 import           Control.Monad.State.Lazy
+import           Debug.Trace                (traceM)
 
 
 
@@ -24,7 +25,7 @@ data Value a
   | VRecord [(String, Value a)]
   | VClosure [Name a] (Expr a) (Env a)
   | BuiltIn String
-  deriving (Show)
+  deriving (Show, Eq)
 
 type Env a = Map.Map String (Value a)
 
@@ -32,7 +33,7 @@ type EvalState a = StateT (Env a) (Either String) (Value a)
 
 
 
-eval :: Expr a -> EvalState a
+eval :: (Eq a, Show a) => Expr a -> EvalState a
 eval (Parens e) = eval e
 eval (Lit l) = evalLit l
 eval (Declaration (Def _ (Name _ name) e)) =
@@ -57,6 +58,8 @@ eval (Block _ defs e) =
       lift $ evalStateT eval'' env
 
 eval (Lambda _ args body) = do
+  env <- get
+  traceM $ show env
   VClosure args body <$> get
 eval (Identifier (Name _ name)) =
     let
@@ -89,8 +92,8 @@ eval (FnApp _ fnExpr argExprs) = do
 
     (BuiltIn "||") -> lift $ Right $ VBool (b1 || b2)
     (BuiltIn "&&") -> lift $ Right $ VBool (b1 && b2)
-    (BuiltIn "==") -> lift $ Right $ VBool (b1 == b2)
-    (BuiltIn "!=") -> lift $ Right $ VBool (b1 /= b2)
+    (BuiltIn "==") -> lift $ Right $ VBool (vals !! 0 == vals !! 1)
+    (BuiltIn "!=") -> lift $ Right $ VBool  (vals !! 0 == vals !! 1)
 
     (VClosure paramNames bodyExpr capturedEnv) ->
       if length paramNames == length vals then
@@ -99,14 +102,17 @@ eval (FnApp _ fnExpr argExprs) = do
           insert' (Name _ name, v) = Map.insert (BS.unpack name) v
           env' = foldr insert' capturedEnv pairs
           env'' = Map.union env env'
-        in lift $ evalStateT (eval bodyExpr) env''
+
+        in do
+          traceM $ show env''
+          lift $ evalStateT (eval bodyExpr) env''
 
       else lift $ Left "Wrong number of params"
     _ -> lift $ Left "Cannot apply this expression"
 
 
 
-evalLit :: Literal a -> EvalState a
+evalLit :: (Eq a, Show a) => Literal a -> EvalState a
 evalLit (LInt _ int)    = return $ VInt int
 evalLit (LBool _ bool)  = return $ VBool bool
 evalLit (LString _ str) = return $ VString $ BS.unpack str
@@ -126,7 +132,7 @@ evalLit (LRecord _ record) = do
 
 
 
-runEvaluation :: Expr a -> Either String (Value a, Env a)
+runEvaluation :: (Eq a, Show a )=> Expr a -> Either String (Value a, Env a)
 runEvaluation e = runStateT (eval e) Map.empty
 
 

@@ -34,10 +34,10 @@ data Literal a where
 
 
 data Definition a = Def a (Name a) (Expr a)
-    deriving (Foldable, Show)
+    deriving (Foldable, Show, Eq)
 
 data Name a = Name a ByteString
-    deriving (Foldable, Show)
+    deriving (Foldable, Show, Eq)
 
 data Import a = Import a Module
   deriving (Foldable, Show)
@@ -49,6 +49,9 @@ deriving instance Foldable Literal
 
 deriving instance Show a => Show (Expr a)
 deriving instance Show a => Show (Literal a)
+
+deriving instance Eq a => Eq (Expr a)
+deriving instance Eq a => Eq (Literal a)
 
 
 newtype Module = Mod [ByteString]
