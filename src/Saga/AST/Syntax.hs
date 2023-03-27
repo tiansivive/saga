@@ -19,9 +19,11 @@ data Expr a where
   Flow          :: a -> Expr a -> Expr a -> Expr a -> Expr a
   Lambda        :: a -> [Name a] -> Expr a -> Expr a
   FnApp         :: a -> Expr a -> [Expr a] -> Expr a
-  Block         :: a -> [Definition a] -> Expr a -> Expr a
+  Clause        :: a -> [Definition a] -> Expr a -> Expr a
+  Block         :: a -> [Expr a] -> Expr a
+  Return        :: a -> Expr a -> Expr a
   Identifier    :: Name a -> Expr a
-  Parens        :: Expr a -> Expr a
+  Parens        :: a -> Expr a -> Expr a
 
 data Literal a where
   LInt    :: a -> Int -> Literal a
@@ -33,10 +35,12 @@ data Literal a where
 
 
 
-data Definition a = Def a (Name a) (Expr a)
+data Definition a
+  = Def a (Name a) (Expr a)
+ -- | Data a (Name a) [(String, [Type a])]
     deriving (Foldable, Show, Eq)
 
-data Name a = Name a ByteString
+data Name a = Name a String
     deriving (Foldable, Show, Eq)
 
 data Import a = Import a Module
@@ -54,7 +58,7 @@ deriving instance Eq a => Eq (Expr a)
 deriving instance Eq a => Eq (Literal a)
 
 
-newtype Module = Mod [ByteString]
+newtype Module = Mod [String]
     deriving (Show)
 
 

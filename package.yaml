@@ -1,16 +1,14 @@
 name: saga
 version: 0.1.0.0
 
+default-extensions:
+- OverloadedStrings
+
 extra-source-files:
 - README.md
 - LICENSE
 
-default-extensions:
-- OverloadedStrings
-
-library:
-  source-dirs: src
-  dependencies:
+dependencies:
   - array
   - base
   - bytestring
@@ -19,6 +17,20 @@ library:
   - transformers
   - mtl
 
+library:
+  source-dirs: src
   build-tools:
   - alex
   - happy
+
+tests:
+  saga-test:
+    main:                Spec.hs
+    source-dirs:         tests
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - saga
+    - hspec

@@ -17,6 +17,7 @@ data Token
   | Else
   | Unless
   | Match
+  | Return
 
   -- Modules
   | Module

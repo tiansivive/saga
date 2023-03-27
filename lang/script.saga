@@ -1,10 +1,8 @@
 module M where
 
 
-fac = \n -> 
-    if n == 1
-    then n
-    else fac (n -1)
+fac = \n -> n
+
 
 
 res = fac 2

@@ -45,6 +45,7 @@ import qualified Saga.AST.Syntax as AST
   then       { L.RangedToken T.Then _ }
   else       { L.RangedToken T.Else _ }
   match      { L.RangedToken T.Match _ }
+  return     { L.RangedToken T.Return _ }
 
   -- Modules
   module     { L.RangedToken T.Module _ }
@@ -82,7 +83,7 @@ nl
  : newline nl_ { $1 }
 
 identifier
-  : id { unTok $1 (\range (T.Id name) -> AST.Name range name) }
+  : id { unTok $1 (\range (T.Id name) -> AST.Name range (BS.unpack name)) }
  -- only to get the file compiling; we will remove this
 
 path
@@ -144,25 +145,38 @@ fnApplication
 declarations
   :         { [] }
   | definition nl declarations { $1 : $3 }
+ -- | dataDef nl declarations { $1 : $3 }
 
-block 
-  : with nl_ definition nl_ in nl_ expr    { AST.Block (L.rtRange $1 <-> info $7) [$3] $7 }
-  | with nl_ declarations nl_ in nl_ expr  { AST.Block (L.rtRange $1 <-> info $7) $3 $7 }
+clause 
+  : with nl_ definition nl_ in nl_ expr    { AST.Clause (L.rtRange $1 <-> info $7) [$3] $7 }
+  | with nl_ declarations nl_ in nl_ expr  { AST.Clause (L.rtRange $1 <-> info $7) $3 $7 }
 
 controlFlow 
   : if nl_ expr nl_ then nl_ expr nl_ else nl_ expr { AST.Flow (L.rtRange $1 <-> info $11) $3 $7 $11 }
 
 
+block
+  :               { [] }
+  | expr          { [$1] }
+  | return expr   { [AST.Return (L.rtRange $1 <-> info $2) $2] }
+  | expr nl block { $1 : $3 }
+
+returnStmt
+  : return { Nothing }
+  | return expr { Just $1 }
+
+
 expr
-  : definition           { AST.Declaration $1 }
-  | literal              { AST.Lit $1 }
-  | controlFlow          { $1 }
-  | lambda               { $1 }
-  | block                { $1 }
-  | fnApplication        { $1 }
-  | identifier           { AST.Identifier $1 }
-  | '(' nl_ expr nl_ ')' { AST.Parens $3 }
-  | expr op nl_ expr     { AST.FnApp (info $1 <-> info $4) (unTok $2 (\range (T.Operator char) -> AST.Identifier (AST.Name range char))) [$1, $4] }
+  : definition              { AST.Declaration $1 }
+  | identifier              { AST.Identifier $1 }
+  | literal                 { AST.Lit $1 }
+  | controlFlow             { $1 }
+  | lambda                  { $1 }
+  | clause                  { $1 }
+  | fnApplication           { $1 }
+  | expr op nl_ expr        { AST.FnApp (info $1 <-> info $4) (unTok $2 (\range (T.Operator char) -> AST.Identifier (AST.Name range (BS.unpack char)))) [$1, $4] }
+  | '{' nl_ block nl_ '}'   { AST.Block (L.rtRange  $1 <-> L.rtRange $5) $3 }
+  | '(' nl_ expr nl_ ')'    { AST.Parens (L.rtRange  $1 <-> L.rtRange $5) $3 }
 
 
 moduleDef

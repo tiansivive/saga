@@ -40,3 +40,28 @@ library
     , prettyprinter
     , transformers
   default-language: Haskell2010
+
+test-suite saga-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Saga.AST.EvaluationSpec
+      Saga.Parser.ParserSpec
+      SpecHook
+      Paths_saga
+  hs-source-dirs:
+      tests
+  default-extensions:
+      OverloadedStrings
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      array
+    , base
+    , bytestring
+    , containers
+    , hspec
+    , mtl
+    , prettyprinter
+    , saga
+    , transformers
+  default-language: Haskell2010
