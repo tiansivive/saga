@@ -156,8 +156,7 @@ controlFlow
 
 
 block
-  :               { [] }
-  | expr          { [$1] }
+  : expr          { [$1] }
   | return expr   { [AST.Return (L.rtRange $1 <-> info $2) $2] }
   | expr nl block { $1 : $3 }
 

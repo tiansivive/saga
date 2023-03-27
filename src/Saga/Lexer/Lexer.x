@@ -181,7 +181,7 @@ tokNumber inp@(_, _, str, _) len =
 tokString :: AlexAction RangedToken
 tokString inp@(_, _, str, _) len =
   pure RangedToken
-    { rtToken = String $ BS.take len str
+    { rtToken = String $ BS.tail $ BS.take (len -1) str
     , rtRange = mkRange inp len
     }
 
