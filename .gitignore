@@ -3,3 +3,4 @@ dist-newstyle/*
 .vscode
 .stack-work
 
+src/Main
