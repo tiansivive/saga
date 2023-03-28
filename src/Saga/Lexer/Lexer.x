@@ -24,8 +24,8 @@ $ws         = [[\ \t\f\v\r]] -- whitespace char set without newline
 tokens :-
 
 
-    <0> $ws+                    { skip }
-    <0> $nl+                    { tok Newline }
+    <0> $white+                    { skip }
+    --<0> $nl+                    { tok Newline }
 
     <0> module                            { tok Module }
     <0> import                            { tok Import } 

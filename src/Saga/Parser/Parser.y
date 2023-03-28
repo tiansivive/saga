@@ -72,58 +72,54 @@ import qualified Saga.AST.Syntax as AST
   eof        { L.RangedToken T.EOF _ }
 
 %nonassoc APP
+%left END
+
 %%
 
 
-nl_
- :  {}
- | newline nl_ { }
 
-nl
- : newline nl_ { $1 }
 
 identifier
   : id { unTok $1 (\range (T.Id name) -> AST.Name range (BS.unpack name)) }
- -- only to get the file compiling; we will remove this
 
 path
   : identifier          { [$1] }
   | identifier '.' path { $1 : $3 }
 
 definition
-  : identifier '=' nl_ expr { AST.Def (info $1 <-> info $4) $1 $4 }
+  : identifier '=' expr { AST.Def (info $1 <-> info $3) $1 $3 }
 
 type 
   : expr {}
   | expr '->' type {}
 
 typeAnnotation
-  : identifier ':' type nl {}
+  : identifier ':' type {}
 
 
  -- COLLECTIONS
 pairs
   :                                 { [] }
-  | identifier ':' expr  nl_ ',' nl_ pairs   { ($1, $3) : $7 }
+  | identifier ':' expr ',' pairs   { ($1, $3) : $5 }
   | identifier ':' expr             { [($1, $3)] }
 
 record 
-  : '{' nl_ pairs nl_ '}'   { AST.LRecord (L.rtRange $1 <-> L.rtRange $5) $3 }
+  : '{' pairs '}'   { AST.LRecord (L.rtRange $1 <-> L.rtRange $3) $2 }
 
 listElements
   :                         { [] }
   | expr                    { [$1] }
-  | expr nl_ ',' nl_ listElements   { $1 : $5 }
+  | expr ',' listElements   { $1 : $3 }
 
 list 
-  : '[' nl_ listElements nl_ ']'    { AST.LList (L.rtRange $1 <-> L.rtRange $5) $3 }
+  : '[' listElements ']'    { AST.LList (L.rtRange $1 <-> L.rtRange $3) $2 }
 
 tupleElems
-  : ',' nl_ expr                  { [$3] }
-  | ',' nl_ expr nl_ tupleElems   { $3 : $5 }
+  : ',' expr                  { [$2] }
+  | ',' expr tupleElems   { $2 : $3 }
 
 tuple
-  : '(' nl_ expr nl_ tupleElems nl_ ')'    { AST.LTuple (L.rtRange $1 <-> L.rtRange $7) ($3:$5) }
+  : '(' expr tupleElems ')'    { AST.LTuple (L.rtRange $1 <-> L.rtRange $4) ($2:$3) }
 
 
 -- FUNCTIONS
@@ -132,34 +128,33 @@ args
   | identifier args  { $1 : $2 }
 
 lambda
-  : '\\' args '->' nl_ expr { AST.Lambda (L.rtRange $1 <-> info $5) $2 $5 }
+  : '\\' args '->' expr { AST.Lambda (L.rtRange $1 <-> info $4) $2 $4 }
 
 params
-  : expr          {        [$1] }
+  : atom          {        [$1] }
   | expr params %prec APP  { $1 : $2 }
 
-fnApplication 
-  : expr params %prec APP { AST.FnApp (info $1 <-> (info $ last $2)) $1 $2 }
-
+-- fnApplication 
+--   : atom params %prec APP { AST.FnApp (info $1 <-> (info $ last $2)) $1 $2 }
+fnApplication  :: { Exp L.Range }
+  : fnApplication atom { AST.FnApp (info $1 <-> info $2) $1 [$2] }
+  | atom { $1 }
 
 --CONTROL FLOW
 controlFlow 
-  : if nl_ expr nl_ then nl_ expr nl_ else nl_ expr { AST.Flow (L.rtRange $1 <-> info $11) $3 $7 $11 }
+  : if expr then expr else expr { AST.Flow (L.rtRange $1 <-> info $6) $2 $4 $6 }
 
 
 -- BLOCKS
 clause 
-  : with nl_ definition nl_ in nl_ expr    { AST.Clause (L.rtRange $1 <-> info $7) [$3] $7 }
-  | with nl_ declarations nl_ in nl_ expr  { AST.Clause (L.rtRange $1 <-> info $7) $3 $7 }
+  --: with definition in expr    { AST.Clause (L.rtRange $1 <-> info $4) [$2] $4 }
+  : with declarations in expr  { AST.Clause (L.rtRange $1 <-> info $4) $2 $4 }
 
 block
   : expr          { [$1] }
   | return expr   { [AST.Return (L.rtRange $1 <-> info $2) $2] }
-  | expr nl block { $1 : $3 }
+  | expr block  { $1 : $2 }
 
-returnStmt
-  : return { Nothing }
-  | return expr { Just $1 }
 
 
 --EXPRESSIONS
@@ -171,33 +166,39 @@ term
   | list       { $1 }
   | record     { $1 }
 
-expr
-  : definition              { AST.Declaration $1 }
-  | identifier              { AST.Identifier $1 }
+atom
+  : identifier              { AST.Identifier $1 }
   | term                    { AST.Term $1 }
+  --| '{' block '}'           { AST.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
+  | '(' expr ')'            { AST.Parens (L.rtRange  $1 <-> L.rtRange $3) $2 }
+
+expr
+  -- | identifier              { AST.Identifier $1 }
+  : definition              { AST.Declaration $1 }
+  | fnApplication           { $1 }
   | controlFlow             { $1 }
   | lambda                  { $1 }
   | clause                  { $1 }
-  | fnApplication           { $1 }
-  | expr op nl_ expr        { AST.FnApp (info $1 <-> info $4) (unTok $2 (\range (T.Operator char) -> AST.Identifier (AST.Name range (BS.unpack char)))) [$1, $4] }
-  | '{' nl_ block nl_ '}'   { AST.Block (L.rtRange  $1 <-> L.rtRange $5) $3 }
-  | '(' nl_ expr nl_ ')'    { AST.Parens (L.rtRange  $1 <-> L.rtRange $5) $3 }
+  -- | atom                    { $1 }
+  --| expr op expr        { AST.FnApp (info $1 <-> info $3) (unTok $2 (\range (T.Operator char) -> AST.Identifier (AST.Name range (BS.unpack char)))) [$1, $3] }
+  -- | '{' block '}'   { AST.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
+  -- | '(' expr ')'    { AST.Parens (L.rtRange  $1 <-> L.rtRange $3) $2 }
 
 
 -- SCRIPT
 declarations
   :         { [] }
-  | definition nl declarations { $1 : $3 }
+  | definition declarations { $1 : $2 }
 
 moduleDef
-  : module path where nl { AST.DefMod (L.rtRange $1 <-> L.rtRange $4) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) } -- TODO: extract to named fn
+  : module path where { AST.DefMod (L.rtRange $1 <-> L.rtRange $3) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) } -- TODO: extract to named fn
 
 importMod
   : import path { AST.Import (L.rtRange $1 <-> (info $ last $2)) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) }
 
 imports
   :                    { [] }
-  | importMod nl_ imports  { $1 : $3 }
+  | importMod imports  { $1 : $2 }
  
 script
   : moduleDef declarations imports { AST.Script (info $1 <-> (info $ last $2)) $1 $2 $3 }
