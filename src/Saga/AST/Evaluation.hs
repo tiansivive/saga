@@ -2,7 +2,7 @@
 module Saga.AST.Evaluation where
 
 import           Saga.AST.Syntax            (Definition (..), Expr (..),
-                                             Literal (..), Name (..))
+                                             Term (..), Name (..))
 
 import           Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
@@ -36,7 +36,7 @@ type EvalState a = StateT (Env a) (Either String) (Value a)
 
 
 eval :: (Eq a, Show a) => Expr a -> EvalState a
-eval (Lit l) = evalLit l
+eval (Term l) = evalTerm l
 eval (Parens _ e) = eval e
 eval (Return _ e) = eval e
 
@@ -129,17 +129,17 @@ eval (FnApp _ fnExpr argExprs) = do
 
 
 
-evalLit :: (Eq a, Show a) => Literal a -> EvalState a
-evalLit (LInt _ int)    = return $ VInt int
-evalLit (LBool _ bool)  = return $ VBool bool
-evalLit (LString _ str) = return $ VString $ BS.unpack str
-evalLit (LList _ list) = do
+evalTerm :: (Eq a, Show a) => Term a -> EvalState a
+evalTerm (LInt _ int)    = return $ VInt int
+evalTerm (LBool _ bool)  = return $ VBool bool
+evalTerm (LString _ str) = return $ VString $ BS.unpack str
+evalTerm (LList _ list) = do
   vals <- mapM eval list
   return $ VList vals
-evalLit (LTuple _ tuple)  = do
+evalTerm (LTuple _ tuple)  = do
   vals <- mapM eval tuple
   return $ VTuple vals
-evalLit (LRecord _ record) = do
+evalTerm (LRecord _ record) = do
   vals <- mapM evalPair record
   return $ VRecord vals
   where

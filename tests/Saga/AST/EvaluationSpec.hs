@@ -17,9 +17,9 @@ run mval = case evalStateT mval Map.empty of
 
 spec :: Spec
 spec = do
-  describe "Literal" $ do
+  describe "Literal terms" $ do
     it "can evaluate literal ints" $ do
-      let ast = AST.Lit $ AST.LInt () 1
+      let ast = AST.Term $ AST.LInt () 1
       (run $ E.eval ast) `shouldBe` (E.VInt 1 :: E.Value ())
 
 

@@ -1,0 +1,5 @@
+module M where
+
+x = 1
+
+import I

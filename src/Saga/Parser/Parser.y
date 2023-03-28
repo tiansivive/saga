@@ -90,11 +90,18 @@ path
   : identifier          { [$1] }
   | identifier '.' path { $1 : $3 }
 
-
 definition
   : identifier '=' nl_ expr { AST.Def (info $1 <-> info $4) $1 $4 }
 
+type 
+  : expr {}
+  | expr '->' type {}
 
+typeAnnotation
+  : identifier ':' type nl {}
+
+
+ -- COLLECTIONS
 pairs
   :                                 { [] }
   | identifier ':' expr  nl_ ',' nl_ pairs   { ($1, $3) : $7 }
@@ -118,22 +125,14 @@ tupleElems
 tuple
   : '(' nl_ expr nl_ tupleElems nl_ ')'    { AST.LTuple (L.rtRange $1 <-> L.rtRange $7) ($3:$5) }
 
-literal 
-  : number     { unTok $1 (\range (T.Number int) -> AST.LInt range int) }
-  | string     { unTok $1 (\range (T.String string) -> AST.LString range string) }
-  | boolean    { unTok $1 (\range (T.Boolean boolean) -> AST.LBool range boolean) }
-  | tuple      { $1 }
-  | list       { $1 }
-  | record     { $1 }
 
-
+-- FUNCTIONS
 args
   :                  { [] }
   | identifier args  { $1 : $2 }
 
 lambda
   : '\\' args '->' nl_ expr { AST.Lambda (L.rtRange $1 <-> info $5) $2 $5 }
-
 
 params
   : expr          {        [$1] }
@@ -142,18 +141,16 @@ params
 fnApplication 
   : expr params %prec APP { AST.FnApp (info $1 <-> (info $ last $2)) $1 $2 }
 
-declarations
-  :         { [] }
-  | definition nl declarations { $1 : $3 }
- -- | dataDef nl declarations { $1 : $3 }
 
-clause 
-  : with nl_ definition nl_ in nl_ expr    { AST.Clause (L.rtRange $1 <-> info $7) [$3] $7 }
-  | with nl_ declarations nl_ in nl_ expr  { AST.Clause (L.rtRange $1 <-> info $7) $3 $7 }
-
+--CONTROL FLOW
 controlFlow 
   : if nl_ expr nl_ then nl_ expr nl_ else nl_ expr { AST.Flow (L.rtRange $1 <-> info $11) $3 $7 $11 }
 
+
+-- BLOCKS
+clause 
+  : with nl_ definition nl_ in nl_ expr    { AST.Clause (L.rtRange $1 <-> info $7) [$3] $7 }
+  | with nl_ declarations nl_ in nl_ expr  { AST.Clause (L.rtRange $1 <-> info $7) $3 $7 }
 
 block
   : expr          { [$1] }
@@ -165,10 +162,19 @@ returnStmt
   | return expr { Just $1 }
 
 
+--EXPRESSIONS
+term 
+  : number     { unTok $1 (\range (T.Number int) -> AST.LInt range int) }
+  | string     { unTok $1 (\range (T.String string) -> AST.LString range string) }
+  | boolean    { unTok $1 (\range (T.Boolean boolean) -> AST.LBool range boolean) }
+  | tuple      { $1 }
+  | list       { $1 }
+  | record     { $1 }
+
 expr
   : definition              { AST.Declaration $1 }
   | identifier              { AST.Identifier $1 }
-  | literal                 { AST.Lit $1 }
+  | term                    { AST.Term $1 }
   | controlFlow             { $1 }
   | lambda                  { $1 }
   | clause                  { $1 }
@@ -178,21 +184,22 @@ expr
   | '(' nl_ expr nl_ ')'    { AST.Parens (L.rtRange  $1 <-> L.rtRange $5) $3 }
 
 
+-- SCRIPT
+declarations
+  :         { [] }
+  | definition nl declarations { $1 : $3 }
+
 moduleDef
   : module path where nl { AST.DefMod (L.rtRange $1 <-> L.rtRange $4) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) } -- TODO: extract to named fn
 
 importMod
   : import path { AST.Import (L.rtRange $1 <-> (info $ last $2)) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) }
 
-
 imports
   :                    { [] }
   | importMod nl_ imports  { $1 : $3 }
  
- 
-
 script
--- : moduleDef declarations imports eof { AST.Script (info $1 <-> L.rtRange $4) $1 $2 $3 }
   : moduleDef declarations imports { AST.Script (info $1 <-> (info $ last $2)) $1 $2 $3 }
 
 
