@@ -6,7 +6,7 @@ module Saga.Parser.Parser
 
 import Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.Maybe (fromJust)
+import Data.Maybe  (Maybe (..), fromJust)
 import Data.Monoid (First (..))
 import Data.List (last)
 
@@ -34,6 +34,21 @@ import qualified Saga.AST.Syntax as AST
 
   -- operators 
   '!'         { L.RangedToken (T.Operator "!") _ } 
+  '+'         { L.RangedToken (T.Operator "+") _ } 
+  '-'         { L.RangedToken (T.Operator "-") _ } 
+  '*'         { L.RangedToken (T.Operator "*") _ } 
+  '/'         { L.RangedToken (T.Operator "/") _ } 
+
+  '=='         { L.RangedToken (T.Operator "==") _ } 
+  '!='         { L.RangedToken (T.Operator "!=") _ } 
+  '<'         { L.RangedToken (T.Operator "<") _ } 
+  '<='         { L.RangedToken (T.Operator "<=") _ } 
+  '>'         { L.RangedToken (T.Operator ">") _ } 
+  '>='         { L.RangedToken (T.Operator ">=") _ } 
+
+  '||'         { L.RangedToken (T.Operator "||") _ } 
+  '&&'         { L.RangedToken (T.Operator "&&") _ } 
+
   op         { L.RangedToken (T.Operator _) _ }
 
   -- Keywords
@@ -71,9 +86,19 @@ import qualified Saga.AST.Syntax as AST
   newline         { L.RangedToken T.Newline _ }
   eof        { L.RangedToken T.EOF _ }
 
-%nonassoc APP
-%left END
 
+
+%right else in
+%right '->'
+%left '||'
+%left '&&'
+
+%nonassoc '=' "==" "!=" '<' '>' '<=' '>='
+%left '+' '-'
+%left '*' '/'
+
+%nonassoc id number string boolean '(' ')' '[' ']' '{' '}'  
+%nonassoc APP
 %%
 
 
@@ -85,17 +110,6 @@ identifier
 path
   : identifier          { [$1] }
   | identifier '.' path { $1 : $3 }
-
-definition
-  : identifier '=' expr { AST.Def (info $1 <-> info $3) $1 $3 }
-
-type 
-  : expr {}
-  | expr '->' type {}
-
-typeAnnotation
-  : identifier ':' type {}
-
 
  -- COLLECTIONS
 pairs
@@ -131,28 +145,24 @@ lambda
   : '\\' args '->' expr { AST.Lambda (L.rtRange $1 <-> info $4) $2 $4 }
 
 params
-  : atom          {        [$1] }
-  | expr params %prec APP  { $1 : $2 }
+  :               { [] }
+  | atom params   { $1 : $2 }
 
--- fnApplication 
---   : atom params %prec APP { AST.FnApp (info $1 <-> (info $ last $2)) $1 $2 }
-fnApplication  :: { Exp L.Range }
-  : fnApplication atom { AST.FnApp (info $1 <-> info $2) $1 [$2] }
-  | atom { $1 }
-
+fnApplication 
+  : atom params '!' { AST.FnApp (info $1 <-> L.rtRange $3) $1 $2 }
+  
 --CONTROL FLOW
 controlFlow 
-  : if expr then expr else expr { AST.Flow (L.rtRange $1 <-> info $6) $2 $4 $6 }
+  : if expr then expr else expr { AST.IfElse (L.rtRange $1 <-> info $6) $2 $4 $6 }
 
 
 -- BLOCKS
 clause 
   --: with definition in expr    { AST.Clause (L.rtRange $1 <-> info $4) [$2] $4 }
-  : with declarations in expr  { AST.Clause (L.rtRange $1 <-> info $4) $2 $4 }
+  : with declarations  { $2 }
 
 block
-  : expr          { [$1] }
-  | return expr   { [AST.Return (L.rtRange $1 <-> info $2) $2] }
+  : return expr   { [AST.Return (L.rtRange $1 <-> info $2) $2] }
   | expr block  { $1 : $2 }
 
 
@@ -165,36 +175,87 @@ term
   | tuple      { $1 }
   | list       { $1 }
   | record     { $1 }
+  
 
 atom
   : identifier              { AST.Identifier $1 }
   | term                    { AST.Term $1 }
-  --| '{' block '}'           { AST.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
+  | '{' block '}'           { AST.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
   | '(' expr ')'            { AST.Parens (L.rtRange  $1 <-> L.rtRange $3) $2 }
 
 expr
-  -- | identifier              { AST.Identifier $1 }
-  : definition              { AST.Declaration $1 }
+  
+  : controlFlow             { $1 }
   | fnApplication           { $1 }
-  | controlFlow             { $1 }
   | lambda                  { $1 }
-  | clause                  { $1 }
-  -- | atom                    { $1 }
-  --| expr op expr        { AST.FnApp (info $1 <-> info $3) (unTok $2 (\range (T.Operator char) -> AST.Identifier (AST.Name range (BS.unpack char)))) [$1, $3] }
-  -- | '{' block '}'   { AST.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
-  -- | '(' expr ')'    { AST.Parens (L.rtRange  $1 <-> L.rtRange $3) $2 }
+  | clause in expr          { AST.Clause ((info $ head $1) <-> (info $ last $1)) $1 $3 }
+  | atom %shift             { $1 }
+  | identifier '=' expr     { AST.Assign $1 $3 }  
 
+  | expr '+' expr           { binaryOp $1 $2 $3 }
+  | expr '-' expr           { binaryOp $1 $2 $3 }
+  | expr '*' expr           { binaryOp $1 $2 $3 }
+  | expr '/' expr           { binaryOp $1 $2 $3 }
+
+  --| expr '==' expr           { binaryOp $1 $2 $3 }
+  -- | expr '!=' expr           { binaryOp $1 $2 $3 }
+   | expr '<' expr           { binaryOp $1 $2 $3 }
+   | expr '<=' expr           { binaryOp $1 $2 $3 }
+   | expr '>' expr           { binaryOp $1 $2 $3 }
+   | expr '>=' expr           { binaryOp $1 $2 $3 }
+ 
+   | expr '||' expr           { binaryOp $1 $2 $3 }
+   | expr '&&' expr           { binaryOp $1 $2 $3 }
+
+
+-- TYPES
+tpairs
+  :                                 { [] }
+  | identifier ':' typeExpr ',' tpairs   { ($1, $3) : $5 }
+  | identifier ':' typeExpr             { [($1, $3)] }
+
+trecord 
+  : '{' tpairs '}'   { AST.TRecord (L.rtRange $1 <-> L.rtRange $3) $2 }
+
+ttupleElems
+  : ',' typeExpr                  { [$2] }
+  | ',' typeExpr ttupleElems   { $2 : $3 }
+
+ttuple
+  : '(' typeExpr ttupleElems ')'    { AST.TTuple (L.rtRange $1 <-> L.rtRange $4) ($2:$3) }
+
+type 
+  : number { unTok $1 (\range (T.Number int) -> AST.TLiteral $ AST.LInt range int) }
+  | string     { unTok $1 (\range (T.String string) -> AST.TLiteral $ AST.LString range string) }
+  | boolean    { unTok $1 (\range (T.Boolean boolean) -> AST.TLiteral $ AST.LBool range boolean) }
+  | ttuple      { $1 }
+  | trecord     { $1 }
+  | identifier   { AST.TIdentifier $1 }
+
+
+typeExpr 
+  : type { AST.Type $1 }
+  | if typeExpr then typeExpr else typeExpr { AST.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
+  | '(' typeExpr ')' {AST.TParens (L.rtRange  $1 <-> L.rtRange $3) $2}
+
+typeAnnotation
+  : { Nothing }
+  | identifier ':' typeExpr { Just $3 } 
 
 -- SCRIPT
+
+dec 
+  : typeAnnotation identifier '=' expr { declaration $2 $4 $1 }
+
 declarations
-  :         { [] }
-  | definition declarations { $1 : $2 }
+  :                  { [] }
+  | dec declarations { $1 : $2 }
 
 moduleDef
-  : module path where { AST.DefMod (L.rtRange $1 <-> L.rtRange $3) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) } -- TODO: extract to named fn
+  : module path where { AST.Mod (L.rtRange $1 <-> L.rtRange $3) ( map (\(AST.Name _ name) -> name) $2 ) } -- TODO: extract to named fn
 
 importMod
-  : import path { AST.Import (L.rtRange $1 <-> (info $ last $2)) (AST.Mod ( map (\(AST.Name _ name) -> name) $2 )) }
+  : import path { AST.Import (L.rtRange $1 <-> (info $ last $2)) ( map (\(AST.Name _ name) -> name) $2 ) }
 
 imports
   :                    { [] }
@@ -206,7 +267,9 @@ script
 
 {
 
-
+declaration :: AST.Name L.Range -> AST.Expr L.Range -> Maybe (AST.TypeExpr L.Range) -> AST.Declaration L.Range
+declaration id expr tyAnn = AST.Define (info id <-> info expr) id expr tyAnn
+  
 
 -- | Build a simple node by extracting its token type and range.
 unTok :: L.RangedToken -> (L.Range -> T.Token -> a) -> a
@@ -215,6 +278,11 @@ unTok (L.RangedToken tok range) contructor = contructor range tok
 -- | Unsafely extracts the the metainformation field of a node.
 info :: Foldable f => f a -> a
 info = fromJust . getFirst . foldMap pure
+
+
+binaryOp :: AST.Expr L.Range -> L.RangedToken -> AST.Expr L.Range -> AST.Expr L.Range 
+binaryOp expr1 op expr2 = AST.FnApp (info expr1 <-> info expr2) (unTok op (\range (T.Operator char) -> AST.Identifier (AST.Name range (BS.unpack char)))) [expr1, expr2]
+
 
 -- | Performs the union of two ranges by creating a new range starting at the
 -- start position of the first range, and stopping at the stop position of the second range.

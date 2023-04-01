@@ -1,8 +1,8 @@
 
 module Saga.AST.Evaluation where
 
-import           Saga.AST.Syntax            (Definition (..), Expr (..),
-                                             Term (..), Name (..))
+import           Saga.AST.Syntax            (Declaration (..), Expr (..),
+                                             Name (..), Term (..))
 
 import           Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
@@ -50,14 +50,14 @@ eval (Identifier (Name _ name)) =
         let val = Map.lookup name env
         lift $ fromMaybe errorMsg val
 
-eval (Declaration (Def _ (Name _ name) e)) = do
+eval (Assign (Name _ name) e )  = do
       val <- eval e
       modify $ Map.insert name val
       return val
 
 eval (Clause _ defs e) =
   let
-    eval' def = eval $ Declaration def
+    eval' (Define _ name expr _) = eval $ Assign name expr
     eval'' = do
       mapM_ eval' defs
       eval e
@@ -65,7 +65,7 @@ eval (Clause _ defs e) =
       env <- get
       lift $ evalStateT eval'' env
 
-eval (Flow _ cond onTrue onFalse) = do
+eval (IfElse _ cond onTrue onFalse) = do
   val <- eval cond
   case val of
     (VBool True) -> eval onTrue

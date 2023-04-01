@@ -10,22 +10,20 @@ import           Data.ByteString.Lazy.Char8 (ByteString)
 
 
 data Script a =
-    Script a (ModuleDef a) [Definition a] [Import a]
+    Script a (Module a) [Declaration a] [Import a]
         deriving (Show)
 
 data Expr a where
-  Declaration    :: Definition a -> Expr a
   Term           :: Term a -> Expr a
-  Type           :: Type a -> Expr a
-  Flow           :: a -> Expr a -> Expr a -> Expr a -> Expr a
+  Identifier     :: Name a -> Expr a
+  Assign         :: Name a -> Expr a -> Expr a
+  IfElse         :: a -> Expr a -> Expr a -> Expr a -> Expr a
   Lambda         :: a -> [Name a] -> Expr a -> Expr a
   FnApp          :: a -> Expr a -> [Expr a] -> Expr a
-  Clause         :: a -> [Definition a] -> Expr a -> Expr a
+  Clause         :: a -> [Declaration a] -> Expr a -> Expr a
   Block          :: a -> [Expr a] -> Expr a
   Return         :: a -> Expr a -> Expr a
-  Identifier     :: Name a -> Expr a
   Parens         :: a -> Expr a -> Expr a
-  TypeAnnotation :: Expr a -> Type a -> Expr a
 
 -- | AKA Literal term
 data Term a where
@@ -36,42 +34,54 @@ data Term a where
   LTuple  :: a -> [Expr a] -> Term a
   LRecord :: a -> [(Name a, Expr a)] -> Term a
 
+
+
+data TypeExpr a where
+  Type            :: Type a -> TypeExpr a
+  TParens         :: a -> TypeExpr a -> TypeExpr a
+  TConditional    :: a -> TypeExpr a -> TypeExpr a -> TypeExpr a -> TypeExpr a
+  TClause         :: a -> [Declaration a] -> TypeExpr a -> TypeExpr a
+  TBlock          :: a -> [TypeExpr a] -> TypeExpr a
+  TReturn         :: a -> TypeExpr a -> TypeExpr a
+  TLambda         :: a -> [Name a] -> TypeExpr a -> TypeExpr a
+  TFnApp          :: a -> TypeExpr a -> [TypeExpr a] -> TypeExpr a
+
 -- | AKA Literal type
 data Type a where
-  TInt    :: a -> Type a
-  TBool   :: a -> Type a
-  TString :: a -> Type a
-  TArrow  :: a -> [Type a] -> Type a -> Type a
-  TVar    :: Name a -> Type a
+  TLiteral :: Term a -> Type a
+  TTuple :: a -> [TypeExpr a] -> Type a
+  TRecord :: a -> [(Name a, TypeExpr a)] -> Type a
+  TArrow  :: a -> [TypeExpr a] -> TypeExpr a -> Type a
+  TIdentifier    :: Name a -> Type a
   TParam  :: a -> Name a -> [Type a] -> Type a
 
-data Definition a
-  = Def a (Name a) (Expr a)
- -- | Data a (Name a) [(String, [Type a])]
+
+data Declaration a
+  = Define a (Name a) (Expr a) (Maybe (TypeExpr a))
+  | Data a (Name a) [(String, [TypeExpr a])]
     deriving (Foldable, Show, Eq)
 
 data Name a = Name a String
     deriving (Foldable, Show, Eq)
 
-data Import a = Import a Module
+data Import a = Import a [String]
   deriving (Foldable, Show)
-data ModuleDef a = DefMod a Module
+data Module a = Mod a [String]
   deriving (Foldable, Show)
 
 deriving instance Foldable Expr
-deriving instance Foldable Type
 deriving instance Foldable Term
+deriving instance Foldable TypeExpr
+deriving instance Foldable Type
 
 deriving instance Show a => Show (Expr a)
-deriving instance Show a => Show (Type a)
 deriving instance Show a => Show (Term a)
+deriving instance Show a => Show (TypeExpr a)
+deriving instance Show a => Show (Type a)
 
 deriving instance Eq a => Eq (Expr a)
-deriving instance Eq a => Eq (Type a)
 deriving instance Eq a => Eq (Term a)
-
-
-newtype Module = Mod [String]
-    deriving (Show)
+deriving instance Eq a => Eq (TypeExpr a)
+deriving instance Eq a => Eq (Type a)
 
 

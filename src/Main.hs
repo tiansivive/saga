@@ -37,15 +37,13 @@ repl =
 
 
 
-
-
 script :: FilePath -> IO ()
 script fp =
     let
-        eval' def = E.eval (AST.Declaration def)
+        eval' (AST.Define _ name expr _) = E.eval (AST.Assign name expr)
         script' str = do
-            (AST.Script _ _ defs _) <- runSagaScript str
-            runStateT (mapM eval' defs) Map.empty
+            (AST.Script _ _ decs _) <- runSagaScript str
+            runStateT (mapM eval' decs) Map.empty
 
     in do
         handle <- openFile fp ReadMode

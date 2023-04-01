@@ -81,6 +81,8 @@ spec = do
         (bool, str, z) `shouldBe` (True, "string", 0)
 
     it "can parse records" $ do
+
+      
         let AST.Term (AST.LRecord _ empty) = parse "{}" 
         empty `shouldBe` []
         let AST.Term (AST.LRecord _ [ (AST.Name _ frodo, AST.Term (AST.LString _ baggins))
@@ -109,17 +111,19 @@ spec = do
         body `shouldBe` "body"
     
     it "can parse function application" $ do
-        let AST.FnApp _ (AST.Identifier (AST.Name _ fn1)) [AST.Identifier (AST.Name _ arg)] = parse "fn arg"
+        let AST.FnApp _ (AST.Identifier (AST.Name _ fn)) [] = parse "fn!"
+        fn `shouldBe` "fn"
+        let AST.FnApp _ (AST.Identifier (AST.Name _ fn1)) [AST.Identifier (AST.Name _ arg)] = parse "fn arg!"
         fn1 `shouldBe` "fn"
         arg `shouldBe` "arg"
-        let AST.FnApp _ (AST.Identifier (AST.Name _ fn2)) [AST.Identifier (AST.Name _ arg1), AST.Identifier (AST.Name _ arg2)] = parse "fn arg1 arg2"
+        let AST.FnApp _ (AST.Identifier (AST.Name _ fn2)) [AST.Identifier (AST.Name _ arg1), AST.Identifier (AST.Name _ arg2)] = parse "fn arg1 arg2!"
         fn2 `shouldBe` "fn"
         arg1 `shouldBe` "arg1"
         arg2 `shouldBe` "arg2"
 
   describe "Declarations: " $ do
     it "can parse variable declarations" $ do
-        let AST.Declaration (AST.Def _ (AST.Name _ life) (AST.Term (AST.LInt _ x))) = parse "life = 42"
+        let AST.Assign (AST.Name _ life) (AST.Term (AST.LInt _ x)) = parse "life = 42"
         x `shouldBe` 42
         life `shouldBe` "life"
 
