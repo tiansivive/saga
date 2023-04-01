@@ -4,3 +4,6 @@ dist-newstyle/*
 .stack-work
 
 src/Main
+
+**/Parser.hs
+**/Parser.info
