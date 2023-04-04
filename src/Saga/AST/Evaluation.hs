@@ -97,7 +97,7 @@ eval (FnApp _ fnExpr argExprs) = do
   let (VBool b1) = vals !! 0
   let (VBool b2) = vals !! 1
 
-  traceM $ "Evaluating fn app with " <> show closure
+
 
   case closure of
     (BuiltIn "+") -> lift $ Right $ VInt (x + y)
@@ -122,10 +122,9 @@ eval (FnApp _ fnExpr argExprs) = do
           pairs = zip paramNames vals
           insert' (Name _ name, v) = Map.insert name v
           env' = foldr insert' capturedEnv pairs
-          env'' = Map.union env env'
+          env'' = Map.union env' env -- left side overrides any duplicates
 
-        in do
-          traceM $ show env''
+        in
           lift $ evalStateT (eval bodyExpr) env''
 
       else lift $ Left "Wrong number of params"

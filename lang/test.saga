@@ -2,6 +2,6 @@ module test where
 
 
 let recurse = \n -> if n < 1 then 0 else 1 + recurse (n - 1)!
-let val = recurse 2!
+let val = recurse 4!
 
 import P

@@ -19,4 +19,7 @@ let res = fn 5!
 let recurse = \n -> if n < 1 then 0 else 1 + recurse (n - 1)!
 let val = recurse 2!
 
+
+let record = { foo: 1, bar: "string" }
+
 import P
