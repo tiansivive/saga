@@ -1,7 +1,10 @@
 {
 module Saga.Parser.Parser  
     ( runSagaScript
-    , runSagaExpr 
+    , runSagaExpr
+    , runSagaDec
+    , parseSagaExpr
+    , parseSagaDec
     ) where
 
 import Data.ByteString.Lazy.Char8 (ByteString)
@@ -18,6 +21,7 @@ import qualified Saga.AST.Syntax as AST
 
 %name parseSagaScript script
 %name parseSagaExpr expr
+%name parseSagaDec dec
 %tokentype { L.RangedToken }
 %error { parseError }
 %monad { L.Alex } { >>= } { pure }
@@ -93,7 +97,8 @@ import qualified Saga.AST.Syntax as AST
 %left '||'
 %left '&&'
 
-%nonassoc '=' "==" "!=" '<' '>' '<=' '>='
+%nonassoc '='
+%nonassoc "==" "!=" '<' '>' '<=' '>='
 %left '+' '-'
 %left '*' '/'
 
@@ -139,17 +144,16 @@ tuple
 -- FUNCTIONS
 args
   :                  { [] }
-  | identifier args  { $1 : $2 }
-
-lambda
-  : '\\' args '->' expr { AST.Lambda (L.rtRange $1 <-> info $4) $2 $4 }
+  | args identifier  { $1 ++ [$2] }
 
 params
   :               { [] }
-  | atom params   { $1 : $2 }
+  | params atom   { $1 ++ [$2] }
 
 fnApplication 
   : atom params '!' { AST.FnApp (info $1 <-> L.rtRange $3) $1 $2 }
+  -- : atom { [$1] }
+  -- | fnApplication atom { $1 ++ [$2] }
   
 --CONTROL FLOW
 controlFlow 
@@ -157,14 +161,9 @@ controlFlow
 
 
 -- BLOCKS
-clause 
-  --: with definition in expr    { AST.Clause (L.rtRange $1 <-> info $4) [$2] $4 }
-  : with declarations  { $2 }
-
 block
   : return expr   { [AST.Return (L.rtRange $1 <-> info $2) $2] }
   | expr block  { $1 : $2 }
-
 
 
 --EXPRESSIONS
@@ -183,12 +182,20 @@ atom
   | '{' block '}'           { AST.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
   | '(' expr ')'            { AST.Parens (L.rtRange  $1 <-> L.rtRange $3) $2 }
 
+
+assignment 
+  : identifier '=' expr     { AST.Assign $1 $3 }  
+
+assignments
+  : assignment { [$1] }         
+  | assignments ',' assignment { $1 ++ [$3] }
+
 expr
   
   : controlFlow             { $1 }
-  | fnApplication           { $1 }
-  | lambda                  { $1 }
-  | clause in expr          { AST.Clause ((info $ head $1) <-> (info $ last $1)) $1 $3 }
+  | fnApplication           { $1 }--{ AST.FnApp (info $ head $1 <-> info $ last $1) (head $1) (tail $1) }
+  | '\\' args '->' expr     { AST.Lambda (L.rtRange $1 <-> info $4) $2 $4 }
+  | with assignments in expr { AST.Clause (L.rtRange $1 <-> info $4) $2 $4 }
   | atom %shift             { $1 }
   | identifier '=' expr     { AST.Assign $1 $3 }  
 
@@ -236,20 +243,22 @@ type
 typeExpr 
   : type { AST.Type $1 }
   | if typeExpr then typeExpr else typeExpr { AST.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
-  | '(' typeExpr ')' {AST.TParens (L.rtRange  $1 <-> L.rtRange $3) $2}
+  | typeExpr '->' typeExpr  { AST.Type $ AST.TArrow (info $1 <-> info $3) $1 $3 }
+  | '(' typeExpr ')' { AST.TParens (L.rtRange  $1 <-> L.rtRange $3) $2 }
+
 
 typeAnnotation
   : { Nothing }
-  | identifier ':' typeExpr { Just $3 } 
+  | ':' typeExpr { Just $2 } 
 
 -- SCRIPT
 
 dec 
-  : typeAnnotation identifier '=' expr { declaration $2 $4 $1 }
+  : let identifier typeAnnotation '=' expr {  AST.Define (L.rtRange $1 <-> info $5) $2 $5 $3 }
 
 declarations
-  :                  { [] }
-  | dec declarations { $1 : $2 }
+  : dec              { [$1] }
+  | declarations dec { $1 ++ [$2] }
 
 moduleDef
   : module path where { AST.Mod (L.rtRange $1 <-> L.rtRange $3) ( map (\(AST.Name _ name) -> name) $2 ) } -- TODO: extract to named fn
@@ -267,8 +276,8 @@ script
 
 {
 
-declaration :: AST.Name L.Range -> AST.Expr L.Range -> Maybe (AST.TypeExpr L.Range) -> AST.Declaration L.Range
-declaration id expr tyAnn = AST.Define (info id <-> info expr) id expr tyAnn
+-- declaration :: L.Range -> AST.Name L.Range -> AST.Expr L.Range -> Maybe (AST.TypeExpr L.Range) -> AST.Declaration L.Range
+-- declaration range id expr tyAnn = AST.Define range id expr tyAnn
   
 
 -- | Build a simple node by extracting its token type and range.
@@ -293,19 +302,28 @@ L.Range a1 _ <-> L.Range _ b2 = L.Range a1 b2
 
 
 parseError :: L.RangedToken -> L.Alex a
-parseError _ = do
-  (L.AlexPn _ line column, _, _, _) <- L.alexGetInput
-  L.alexError $ "Parse error at line " <> show line <> ", column " <> show column
+parseError tok = do
+  (L.AlexPn _ line column, prev, inStr, _) <- L.alexGetInput
+  L.alexError $ "Parse error at line " <> show line <> ", column " <> show column <>
+                " Previous character: " <> show prev <>
+                " Current input string: " <> show inStr <>
+                " Token: " <> show tok
 
 lexer :: (L.RangedToken -> L.Alex a) -> L.Alex a
 lexer = (=<< L.alexMonadScan)
 
 
+run :: String -> L.Alex a -> Either String a
+run =  L.runAlex . BS.pack
+
 
 runSagaScript :: String -> Either String (AST.Script L.Range)
-runSagaScript input = L.runAlex (BS.pack input) parseSagaScript
+runSagaScript input = input `run` parseSagaScript
 
 runSagaExpr :: String -> Either String (AST.Expr L.Range)
-runSagaExpr input = L.runAlex (BS.pack input) parseSagaExpr
+runSagaExpr input = input `run` parseSagaExpr
+
+runSagaDec :: String -> Either String (AST.Declaration L.Range)
+runSagaDec input = input `run` parseSagaDec
 
 }

@@ -57,8 +57,6 @@ tokens :-
     <0> "]"                 { tok RBrack }
     <0> "{"                 { tok LCurly }
     <0> "}"                 { tok RCurly }
-    <0> "<"                 { tok LPacman }
-    <0> ">"                 { tok RPacman }
 
     <0> ":"                 { tok Colon }
     <0> ","                 { tok Comma }

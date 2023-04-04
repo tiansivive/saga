@@ -54,8 +54,6 @@ data Token
   | RBrack
   | LCurly
   | RCurly
-  | LPacman
-  | RPacman
   | Operator ByteString
 
   -- primitives

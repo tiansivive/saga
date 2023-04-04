@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 
 module Saga.AST.Evaluation where
 
@@ -15,7 +17,7 @@ import           Debug.Trace                (traceM)
 
 
 builtInEnv :: [String]
-builtInEnv = ["+", "-","*", "^", "/", "%", "==", "!=", "||", "&&"]
+builtInEnv = ["+", "-","*", "^", "/", "%", "<", ">", "<=", ">=", "==", "!=", "||", "&&"]
 
 data Value a
   = VInt Int
@@ -42,7 +44,7 @@ eval (Return _ e) = eval e
 
 eval (Identifier (Name _ name)) =
     let
-      errorMsg = "Undefined identifier " <> name
+      errorMsg = "Undefined identifier \"" <> name <> "\""
     in if name `elem` builtInEnv
       then return $ BuiltIn name
       else  do
@@ -55,15 +57,14 @@ eval (Assign (Name _ name) e )  = do
       modify $ Map.insert name val
       return val
 
-eval (Clause _ defs e) =
+eval (Clause _ assignments e) =
   let
-    eval' (Define _ name expr _) = eval $ Assign name expr
-    eval'' = do
-      mapM_ eval' defs
+    eval' = do
+      mapM_ eval assignments
       eval e
   in do
       env <- get
-      lift $ evalStateT eval'' env
+      lift $ evalStateT eval' env
 
 eval (IfElse _ cond onTrue onFalse) = do
   val <- eval cond
@@ -73,8 +74,6 @@ eval (IfElse _ cond onTrue onFalse) = do
     _ -> lift $ Left "Could not evaluate non boolean expression as a if condition"
 
 eval (Block _ exprs) = do
-  traceM $ "rest: " <> show rest
-  traceM $ "exprs': " <> show exprs'
   mapM_ eval exprs'
   eval' rest
     where
@@ -98,6 +97,7 @@ eval (FnApp _ fnExpr argExprs) = do
   let (VBool b1) = vals !! 0
   let (VBool b2) = vals !! 1
 
+  traceM $ "Evaluating fn app with " <> show closure
 
   case closure of
     (BuiltIn "+") -> lift $ Right $ VInt (x + y)
@@ -110,6 +110,11 @@ eval (FnApp _ fnExpr argExprs) = do
     (BuiltIn "&&") -> lift $ Right $ VBool (b1 && b2)
     (BuiltIn "==") -> lift $ Right $ VBool (vals !! 0 == vals !! 1)
     (BuiltIn "!=") -> lift $ Right $ VBool  (vals !! 0 == vals !! 1)
+
+    (BuiltIn "<") -> lift $ Right $ VBool (x < y)
+    (BuiltIn "<=") -> lift $ Right $ VBool (x <= y)
+    (BuiltIn ">") -> lift $ Right $ VBool (x > y)
+    (BuiltIn ">=") -> lift $ Right $ VBool  (x >= y)
 
     (VClosure paramNames bodyExpr capturedEnv) ->
       if length paramNames == length vals then
@@ -148,6 +153,9 @@ evalTerm (LRecord _ record) = do
       return (name, v)
 
 
+evalDeclaration :: (Eq a, Show a) => Declaration a -> EvalState a
+evalDeclaration (Define _ name expr _) = eval $ Assign name expr
+evalDeclaration _                      = return Void
 
 runEvaluation :: (Eq a, Show a ) => Expr a -> Either String (Value a, Env a)
 runEvaluation e = runStateT (eval e) Map.empty

@@ -13,6 +13,7 @@ parse str = case P.runSagaExpr str of
     Left msg -> error msg
     Right e -> e
 
+
 parseScript :: FilePath -> IO (AST.Expr L.Range)
 parseScript fp = do
     handle <- openFile fp ReadMode
@@ -121,8 +122,8 @@ spec = do
         arg1 `shouldBe` "arg1"
         arg2 `shouldBe` "arg2"
 
-  describe "Declarations: " $ do
-    it "can parse variable declarations" $ do
+  describe "Assignments: " $ do
+    it "can parse variable assignments" $ do
         let AST.Assign (AST.Name _ life) (AST.Term (AST.LInt _ x)) = parse "life = 42"
         x `shouldBe` 42
         life `shouldBe` "life"

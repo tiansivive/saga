@@ -1,10 +1,22 @@
-module M where
-
-
-fac = \n -> n
+module m where
 
 
 
-res = fac 2
+let clause = 
+    with a = 1
+        , b = 2
+        , c = 3
+    in a + b + c
+
+
+let fn 
+    : Int -> Int
+    = \x -> x
+
+let res = fn 5!
+
+
+let recurse = \n -> if n < 1 then 0 else 1 + recurse (n - 1)!
+let val = recurse 2!
 
 import P

@@ -20,7 +20,7 @@ data Expr a where
   IfElse         :: a -> Expr a -> Expr a -> Expr a -> Expr a
   Lambda         :: a -> [Name a] -> Expr a -> Expr a
   FnApp          :: a -> Expr a -> [Expr a] -> Expr a
-  Clause         :: a -> [Declaration a] -> Expr a -> Expr a
+  Clause         :: a -> [Expr a] -> Expr a -> Expr a
   Block          :: a -> [Expr a] -> Expr a
   Return         :: a -> Expr a -> Expr a
   Parens         :: a -> Expr a -> Expr a
@@ -51,7 +51,7 @@ data Type a where
   TLiteral :: Term a -> Type a
   TTuple :: a -> [TypeExpr a] -> Type a
   TRecord :: a -> [(Name a, TypeExpr a)] -> Type a
-  TArrow  :: a -> [TypeExpr a] -> TypeExpr a -> Type a
+  TArrow  :: a -> TypeExpr a -> TypeExpr a -> Type a
   TIdentifier    :: Name a -> Type a
   TParam  :: a -> Name a -> [Type a] -> Type a
 

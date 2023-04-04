@@ -4,13 +4,16 @@ module Main (main) where
 
 import qualified Saga.AST.Syntax          as AST
 import qualified Saga.Lexer.Lexer         as L
-import           Saga.Parser.Parser       (runSagaExpr, runSagaScript)
+import           Saga.Parser.Parser       (runSagaDec, runSagaExpr,
+                                           runSagaScript)
 
 import qualified Data.Map                 as Map
 import qualified Saga.AST.Evaluation      as E
 
 import           Control.Monad.State.Lazy
-import           System.IO
+import qualified Saga.AST.Evaluation      as E
+import           System.IO                (IOMode (ReadMode), hClose,
+                                           hGetContents, openFile)
 
 main :: IO ()
 main = do
@@ -21,34 +24,45 @@ main = do
 
 
 repl :: IO ()
-repl =
-    let
-        value line = do
-            expr <- runSagaExpr line
-            E.runEvaluation expr
+repl = repl' Map.empty
+    where repl' env = let
+            evalExpr line = do
+                expr <- runSagaExpr line
+                runStateT (E.eval expr) env
+            evalDec line = do
+                dec <- runSagaDec line
+                runStateT (E.evalDeclaration dec) env
 
-    in do
-        putStr "Saga λ> "
-        line <- getLine
-        putStrLn $ case value line of
-            (Right (v, env)) -> show v <> "\n" <> show env
-            (Left e)         -> e
-        repl
+            in do
+                putStr "Saga λ> "
+                line <- getLine
+                case evalExpr line <> evalDec line of
+                    (Left e)         -> do
+                        putStrLn e
+                        repl' env
+                    (Right (v, env')) -> do
+                        putStrLn $ show v <> "\n" <> show env
+                        repl' env'
+
 
 
 
 script :: FilePath -> IO ()
 script fp =
     let
-        eval' (AST.Define _ name expr _) = E.eval (AST.Assign name expr)
         script' str = do
             (AST.Script _ _ decs _) <- runSagaScript str
-            runStateT (mapM eval' decs) Map.empty
+            runStateT (mapM E.evalDeclaration decs) Map.empty
+
 
     in do
         handle <- openFile fp ReadMode
         contents <- hGetContents handle
-        print (script' contents)
+        case script' contents of
+            Left e           -> putStrLn e
+            Right (val, env) -> do
+                putStrLn $ "Value: " <> show val
+                putStrLn $ "Env: " <> show env
         hClose handle
         putStrLn "Bye!"
 
