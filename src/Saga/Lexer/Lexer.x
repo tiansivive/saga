@@ -19,7 +19,7 @@ $nl         = [\n]
 $backslash  = [\\]
 $ws         = [[\ \t\f\v\r]] -- whitespace char set without newline
 
-@id   = ($alpha | \_) ($alpha | $digit | \_ | \' | \? | \- )*
+@id   = ($alpha | \_) ($alpha | $digit | \_ | \' | \? )*
 
 tokens :-
 

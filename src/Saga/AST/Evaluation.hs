@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 
 module Saga.AST.Evaluation where
@@ -11,7 +12,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Data.Map                   as Map
 
 import           Control.Monad.State.Lazy
-import           Data.List                  (findIndex)
+import           Data.List                  (find, findIndex)
 import           Debug.Trace                (traceM)
 
 
@@ -35,22 +36,40 @@ type Env a = Map.Map String (Value a)
 
 type EvalState a = StateT (Env a) (Either String) (Value a)
 
+instance MonadFail (Either String) where
+  fail err = Left $ "Something went wrong:" <> err
 
+
+unidentified :: String -> String
+unidentified id =  "Undefined identifier \"" <> id <> "\""
 
 eval :: (Eq a, Show a) => Expr a -> EvalState a
 eval (Term l) = evalTerm l
 eval (Parens _ e) = eval e
 eval (Return _ e) = eval e
 
+eval (FieldAccess _  expr path) = do
+    VRecord pairs <- eval expr
+    eval' pairs path
+      where
+        find' :: String -> [(String, Value a)] -> EvalState a
+        find' id pairs
+          | Just (_ , val) <- find (\(name, _) -> name == id) pairs = return val
+          | otherwise = lift $ Left $ "Could not find property " <> id
+
+        eval' pairs [Name _ id] = find' id pairs
+        eval' pairs ((Name _ id):rest) = do
+          VRecord pairs' <- find' id pairs
+          eval' pairs' rest
+
+
 eval (Identifier (Name _ name)) =
-    let
-      errorMsg = "Undefined identifier \"" <> name <> "\""
-    in if name `elem` builtInEnv
+    if name `elem` builtInEnv
       then return $ BuiltIn name
       else  do
         env <- get
         let val = Map.lookup name env
-        lift $ fromMaybe errorMsg val
+        lift $ fromMaybe (unidentified name) val
 
 eval (Assign (Name _ name) e )  = do
       val <- eval e

@@ -94,6 +94,7 @@ import qualified Saga.AST.Syntax as AST
 
 %right else in
 %right '->'
+%right '.'
 %left '||'
 %left '&&'
 
@@ -114,7 +115,7 @@ identifier
 
 path
   : identifier          { [$1] }
-  | identifier '.' path { $1 : $3 }
+  | path '.' identifier { $1 ++ [$3]}
 
  -- COLLECTIONS
 pairs
@@ -175,9 +176,9 @@ term
   | list       { $1 }
   | record     { $1 }
   
-
 atom
   : identifier              { AST.Identifier $1 }
+  | atom '.' path           { AST.FieldAccess (info $1 <-> (info $ last $3)) $1 $3 }
   | term                    { AST.Term $1 }
   | '{' block '}'           { AST.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
   | '(' expr ')'            { AST.Parens (L.rtRange  $1 <-> L.rtRange $3) $2 }
@@ -198,6 +199,8 @@ expr
   | with assignments in expr { AST.Clause (L.rtRange $1 <-> info $4) $2 $4 }
   | atom %shift             { $1 }
   | identifier '=' expr     { AST.Assign $1 $3 }  
+
+ 
 
   | expr '+' expr           { binaryOp $1 $2 $3 }
   | expr '-' expr           { binaryOp $1 $2 $3 }
@@ -276,9 +279,6 @@ script
 
 {
 
--- declaration :: L.Range -> AST.Name L.Range -> AST.Expr L.Range -> Maybe (AST.TypeExpr L.Range) -> AST.Declaration L.Range
--- declaration range id expr tyAnn = AST.Define range id expr tyAnn
-  
 
 -- | Build a simple node by extracting its token type and range.
 unTok :: L.RangedToken -> (L.Range -> T.Token -> a) -> a

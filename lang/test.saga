@@ -1,7 +1,7 @@
 module test where
 
 
-let recurse = \n -> if n < 1 then 0 else 1 + recurse (n - 1)!
-let val = recurse 4!
+let obj = { fn: \x -> x + 1 }
+let a = obj.fn 1!
 
 import P

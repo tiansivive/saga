@@ -24,6 +24,7 @@ data Expr a where
   Block          :: a -> [Expr a] -> Expr a
   Return         :: a -> Expr a -> Expr a
   Parens         :: a -> Expr a -> Expr a
+  FieldAccess    :: a -> Expr a -> [Name a] -> Expr a
 
 -- | AKA Literal term
 data Term a where
