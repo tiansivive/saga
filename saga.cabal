@@ -19,9 +19,11 @@ library
       Saga.AST.Evaluation
       Saga.AST.Pretty
       Saga.AST.Syntax
+      Saga.AST.TypeCheck
       Saga.Lexer.Lexer
       Saga.Lexer.Tokens
       Saga.Parser.Parser
+      Saga.Utils.Utils
   other-modules:
       Paths_saga
   hs-source-dirs:

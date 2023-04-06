@@ -2,8 +2,10 @@
 module Saga.Parser.Parser  
     ( runSagaScript
     , runSagaExpr
+    , runSagaType
     , runSagaDec
     , parseSagaExpr
+    , parseSagaType
     , parseSagaDec
     ) where
 
@@ -21,6 +23,7 @@ import qualified Saga.AST.Syntax as AST
 
 %name parseSagaScript script
 %name parseSagaExpr expr
+%name parseSagaType typeExpr
 %name parseSagaDec dec
 %tokentype { L.RangedToken }
 %error { parseError }
@@ -322,6 +325,9 @@ runSagaScript input = input `run` parseSagaScript
 
 runSagaExpr :: String -> Either String (AST.Expr L.Range)
 runSagaExpr input = input `run` parseSagaExpr
+
+runSagaType :: String -> Either String (AST.TypeExpr L.Range)
+runSagaType input = input `run` parseSagaType
 
 runSagaDec :: String -> Either String (AST.Declaration L.Range)
 runSagaDec input = input `run` parseSagaDec

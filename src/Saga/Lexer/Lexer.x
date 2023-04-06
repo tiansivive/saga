@@ -115,12 +115,15 @@ tokens :-
 data Range = Range
   { start :: AlexPosn
   , stop :: AlexPosn
-  } deriving (Eq)
+  } 
+  | NoInfo deriving (Eq)
 
 data RangedToken = RangedToken
   { rtToken :: Token
   , rtRange :: Range
-  } deriving (Eq)
+  }
+  
+  deriving (Eq)
 
 instance Show Range where
   show _ = ""

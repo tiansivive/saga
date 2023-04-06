@@ -14,6 +14,7 @@ import qualified Data.Map                   as Map
 import           Control.Monad.State.Lazy
 import           Data.List                  (find, findIndex)
 import           Debug.Trace                (traceM)
+import           Saga.Utils.Utils
 
 
 
@@ -180,9 +181,5 @@ runEvaluation e = runStateT (eval e) Map.empty
 
 
 
-
-fromMaybe :: a -> Maybe b -> Either a b
-fromMaybe _ (Just b) = Right b
-fromMaybe a Nothing  = Left a
 
 

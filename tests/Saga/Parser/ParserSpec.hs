@@ -2,16 +2,21 @@
 
 module Saga.Parser.ParserSpec where
 
-import Test.Hspec
+import qualified Saga.AST.Syntax    as AST
+import qualified Saga.Lexer.Lexer   as L
 import qualified Saga.Parser.Parser as P
-import qualified Saga.Lexer.Lexer as L
-import qualified Saga.AST.Syntax as AST
 import           System.IO
+import           Test.Hspec
 
 parse :: String -> AST.Expr L.Range
 parse str = case P.runSagaExpr str of
     Left msg -> error msg
-    Right e -> e
+    Right e  -> e
+
+parseDec :: String -> AST.Declaration L.Range
+parseDec str = case P.runSagaDec str of
+    Left msg -> error msg
+    Right e  -> e
 
 
 parseScript :: FilePath -> IO (AST.Expr L.Range)
@@ -30,31 +35,31 @@ spec = do
 
   describe "Literal terms:" $ do
     it "can parse integers" $ do
-        let AST.Term (AST.LInt _ z) = parse "0" 
+        let AST.Term (AST.LInt _ z) = parse "0"
         z `shouldBe` 0
-        let AST.Term (AST.LInt _ life) = parse "42" 
+        let AST.Term (AST.LInt _ life) = parse "42"
         life `shouldBe` 42
-        let AST.Term (AST.LInt _ devil) = parse "666" 
+        let AST.Term (AST.LInt _ devil) = parse "666"
         devil `shouldBe` 666
 
     it "can parse strings" $ do
-        let AST.Term (AST.LString _ hello) = parse "\"hello world\"" 
+        let AST.Term (AST.LString _ hello) = parse "\"hello world\""
         hello `shouldBe` "hello world"
-        let AST.Term (AST.LString _ weird) = parse "\"[]{}!#$%&/()=\"" 
+        let AST.Term (AST.LString _ weird) = parse "\"[]{}!#$%&/()=\""
         weird `shouldBe` "[]{}!#$%&/()="
-        let AST.Term (AST.LString _ emoji) = parse "\"😂👍🤷⭐😁\"" 
+        let AST.Term (AST.LString _ emoji) = parse "\"😂👍🤷⭐😁\""
         emoji `shouldBe` "😂👍🤷⭐😁"
 
     it "can parse bool" $ do
-        let AST.Term (AST.LBool _ true) = parse "true" 
-        let AST.Term (AST.LBool _ on)   = parse "on" 
-        let AST.Term (AST.LBool _ yay)  = parse "yes" 
+        let AST.Term (AST.LBool _ true) = parse "true"
+        let AST.Term (AST.LBool _ on)   = parse "on"
+        let AST.Term (AST.LBool _ yay)  = parse "yes"
         true `shouldBe` True
         on   `shouldBe` True
         yay  `shouldBe` True
-        let AST.Term (AST.LBool _ false) = parse "false" 
-        let AST.Term (AST.LBool _ off)   = parse "off" 
-        let AST.Term (AST.LBool _ nay)  = parse "no" 
+        let AST.Term (AST.LBool _ false) = parse "false"
+        let AST.Term (AST.LBool _ off)   = parse "off"
+        let AST.Term (AST.LBool _ nay)  = parse "no"
         false `shouldBe` False
         off   `shouldBe` False
         nay   `shouldBe` False
@@ -83,11 +88,11 @@ spec = do
 
     it "can parse records" $ do
 
-      
-        let AST.Term (AST.LRecord _ empty) = parse "{}" 
+
+        let AST.Term (AST.LRecord _ empty) = parse "{}"
         empty `shouldBe` []
         let AST.Term (AST.LRecord _ [ (AST.Name _ frodo, AST.Term (AST.LString _ baggins))
-                                   ]) = parse "{ frodo: \"Baggins\" }" 
+                                   ]) = parse "{ frodo: \"Baggins\" }"
         (frodo, baggins) `shouldBe` ("frodo", "Baggins")
         let AST.Term (AST.LRecord _ [ (AST.Name _ ring      , AST.Term (AST.LInt _ one))
                                    , (AST.Name _ lord      , AST.Term (AST.LString _ sauron))
@@ -95,22 +100,22 @@ spec = do
                                    , (AST.Name _ army      , AST.Term (AST.LList _ [ AST.Term (AST.LString _ orcs)
                                                                                   , AST.Term (AST.LString _ wargs)
                                                                                   ]))
-                                   ]) = parse "{ ring: 1, lord: \"Sauron\", defeated: no, army: [\"orcs\", \"wargs\"] }" 
+                                   ]) = parse "{ ring: 1, lord: \"Sauron\", defeated: no, army: [\"orcs\", \"wargs\"] }"
         (one, ring) `shouldBe` (1, "ring")
         (lord, sauron) `shouldBe` ("lord", "Sauron")
         (defeated, no) `shouldBe` ("defeated", False)
         (army, orcs, wargs) `shouldBe` ("army", "orcs", "wargs")
-    
+
   describe "Functions:" $ do
     it "can parse lambdas" $ do
-        let AST.Lambda _ [(AST.Name _ arg)] (AST.Identifier (AST.Name _ arg')) = parse "\\param -> param" 
+        let AST.Lambda _ [(AST.Name _ arg)] (AST.Identifier (AST.Name _ arg')) = parse "\\param -> param"
         arg `shouldBe` "param"
         arg' `shouldBe` "param"
-        let AST.Lambda _ [(AST.Name _ arg1), (AST.Name _ arg2)] (AST.Identifier (AST.Name _ body)) = parse "\\arg1 arg2 -> body" 
+        let AST.Lambda _ [(AST.Name _ arg1), (AST.Name _ arg2)] (AST.Identifier (AST.Name _ body)) = parse "\\arg1 arg2 -> body"
         arg1 `shouldBe` "arg1"
         arg2 `shouldBe` "arg2"
         body `shouldBe` "body"
-    
+
     it "can parse function application" $ do
         let AST.FnApp _ (AST.Identifier (AST.Name _ fn)) [] = parse "fn!"
         fn `shouldBe` "fn"
@@ -128,5 +133,11 @@ spec = do
         x `shouldBe` 42
         life `shouldBe` "life"
 
+  describe "Top level: " $ do
+    it "can parse declarations" $ do
+        let AST.Define _ (AST.Name _ life) (AST.Term (AST.LInt _ x)) _ = parseDec "let life = 42"
+        x `shouldBe` 42
+        life `shouldBe` "life"
 
-        
+
+

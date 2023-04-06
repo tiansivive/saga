@@ -54,8 +54,15 @@ data Type a where
   TRecord :: a -> [(Name a, TypeExpr a)] -> Type a
   TArrow  :: a -> TypeExpr a -> TypeExpr a -> Type a
   TIdentifier    :: Name a -> Type a
-  TParam  :: a -> Name a -> [Type a] -> Type a
+  TPrimitive    :: a -> BuiltInType -> Type a
+  TParam  :: Name a -> [Type a] -> Type a
+  TVoid :: Type a
 
+data BuiltInType
+    = TBool
+    | TInt
+    | TString
+    deriving (Show, Eq)
 
 data Declaration a
   = Define a (Name a) (Expr a) (Maybe (TypeExpr a))

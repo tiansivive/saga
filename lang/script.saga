@@ -20,10 +20,11 @@ let recurse = \n -> if n < 1 then 0 else 1 + recurse (n - 1)!
 let val = recurse 2!
 
 
-let record = { foo: 1, bar: "string", obj: { baz: "String" } }
+let record = { foo: 1, bar: "string", obj: { baz: "String" }, fn: \x -> x + 1 }
 
 let r1 = record.foo
 let r2 = record.obj
 let r3 = record.obj.baz
+let r4 = record.fn 1!
 
 import P
