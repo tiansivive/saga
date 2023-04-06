@@ -85,7 +85,7 @@ typeof (Identifier (Name rt id)) = do
     env <- get
     case Map.lookup id (identifiers env) of
         Just ty -> return ty
-        Nothing -> return $ TParam (Name rt "a") []
+        Nothing -> return $ TPolymorphic "a"
 
 typeof (FieldAccess _ recExpr path) = do
     ty <- typeof recExpr
@@ -140,12 +140,9 @@ typeof (FnApp rt fnExpr args) = do
 
 
 
-
-
-
 typeof_term :: (Eq a, Show a) => Term a -> TypeCheck a
 typeof_term (LList rt list)   = do
-    TParam (Name rt "List") <$> tyArgs list
+    TParametric "List" <$> tyArgs list
         where
             tyArgs [] = return []
             tyArgs list' = do
