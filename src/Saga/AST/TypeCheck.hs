@@ -70,6 +70,16 @@ reduce (TReturn _ tyExp)   = reduce tyExp
 reduce texpr               = error "Not implemented yet"
 
 
+narrow :: (Eq a, Show a) => Type a -> TypeCheck a
+narrow (TLiteral (LInt rt _))    = return $ TPrimitive rt TInt
+narrow (TLiteral (LBool rt _))   = return $ TPrimitive rt TBool
+narrow (TLiteral (LString rt _)) = return $ TPrimitive rt TString
+narrow (TLiteral termTy)         = typeof_term termTy
+narrow ty                        = return ty
+
+-- unify :: Type a -> Type a -> TypeCheck a
+-- unify (TLiteral )
+
 typeof :: (Eq a, Show a) => Expr a -> TypeCheck a
 typeof (Term t) = typeof_term t
 typeof (Assign _ expr) = typeof expr
@@ -141,13 +151,26 @@ typeof (FnApp rt fnExpr args) = do
 
 
 typeof_term :: (Eq a, Show a) => Term a -> TypeCheck a
-typeof_term (LList rt list)   = do
+typeof_term (LList rt list) =
     TParametric "List" <$> tyArgs list
         where
-            tyArgs [] = return []
-            tyArgs list' = do
-                ty <- typeof $ head list'
-                return [ty]
+            narrowed :: (Eq a, Show a ) => Expr a -> TypeCheck a
+            narrowed = typeof >=> narrow
+            tyArgs [] = return $ TPolymorphic "a"
+            tyArgs [expr] = narrowed expr
+            tyArgs (expr:rest) = do
+                ty <- narrowed expr
+                tys <- mapM narrowed rest
+
+                let mismatch = find (/= ty) tys
+                case mismatch of
+                    Just ty' -> throwError $ TypeMismatch ty ty'
+                    Nothing  -> return ty
+
+
+
+
+
 
 typeof_term (LTuple rt tuple) = do
     ttuple <- mapM typeof tuple

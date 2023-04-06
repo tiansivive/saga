@@ -116,14 +116,20 @@ data Range = Range
   { start :: AlexPosn
   , stop :: AlexPosn
   } 
-  | NoInfo deriving (Eq)
-
+  | NoInfo 
+  
 data RangedToken = RangedToken
   { rtToken :: Token
   , rtRange :: Range
   }
-  
-  deriving (Eq)
+
+-- | faking Eq isntances so we dont get problems with the Expr and Type Eq 
+-- | TODO: this definitely needs to change!!!!!
+instance Eq Range where
+  r1 == r2 = True
+
+instance Eq RangedToken where 
+  rt1 == rt2 = True
 
 instance Show Range where
   show _ = ""
