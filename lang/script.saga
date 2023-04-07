@@ -1,7 +1,6 @@
 module m where
 
 
-
 let clause = 
     with a = 1
         , b = 2
@@ -13,14 +12,45 @@ let fn
     : Int -> Int
     = \x -> x
 
+let typeFn 
+    : Type -> Type
+    = \ty -> ty
+
+let typeStuff
+    : typFn f a! -> Int
+    = \xs -> 1
+
 let res = fn 5!
+
+
+
+let list
+    : Type -> Type
+    = List 
+
+type Data a = List <a>
+type Data a = list a
+
+type Either a b = Left <a> | Right <b>
+
+type Error = Either <String> 
+type Error a = Either <String a> 
+
+
 
 
 let recurse = \n -> if n < 1 then 0 else 1 + recurse (n - 1)!
 let val = recurse 2!
 
 
-let record = { foo: 1, bar: "string", obj: { baz: "String" }, fn: \x -> x + 1 }
+let record = { 
+    foo: 1, 
+    bar: "string", 
+    obj: { 
+        baz: "String" 
+        }, 
+    fn: \x -> x + 1
+}
 
 let r1 = record.foo
 let r2 = record.obj

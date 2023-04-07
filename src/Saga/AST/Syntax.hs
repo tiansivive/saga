@@ -55,8 +55,8 @@ data Type a where
   TArrow  :: a -> TypeExpr a -> TypeExpr a -> Type a
   TIdentifier    :: Name a -> Type a
   TPrimitive    :: a -> BuiltInType -> Type a
-  TParametric  :: String -> Type a -> Type a
-  TPolymorphic :: String -> Type a
+  TParametric  :: TypeExpr a -> TypeExpr a -> Type a
+  TPolymorphic :: Name a -> Type a
   TVoid :: Type a
 
 data BuiltInType

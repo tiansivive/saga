@@ -5,10 +5,11 @@ module Main (main) where
 import qualified Saga.AST.Syntax          as AST
 import qualified Saga.Lexer.Lexer         as L
 import           Saga.Parser.Parser       (runSagaDec, runSagaExpr,
-                                           runSagaScript)
+                                           runSagaScript, runSagaType)
 
 import qualified Data.Map                 as Map
 import qualified Saga.AST.Evaluation      as E
+import qualified Saga.AST.TypeCheck       as Ty
 
 import           Control.Monad.State.Lazy
 import qualified Saga.AST.Evaluation      as E
@@ -43,6 +44,19 @@ repl = repl' Map.empty
                     (Right (v, env')) -> do
                         putStrLn $ show v <> "\n" <> show env
                         repl' env'
+
+tyRepl :: IO ()
+tyRepl = repl' Map.empty
+    where repl' env = let
+            --evalType line = runSagaType line
+
+            in do
+                putStr "Saga types λ> "
+                line <- getLine
+                putStrLn $ case runSagaType line of
+                    (Left e)   -> e
+                    (Right ty) -> show ty
+                repl' env
 
 
 

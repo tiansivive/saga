@@ -9,11 +9,12 @@ module Saga.Parser.Parser
     , parseSagaDec
     ) where
 
+import Data.Char (isLower)
 import Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.Maybe  (Maybe (..), fromJust)
 import Data.Monoid (First (..))
-import Data.List (last)
+import Data.List (last, head)
 
 import qualified Saga.Lexer.Lexer as L
 import qualified Saga.Lexer.Tokens as T
@@ -237,21 +238,37 @@ ttupleElems
 ttuple
   : '(' typeExpr ttupleElems ')'    { AST.TTuple (L.rtRange $1 <-> L.rtRange $4) ($2:$3) }
 
+typeParams
+  : typeAtom { $1 }
+  | typeParams typeAtom { AST.Type $ AST.TParametric $1 $2 }
+
+
 type 
   : number { unTok $1 (\range (T.Number int) -> AST.TLiteral $ AST.LInt range int) }
   | string     { unTok $1 (\range (T.String string) -> AST.TLiteral $ AST.LString range string) }
   | boolean    { unTok $1 (\range (T.Boolean boolean) -> AST.TLiteral $ AST.LBool range boolean) }
   | ttuple      { $1 }
   | trecord     { $1 }
-  | identifier   { AST.TIdentifier $1 }
+  | identifier   { resolveIdType $1 }
+  | identifier '<' typeParams '>' { AST.TParametric (AST.Type $ resolveIdType $1) $3 }
 
+ 
+
+typeAtom
+  : type %shift { AST.Type $1 } 
+  | '(' typeExpr ')' { AST.TParens (L.rtRange  $1 <-> L.rtRange $3) $2 }
+  
+
+typeFnArgs
+  :                       { [] }
+  | typeFnArgs typeAtom   { $1 ++ [$2] }
 
 typeExpr 
-  : type { AST.Type $1 }
-  | if typeExpr then typeExpr else typeExpr { AST.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
+  : if typeExpr then typeExpr else typeExpr { AST.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
   | typeExpr '->' typeExpr  { AST.Type $ AST.TArrow (info $1 <-> info $3) $1 $3 }
-  | '(' typeExpr ')' { AST.TParens (L.rtRange  $1 <-> L.rtRange $3) $2 }
-
+  | typeAtom typeFnArgs '!' { AST.TFnApp (info $1 <-> L.rtRange $3) $1 $2 }
+  | typeAtom     { $1 }
+ 
 
 typeAnnotation
   : { Nothing }
@@ -281,6 +298,14 @@ script
 
 
 {
+
+
+resolveIdType :: AST.Name a -> AST.Type a
+resolveIdType name@(AST.Name rt id) = 
+  case isLower $ head id of
+    True  -> AST.TPolymorphic name
+    False -> AST.TIdentifier name
+
 
 
 -- | Build a simple node by extracting its token type and range.
