@@ -12,9 +12,13 @@ import qualified Saga.AST.Evaluation      as E
 import qualified Saga.AST.TypeCheck       as Ty
 
 import           Control.Monad.State.Lazy
+import           Data.Maybe               (fromJust)
 import qualified Saga.AST.Evaluation      as E
+import           System.Console.Haskeline
 import           System.IO                (IOMode (ReadMode), hClose,
                                            hGetContents, openFile)
+
+
 
 main :: IO ()
 main = do
@@ -25,8 +29,10 @@ main = do
 
 
 repl :: IO ()
-repl = repl' Map.empty
-    where repl' env = let
+repl = runInputT defaultSettings $ repl' Map.empty
+    where
+
+        repl' env = let
             evalExpr line = do
                 expr <- runSagaExpr line
                 runStateT (E.eval expr) env
@@ -35,25 +41,25 @@ repl = repl' Map.empty
                 runStateT (E.evalDeclaration dec) env
 
             in do
-                putStr "Saga λ> "
-                line <- getLine
+                (Just line) <- getInputLine "Saga λ> "
+
                 case evalExpr line <> evalDec line of
                     (Left e)         -> do
-                        putStrLn e
+                        outputStrLn e
                         repl' env
                     (Right (v, env')) -> do
-                        putStrLn $ show v <> "\n" <> show env
+                        outputStrLn $ show v <> "\n" <> show env
                         repl' env'
 
 tyRepl :: IO ()
-tyRepl = repl' Map.empty
+tyRepl = runInputT defaultSettings $ repl' Map.empty
     where repl' env = let
             --evalType line = runSagaType line
 
             in do
-                putStr "Saga types λ> "
-                line <- getLine
-                putStrLn $ case runSagaType line of
+                (Just line) <- getInputLine "Saga types λ> "
+
+                outputStrLn $ case runSagaType line of
                     (Left e)   -> e
                     (Right ty) -> show ty
                 repl' env

@@ -16,6 +16,7 @@ dependencies:
   - containers
   - transformers
   - mtl
+  - haskeline
 
 library:
   source-dirs: src

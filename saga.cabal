@@ -38,6 +38,7 @@ library
     , base
     , bytestring
     , containers
+    , haskeline
     , mtl
     , prettyprinter
     , transformers
@@ -61,6 +62,7 @@ test-suite saga-test
     , base
     , bytestring
     , containers
+    , haskeline
     , hspec
     , mtl
     , prettyprinter
