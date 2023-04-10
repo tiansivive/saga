@@ -1,7 +1,10 @@
 module test where
 
 
-let obj = { fn: \x -> x + 1 }
-let a = obj.fn 1!
+let obj
+    : { fn: Int -> Int }
+    = { fn: \x -> x + 1 }
+
+let a: Int = obj.fn 1!
 
 import P

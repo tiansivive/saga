@@ -27,10 +27,16 @@ main = do
     print (runSagaExpr line)
 
 
+data SagaCmd = Type String | Quit | Help | None
 
 repl :: IO ()
 repl = runInputT defaultSettings $ repl' Map.empty
     where
+
+        getCmd ":q"             = Quit
+        getCmd (':':'t':' ':ty) = Type ty
+        getCmd ":h"             = Help
+        getCmd _                = None
 
         repl' env = let
             evalExpr line = do
@@ -40,30 +46,29 @@ repl = runInputT defaultSettings $ repl' Map.empty
                 dec <- runSagaDec line
                 runStateT (E.evalDeclaration dec) env
 
-            in do
-                (Just line) <- getInputLine "Saga λ> "
+            parseExpr input = case evalExpr input <> evalDec input of
+                (Left e)          -> do
+                    outputStrLn e
+                    repl' env
+                (Right (v, env')) -> do
+                    outputStrLn $ show v <> "\n" <> show env
+                    repl' env'
 
-                case evalExpr line <> evalDec line of
-                    (Left e)         -> do
-                        outputStrLn e
-                        repl' env
-                    (Right (v, env')) -> do
-                        outputStrLn $ show v <> "\n" <> show env
-                        repl' env'
-
-tyRepl :: IO ()
-tyRepl = runInputT defaultSettings $ repl' Map.empty
-    where repl' env = let
-            --evalType line = runSagaType line
-
-            in do
-                (Just line) <- getInputLine "Saga types λ> "
-
-                outputStrLn $ case runSagaType line of
+            parseType input = do
+                outputStrLn $ case runSagaType input of
                     (Left e)   -> e
                     (Right ty) -> show ty
                 repl' env
 
+            in do
+                (Just line) <- getInputLine "Saga λ> "
+                case getCmd line of
+                    Quit -> return ()
+                    None -> parseExpr line
+                    Type ty -> parseType ty
+                    _    -> do
+                        outputStrLn "Not implemented yet!"
+                        repl' env
 
 
 
