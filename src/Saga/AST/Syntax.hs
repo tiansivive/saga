@@ -50,11 +50,11 @@ data TypeExpr a where
 -- | AKA Literal type
 data Type a where
   TLiteral :: Term a -> Type a
+  TPrimitive :: a -> BuiltInType -> Type a
   TTuple :: a -> [TypeExpr a] -> Type a
   TRecord :: a -> [(Name a, TypeExpr a)] -> Type a
   TArrow  :: a -> TypeExpr a -> TypeExpr a -> Type a
   TIdentifier    :: Name a -> Type a
-  TPrimitive    :: a -> BuiltInType -> Type a
   TParametric  :: TypeExpr a -> TypeExpr a -> Type a
   TPolymorphic :: Name a -> Type a
   TVoid :: Type a

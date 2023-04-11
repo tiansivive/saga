@@ -2,7 +2,7 @@
 {-# HLINT ignore "Use camelCase" #-}
 
 
-module Saga.AST.TypeCheck where
+module Saga.AST.Inference where
 
 import           Control.Monad.Except
 import           Control.Monad.Identity   (Identity (runIdentity))
@@ -11,14 +11,30 @@ import           Data.Bifunctor           (Bifunctor (first))
 
 import           Data.List
 import qualified Data.Map                 as Map
+import qualified Data.Set                 as Set
 import           Saga.AST.Syntax
 import qualified Saga.Lexer.Lexer         as L
 import           Saga.Parser.Parser       (runSagaExpr)
 import           Saga.Utils.Utils
 
-type Env a = Map.Map String (Type a)
+type Infer a = StateT (Env a) (Except (TypeError a))
+data Env a = Env {
+    identifiers :: Map.Map String (Type a),
+    count       :: Int
+}
 
-type TypeCheck a = StateT (Env a) (Except (TypeError a)) (Type a)
+initEnv :: Env a
+initEnv =  Env { identifiers = Map.empty, count = 0 }
+
+letters :: [String]
+letters = [1..] >>= flip replicateM ['a'..'z']
+
+fresh :: a -> Infer a (Type a)
+fresh info = do
+  s <- get
+  put s{count = count s + 1}
+  return $ TPolymorphic $ Name info (letters !! count s)
+
 
 
 data TypeError a
@@ -35,28 +51,10 @@ infer input = do
     show `first` runExcept (infer' parsed)
         where
             infer' :: (Eq a, Show a) => Expr a -> Except (TypeError a) (Type a)
-            infer' expr = evalStateT (typeof expr) Map.empty
+            infer' expr = evalStateT (typeof expr) initEnv
 
 
-
-unify :: Type a -> Type a -> TypeCheck a
-unify (TLiteral (LInt _ _)) (TPrimitive rt TInt) = return $ TPrimitive rt TInt
-unify (TLiteral (LBool _ _)) (TPrimitive rt TBool) = return $ TPrimitive rt TBool
-unify (TLiteral (LString _ _)) (TPrimitive rt TString) = return $ TPrimitive rt TString
-
--- | TODO: change result to union type when they're implemented
-unify (TLiteral (LString _ _)) (TLiteral (LString rt _)) = return $ TPrimitive rt TString
-unify (TLiteral (LInt _ _)) (TLiteral (LInt rt _)) = return $ TPrimitive rt TInt
-unify (TLiteral (LBool _ _)) (TLiteral (LBool rt _)) = return $ TPrimitive rt TBool
-
-unify (TPolymorphic _) ty = return ty
-unify ty (TPolymorphic _) = return ty
-
-
-
-
-
-typeof :: (Eq a, Show a) => Expr a -> TypeCheck a
+typeof :: (Eq a, Show a) => Expr a -> Infer a (Type a)
 typeof (Term t) = typeof_term t
 typeof (Assign _ expr) = typeof expr
 
@@ -69,7 +67,7 @@ typeof (Parens _ expr) = typeof expr
 
 typeof (Identifier (Name rt id)) = do
     env <- get
-    case Map.lookup id env of
+    case Map.lookup id $ identifiers env of
         Just ty -> return ty
         Nothing -> return $ TPolymorphic (Name rt "a")
 
@@ -77,7 +75,7 @@ typeof (FieldAccess _ recExpr path) = do
     ty <- typeof recExpr
     typeof' ty path
     where
-        typeof' :: (Eq a, Show a) => Type a -> [Name a] -> TypeCheck a
+        typeof' :: (Eq a, Show a) => Type a -> [Name a] -> Infer a (Type a)
         typeof' ty [] = return ty
         typeof' (TRecord _ pairs) (id:rest) =
             let found = find (\(name, typeExpr) -> name == id) pairs in
@@ -126,42 +124,42 @@ typeof (FnApp rt fnExpr args) = do
 
 
 
-typeof_term :: (Eq a, Show a) => Term a -> TypeCheck a
-typeof_term (LTuple rt tuple) = do
-    ttuple <- mapM (typeof >=> narrow) tuple
-    let tyExprs = Type <$> ttuple
-    return $ TTuple rt tyExprs
+typeof_term :: (Eq a, Show a) => Term a -> Infer a (Type a)
+typeof_term term = case term of
+    (LTuple rt tuple) -> do
+        ttuple <- mapM expanded tuple
+        let tyExprs = Type <$> ttuple
+        return $ TTuple rt tyExprs
 
-typeof_term (LRecord rt pairs)  = do
-    tyPairs <- mapM tyExpr pairs
-    return $ TRecord rt tyPairs
-    where
-        tyExpr (name, expr) = do
-            ty <- narrow <=< typeof $ expr
-            return (name, Type ty)
-
-typeof_term (LList rt list) = do
-    t <- tyArgs list
-    return $ TParametric builtInList (Type t)
+    (LRecord rt pairs)  -> do
+        tyPairs <- mapM tyExpr pairs
+        return $ TRecord rt tyPairs
         where
-            narrowed :: (Eq a, Show a ) => Expr a -> TypeCheck a
-            narrowed = typeof >=> narrow
+            tyExpr (name, expr) = do
+                ty <- expanded expr
+                return (name, Type ty)
 
-            builtInList = Type $ TIdentifier $ Name rt "List"
+    (LList rt list) -> do
+        t <- tyArgs list
+        return $ TParametric builtInList (Type t)
+            where
+                builtInList = Type $ TIdentifier $ Name rt "List"
 
-            tyArgs [] = return $ TPolymorphic (Name rt "a")
-            tyArgs [expr] = narrowed expr
-            tyArgs (expr:rest) = do
-                ty <- narrowed expr
-                tys <- mapM narrowed rest
+                tyArgs [] = return $ TPolymorphic (Name rt "a")
+                tyArgs [expr] = expanded expr
+                tyArgs (expr:rest) = do
+                    ty <- expanded expr
+                    tys <- mapM expanded rest
 
-                let mismatch = find (/= ty) tys
-                case mismatch of
-                    Just ty' -> throwError $ TypeMismatch ty ty'
-                    Nothing  -> return ty
+                    let mismatch = find (/= ty) tys
+                    case mismatch of
+                        Just ty' -> throwError $ TypeMismatch ty ty'
+                        Nothing  -> return ty
 
-typeof_term lit               = return $ TLiteral lit
-
+    lit -> return $ TLiteral lit
+    where
+        expanded :: (Eq a, Show a ) => Expr a -> Infer a (Type a)
+        expanded = typeof >=> expand
 
 
 reduce :: TypeExpr a -> Type a
@@ -176,14 +174,13 @@ reduce (TLambda _ args body)            = reduce body
 reduce (TFnApp _ fnExpr args)           = reduce fnExpr
 
 
-narrow :: (Eq a, Show a) => Type a -> TypeCheck a
-narrow (TLiteral (LInt rt _))    = return $ TPrimitive rt TInt
-narrow (TLiteral (LBool rt _))   = return $ TPrimitive rt TBool
-narrow (TLiteral (LString rt _)) = return $ TPrimitive rt TString
-narrow (TLiteral termTy)         = typeof_term termTy
-narrow ty                        = return ty
+expand :: (Eq a, Show a) => Type a -> Infer a (Type a)
+expand (TLiteral (LInt rt _))    = return $ TPrimitive rt TInt
+expand (TLiteral (LBool rt _))   = return $ TPrimitive rt TBool
+expand (TLiteral (LString rt _)) = return $ TPrimitive rt TString
+expand (TLiteral termTy)         = typeof_term termTy
+expand ty                        = return ty
 
 
 unknown :: String -> TypeError a
 unknown id = UnknownType $  "Unknown type \"" <> id <> "\""
-

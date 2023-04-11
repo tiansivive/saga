@@ -9,11 +9,10 @@ import           Saga.Parser.Parser       (runSagaDec, runSagaExpr,
 
 import qualified Data.Map                 as Map
 import qualified Saga.AST.Evaluation      as E
-import qualified Saga.AST.TypeCheck       as Ty
+import qualified Saga.AST.Inference       as Infer
 
 import           Control.Monad.State.Lazy
 import           Data.Maybe               (fromJust)
-import qualified Saga.AST.Evaluation      as E
 import           System.Console.Haskeline
 import           System.IO                (IOMode (ReadMode), hClose,
                                            hGetContents, openFile)
