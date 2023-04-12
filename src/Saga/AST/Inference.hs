@@ -179,8 +179,21 @@ reduce (TBlock _ [])                    = TVoid
 reduce (TBlock _ tyExps)                = reduce $ last tyExps
 reduce (TReturn _ tyExp)                = reduce tyExp
 reduce (TConditional _ cond true false) = reduce true -- assumes same return type, will change with union types
-reduce (TLambda _ args body)            = reduce body
-reduce (TFnApp _ fnExpr args)           = reduce fnExpr
+reduce (TFnApp _ fnExpr args)           = returnType fnExpr 0
+    where
+        returnType ty i
+            | i == length args -1 = reduce ty
+            | otherwise = case reduce ty of
+                (TArrow _ _ return) -> returnType return (i +1)
+                _ -> error "Tried to apply a type other than function"
+
+reduce (TLambda info args body)         = TArrow info (Type args') body
+    where
+        arrow = TArrow info
+        build [] = TVoid
+        build [arg] = arg
+        build (ty:rest) = foldr (\returnTy argTy -> Type returnTy `arrow` Type argTy) ty rest
+        args' = build (TIdentifier <$> args)
 
 
 
