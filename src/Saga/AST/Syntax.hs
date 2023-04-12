@@ -87,10 +87,9 @@ deriving instance Foldable Type
 deriving instance Show a => Show (Expr a)
 deriving instance Show a => Show (Term a)
 deriving instance Show a => Show (Type a)
+deriving instance Show a => Show (TypeExpr a)
 
-instance Show a => Show (TypeExpr a) where
-  show (Type ty ) = "(" <> show ty <> ")"
-  show e          = "(" <> show e <> ")"
+
 
 deriving instance Eq a => Eq (Expr a)
 deriving instance Eq a => Eq (Term a)

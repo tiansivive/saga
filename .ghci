@@ -1,9 +1,13 @@
 :set prompt "ghci λ> "
 
-:{
-let logFile = "./logs/ghci.log"
-    maxLogLength = 1024 -- max length of a single write
-    logPrint x = appendFile logFile (take maxLogLength (show x) ++ "\n") >> print x
-:}
+:set -package pretty-simple
+:set -package text
 
-:set -interactive-print=logPrint
+import Text.Pretty.Simple (pPrint)
+:set -interactive-print=pPrint
+
+:def log \_ -> return $ ":load \"config/ghci/GHCI.hs\""
+:def hoogle \x -> return $ ":!stack hoogle -- --color \"" ++ x ++ "\""
+:def hdoc    \x -> return $ ":!stack hoogle -- --info --color \"" ++ x ++ "\""
+
+

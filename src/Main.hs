@@ -1,4 +1,5 @@
-{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE BlockArguments    #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Main (main) where
 
@@ -14,8 +15,11 @@ import qualified Saga.AST.Inference       as Infer
 import           Control.Monad.State.Lazy
 import           Data.Maybe               (fromJust)
 import           System.Console.Haskeline
-import           System.IO                (IOMode (ReadMode), hClose,
-                                           hGetContents, openFile)
+import           System.IO                (IOMode (ReadMode, ReadWriteMode, WriteMode),
+                                           hClose, hGetContents, openFile)
+
+
+
 
 
 
@@ -31,7 +35,6 @@ data SagaCmd = Type String | Quit | Help | None
 repl :: IO ()
 repl = runInputT defaultSettings $ repl' Map.empty
     where
-
         getCmd ":q"                  = Quit
         getCmd (':' : 't' :' ' : ty) = Type ty
         getCmd ":h"                  = Help
@@ -91,13 +94,12 @@ script fp =
         putStrLn "Bye!"
 
 
-parseScript :: FilePath -> IO ()
+parseScript :: FilePath -> IO (Either String (AST.Script L.Range))
 parseScript fp = do
     handle <- openFile fp ReadMode
     contents <- hGetContents handle
-    print (runSagaScript contents)
-    hClose handle
-    putStrLn "Bye!"
+    return $ runSagaScript contents
+
 
 lexScript :: FilePath -> IO ()
 lexScript fp = do
