@@ -9,19 +9,22 @@ import           Control.Monad.Identity   (Identity (runIdentity))
 import           Control.Monad.State.Lazy
 import           Data.Bifunctor           (Bifunctor (first))
 
+import           Control.Applicative      ((<|>))
 import           Data.List
 import qualified Data.Map                 as Map
+import           Data.Maybe               (fromJust, fromMaybe)
 import qualified Data.Set                 as Set
 import           Saga.AST.Syntax
 import qualified Saga.Lexer.Lexer         as L
 import           Saga.Parser.Parser       (runSagaExpr)
-import           Saga.Utils.Utils
+
 
 type Infer a = StateT (Env a) (Except (TypeError a))
+
 data Env a = Env {
     identifiers :: Map.Map String (Type a),
     count       :: Int
-}
+} deriving (Show)
 
 initEnv :: Env a
 initEnv =  Env { identifiers = Map.empty, count = 0 }
@@ -43,7 +46,12 @@ data TypeError a
   | UnexpectedType String
   deriving (Show, Eq)
 
+run :: Show a => Infer a Bool -> Either String Bool
+run = runInEnv Nothing
 
+runInEnv :: Show a => Maybe (Env a) -> Infer a Bool -> Either String Bool
+runInEnv env check = show `first` check'
+  where check' = runExcept $ evalStateT check (fromMaybe initEnv env)
 
 infer :: String -> Either String (Type L.Range)
 infer input = do
@@ -162,6 +170,7 @@ typeof_term term = case term of
         expanded = typeof >=> expand
 
 
+
 reduce :: TypeExpr a -> Type a
 reduce (Type ty)                        = ty
 reduce (TParens _ tyExp)                = reduce tyExp
@@ -172,6 +181,7 @@ reduce (TReturn _ tyExp)                = reduce tyExp
 reduce (TConditional _ cond true false) = reduce true -- assumes same return type, will change with union types
 reduce (TLambda _ args body)            = reduce body
 reduce (TFnApp _ fnExpr args)           = reduce fnExpr
+
 
 
 expand :: (Eq a, Show a) => Type a -> Infer a (Type a)

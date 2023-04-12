@@ -301,10 +301,14 @@ script
 
 
 resolveIdType :: AST.Name a -> AST.Type a
-resolveIdType name@(AST.Name rt id) = 
+resolveIdType name@(AST.Name info id) = 
   case isLower $ head id of
     True  -> AST.TPolymorphic name
-    False -> AST.TIdentifier name
+    False -> case id of 
+      "Int"    -> AST.TPrimitive info AST.TInt
+      "Bool"   -> AST.TPrimitive info AST.TBool
+      "String" -> AST.TPrimitive info AST.TString
+      _        -> AST.TIdentifier name
 
 
 

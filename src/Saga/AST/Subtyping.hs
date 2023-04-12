@@ -7,6 +7,7 @@ import           Saga.AST.Syntax
 
 import           Control.Monad.State.Lazy
 import qualified Data.Map                 as Map
+import           Debug.Trace              (trace, traceM)
 
 
 
@@ -34,11 +35,11 @@ sub `isSubtype` parent = case (sub, parent) of
     (TRecord _ pairs1, TRecord _ pairs2)  -> let
         pairs1' = fmap reduce <$> pairs1
         pairs2' = fmap reduce <$> pairs2
-        check (name, ty1) = case lookup name pairs2' of
+        check (name, ty2) = case lookup name pairs1' of
             Nothing  -> return False
-            Just ty2 -> isSubtype ty1 ty2
+            Just ty1 -> isSubtype ty1 ty2
 
-        in allTrue <$> mapM check pairs1'
+        in allTrue <$> mapM check pairs2'
 
     (TParametric cons1 arg1, TParametric cons2 arg2) -> do
         cons' <- reduce cons1 `isSubtype` reduce cons2

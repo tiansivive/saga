@@ -32,10 +32,10 @@ repl :: IO ()
 repl = runInputT defaultSettings $ repl' Map.empty
     where
 
-        getCmd ":q"             = Quit
-        getCmd (':':'t':' ':ty) = Type ty
-        getCmd ":h"             = Help
-        getCmd _                = None
+        getCmd ":q"                  = Quit
+        getCmd (':' : 't' :' ' : ty) = Type ty
+        getCmd ":h"                  = Help
+        getCmd _                     = None
 
         repl' env = let
             evalExpr line = do
