@@ -73,11 +73,11 @@ typeof (Return _ expr) = typeof expr
 
 typeof (Parens _ expr) = typeof expr
 
-typeof (Identifier (Name rt id)) = do
+typeof (Identifier (Name info id)) = do
     env <- get
     case Map.lookup id $ identifiers env of
         Just ty -> return ty
-        Nothing -> return $ TPolymorphic (Name rt "a")
+        Nothing -> fresh info
 
 typeof (FieldAccess _ recExpr path) = do
     ty <- typeof recExpr

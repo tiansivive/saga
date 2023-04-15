@@ -46,6 +46,11 @@ sub `isSubtype` parent = case (sub, parent) of
         arg'  <- reduce arg1  `isSubtype` reduce arg2
         return $ cons' && arg'
 
+    (TArrow _ input1 output1, TArrow _ input2 output2) -> do
+        input' <- reduce input1 `isSubtype` reduce input2
+        output' <- reduce output1 `isSubtype` reduce output2
+        return $ input' && output'
+
     (ty@(TPolymorphic (Name info id)), _) -> do
         env <- get
         case Map.lookup id $ identifiers env of
@@ -54,7 +59,7 @@ sub `isSubtype` parent = case (sub, parent) of
                 return True
             Just (TPolymorphic _) -> return True
             Just ty' -> ty' `isSubtype` parent
-
+    (_, _) -> return False
     where
         allTrue :: Foldable t => t Bool -> Bool
         allTrue = and

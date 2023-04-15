@@ -7,4 +7,12 @@ let obj
 
 let a: Int = obj.fn 1!
 
+
+let fn
+    : a -> Int
+    = \x -> x
+
+
+let fn2 = fn<String> 
+
 import P

@@ -16,7 +16,7 @@ dependencies:
   - transformers
   - mtl
   - haskeline
-
+  - pretty-simple
 
 
 library:
