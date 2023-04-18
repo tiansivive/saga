@@ -12,13 +12,8 @@ import           Debug.Trace              (trace, traceM)
 
 
 isSubtype ::(Eq a, Show a) => Type a -> Type a -> Infer a Bool
+isSubtype  a b | trace ("subtype " ++ (show a) ++ " <: " ++ (show b) ++ "\n  ") False = undefined
 sub `isSubtype` parent = case (sub, parent) of
-
-    (TIdentifier (Name info id), _) -> do
-        env <- get
-        poly <- fresh info
-        let sub' = fromMaybe poly $ Map.lookup id $ identifiers env
-        sub' `isSubtype` parent
 
 
     (TLiteral (LInt _ _), TPrimitive _ TInt)       -> return True
@@ -51,14 +46,17 @@ sub `isSubtype` parent = case (sub, parent) of
         output' <- reduce output1 `isSubtype` reduce output2
         return $ input' && output'
 
-    (ty@(TPolymorphic (Name info id)), _) -> do
+
+    (TVar (Name _ id), TVar (Name _ id')) -> return $ id == id'
+
+    (TVar (Name info id), _) -> do
         env <- get
-        case Map.lookup id $ identifiers env of
+        case Map.lookup id $ typeVars env of
+            Just ty -> ty `isSubtype` parent
             Nothing -> do
-                put env{ identifiers = Map.insert id ty $ identifiers env }
+                put env{ typeVars = Map.insert id parent $ typeVars env }
                 return True
-            Just (TPolymorphic _) -> return True
-            Just ty' -> ty' `isSubtype` parent
+
     (_, _) -> return False
     where
         allTrue :: Foldable t => t Bool -> Bool

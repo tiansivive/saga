@@ -14,7 +14,11 @@ import           Data.List
 import qualified Data.Map                 as Map
 import           Data.Maybe               (fromJust, fromMaybe)
 import qualified Data.Set                 as Set
-import           Saga.AST.Syntax
+import           Saga.AST.Syntax          (BuiltInType (TBool, TInt, TString),
+                                           Expr (..), Name (..),
+                                           Quality (Forall), Term (..),
+                                           Type (TArrow, TLiteral, TParametric, TPolymorphic, TPrimitive, TRecord, TTuple, TUnit, TVar),
+                                           TypeExpr (..))
 import qualified Saga.Lexer.Lexer         as L
 import           Saga.Parser.Parser       (runSagaExpr)
 
@@ -22,12 +26,13 @@ import           Saga.Parser.Parser       (runSagaExpr)
 type Infer a = StateT (Env a) (Except (TypeError a))
 
 data Env a = Env {
-    identifiers :: Map.Map String (Type a),
+    expressions :: Map.Map String (Type a),
+    typeVars    :: Map.Map String (Type a),
     count       :: Int
 } deriving (Show)
 
 initEnv :: Env a
-initEnv =  Env { identifiers = Map.empty, count = 0 }
+initEnv =  Env { expressions = Map.empty, typeVars = Map.empty, count = 0 }
 
 letters :: [String]
 letters = [1..] >>= flip replicateM ['a'..'z']
@@ -36,7 +41,8 @@ fresh :: a -> Infer a (Type a)
 fresh info = do
   s <- get
   put s{count = count s + 1}
-  return $ TPolymorphic $ Name info (letters !! count s)
+  let id = Name info (letters !! count s)
+  return $ TVar id
 
 
 
@@ -67,7 +73,7 @@ typeof (Term t) = typeof_term t
 typeof (Assign _ expr) = typeof expr
 
 typeof (Clause _ _ expr) = typeof expr
-typeof (Block _ []) = return TVoid
+typeof (Block _ []) = return TUnit
 typeof (Block _ exprs) = typeof $ last exprs
 typeof (Return _ expr) = typeof expr
 
@@ -75,9 +81,12 @@ typeof (Parens _ expr) = typeof expr
 
 typeof (Identifier (Name info id)) = do
     env <- get
-    case Map.lookup id $ identifiers env of
+    case Map.lookup id $ expressions env of
         Just ty -> return ty
-        Nothing -> fresh info
+        Nothing -> do
+            ty <- fresh info
+            put env{ expressions = Map.insert id ty $ expressions env }
+            return ty
 
 typeof (FieldAccess _ recExpr path) = do
     ty <- typeof recExpr
@@ -151,9 +160,9 @@ typeof_term term = case term of
         t <- tyArgs list
         return $ TParametric builtInList (Type t)
             where
-                builtInList = Type $ TIdentifier $ Name rt "List"
+                builtInList = Type $ TVar $ Name rt "List"
 
-                tyArgs [] = return $ TPolymorphic (Name rt "a")
+                tyArgs [] = return $ TVar (Name rt "a")
                 tyArgs [expr] = expanded expr
                 tyArgs (expr:rest) = do
                     ty <- expanded expr
@@ -175,7 +184,7 @@ reduce :: TypeExpr a -> Type a
 reduce (Type ty)                        = ty
 reduce (TParens _ tyExp)                = reduce tyExp
 reduce (TClause _ _ tyExp)              = reduce tyExp
-reduce (TBlock _ [])                    = TVoid
+reduce (TBlock _ [])                    = TUnit
 reduce (TBlock _ tyExps)                = reduce $ last tyExps
 reduce (TReturn _ tyExp)                = reduce tyExp
 reduce (TConditional _ cond true false) = reduce true -- assumes same return type, will change with union types
@@ -190,10 +199,10 @@ reduce (TFnApp _ fnExpr args)           = returnType fnExpr 0
 reduce (TLambda info args body)         = TArrow info (Type args') body
     where
         arrow = TArrow info
-        build [] = TVoid
+        build [] = TUnit
         build [arg] = arg
         build (ty:rest) = foldr (\returnTy argTy -> Type returnTy `arrow` Type argTy) ty rest
-        args' = build (TIdentifier <$> args)
+        args' = build (TVar <$> args)
 
 
 

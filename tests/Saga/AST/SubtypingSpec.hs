@@ -3,7 +3,7 @@ module Saga.AST.SubtypingSpec where
 import           Test.Hspec
 
 import qualified Saga.AST.Inference       as I
-import           Saga.AST.Inference       (Env (count, identifiers))
+import           Saga.AST.Inference       (Env (count, expressions, typeVars))
 import qualified Saga.AST.Subtyping       as ST
 import qualified Saga.AST.Syntax          as AST
 
@@ -92,7 +92,7 @@ spec = do
         ty    <- I.reduce <$> P.runSagaType "Int"
         subId <- I.reduce <$> P.runSagaType "MyTypeId"
         subTy <- I.reduce <$> P.runSagaType "1"
-        let env = Just $ I.Env { identifiers = Map.fromList [("MyTypeId", subTy)], count = 0 }
+        let env = Just $ I.Env { typeVars = Map.fromList [("MyTypeId", subTy)], expressions = Map.empty, count = 0 }
         I.runInEnv env $ subId `ST.isSubtype` ty
 
       in check `shouldBe` Right True

@@ -303,12 +303,12 @@ script
 resolveIdType :: AST.Name a -> AST.Type a
 resolveIdType name@(AST.Name info id) = 
   case isLower $ head id of
-    True  -> AST.TPolymorphic name
+    True  -> AST.TVar name
     False -> case id of 
       "Int"    -> AST.TPrimitive info AST.TInt
       "Bool"   -> AST.TPrimitive info AST.TBool
       "String" -> AST.TPrimitive info AST.TString
-      _        -> AST.TIdentifier name
+      _        -> AST.TVar name
 
 
 

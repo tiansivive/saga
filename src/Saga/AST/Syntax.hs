@@ -55,16 +55,22 @@ data Type a where
   TTuple :: a -> [TypeExpr a] -> Type a
   TRecord :: a -> [(Name a, TypeExpr a)] -> Type a
   TArrow  :: a -> TypeExpr a -> TypeExpr a -> Type a
-  TIdentifier    :: Name a -> Type a
   TParametric  :: TypeExpr a -> TypeExpr a -> Type a
-  TPolymorphic :: Name a -> Type a
-  TVoid :: Type a
+  TVar :: Name a -> Type a
+  TPolymorphic :: Name a -> Quality -> Type a
+  TQ :: Quality -> Quantity -> Type a -> Type a
+  TUnit :: Type a
 
 data BuiltInType
     = TBool
     | TInt
     | TString
     deriving (Show, Eq)
+
+data Quality = Forall | Exists
+  deriving (Eq, Show)
+data Quantity = Linear | Affine | Relevant | None
+  deriving (Eq, Show)
 
 data Declaration a
   = Define a (Name a) (Expr a) (Maybe (TypeExpr a))
