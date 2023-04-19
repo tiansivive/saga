@@ -97,13 +97,22 @@ spec = do
 
       in check `shouldBe` Right True
 
-    it "can check arrow subtypes" $ let
-      check = do
-        ty  <- I.reduce <$> P.runSagaType "Int -> Int"
-        sub <- I.reduce <$> P.runSagaType "a -> a"
-        I.run $ sub `ST.isSubtype` ty
+    describe "can check arrow subtypes" $ do
+      it "a -> a is subtype of Int -> Int" $ let
+        check = do
+          ty  <- I.reduce <$> P.runSagaType "Int -> Int"
+          sub <- I.reduce <$> P.runSagaType "a -> a"
+          I.run $ sub `ST.isSubtype` ty
 
-      in check `shouldBe` Right True
+        in check `shouldBe` Right True
+
+      it "a -> a is not a subtype of Int -> String" $ let
+        check = do
+          ty  <- I.reduce <$> P.runSagaType "Int -> String"
+          sub <- I.reduce <$> P.runSagaType "a -> a"
+          I.run $ sub `ST.isSubtype` ty
+
+        in check `shouldBe` Right False
 
 
 

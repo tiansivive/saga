@@ -56,6 +56,7 @@ data Type a where
   TRecord :: a -> [(Name a, TypeExpr a)] -> Type a
   TArrow  :: a -> TypeExpr a -> TypeExpr a -> Type a
   TParametric  :: TypeExpr a -> TypeExpr a -> Type a
+  TIdentifier :: Name a -> Type a
   TVar :: Name a -> Type a
   TPolymorphic :: Name a -> Quality -> Type a
   TQ :: Quality -> Quantity -> Type a -> Type a
@@ -66,6 +67,10 @@ data BuiltInType
     | TInt
     | TString
     deriving (Show, Eq)
+
+
+newtype Kind = Kind Int
+  deriving (Show, Eq)
 
 data Quality = Forall | Exists
   deriving (Eq, Show)

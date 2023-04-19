@@ -308,7 +308,8 @@ resolveIdType name@(AST.Name info id) =
       "Int"    -> AST.TPrimitive info AST.TInt
       "Bool"   -> AST.TPrimitive info AST.TBool
       "String" -> AST.TPrimitive info AST.TString
-      _        -> AST.TVar name
+      "List"   -> AST.TIdentifier name
+      _        -> AST.TIdentifier name
 
 
 
