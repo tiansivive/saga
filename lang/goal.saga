@@ -1,0 +1,76 @@
+module test where
+
+
+let obj
+    : { fn: Int -> Int }
+    = { fn: \x -> x + 1 }
+
+let a: Int = obj.fn 1!
+
+
+let fn
+    : a -> Int
+    = \x -> x
+
+
+let fn2 = fn<String> 
+
+type HideIt = exists (Show a) => { field: Int, hidden: a } 
+data HideData a = exists (Eq b) => Hide { field: a, hidden: b }
+
+let HideDataFn
+    : Type -> Type
+    = \a -> exists (Eq b) => { field: a, hidden: b }
+
+
+let val
+    : HideDataFn <Int>
+    = { field: 1, hidden: "String" }    
+
+let extends 
+    : Type -> Type -> Constraint Subtype
+    = \a b -> a |-> b
+
+let Functor 
+    : (Type -> Type) -> Constraint Protocol
+    = \f -> Protocol 
+        { map: a b. (a -> b) -> f a -> f b
+        }
+
+protocol Functor f where
+    map: a b. (a -> b) -> f a -> f b
+
+let protoList = List implements Functor where
+    map _ [] -> []
+    map f (x: xs) -> (f x) : (map f xås)
+
+
+
+let tsStyle
+    : forall a b c, exists f
+    . (Show a, Eq b, Functor f)
+    , (a |-> { foo: Int, bar: String}, b |-> HideIt, c `extends` a)
+    , proof a != b, infer b != c 
+    => a b c -> f a b c
+    = \x y z -> pure x y z!
+
+
+
+let get
+    : String -> (Type |-> Record) -> Type
+    = \k r -> r.k
+
+
+let mapType
+    : (Type |-> Record) -> Type
+    = \t -> fold (\r k -> insert k (mapped k!) r ) {} (keys t!)!
+        where 
+            mapped = match 
+                "foo" -> Int
+                k     -> get k t
+       
+
+
+
+
+import P

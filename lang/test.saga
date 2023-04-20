@@ -13,27 +13,4 @@ let fn
     = \x -> x
 
 
-let fn2 = fn<String> 
-
-type HideIt = exists (Show a) => { field: Int, hidden: a } 
-data HideData a = exists (Eq b) => Hide { field: a, hidden: b }
-
-let HideDataFn
-    : Type -> Type
-    = \a -> exists (Eq b) => { field: a, hidden: b }
-
-
-let val
-    : HideDataFn Int
-    = { field: 1, hidden: "String" }    
-
-
-let tsStyle
-    : a b c f
-    . (Show a, Eq b, Monoid c, Functor f)
-    , a <- { foo: Int, bar: String}
-    , b <- HideIt
-    => a -> f a
-    = \a -> pure a
-
 import P

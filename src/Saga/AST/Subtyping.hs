@@ -66,8 +66,6 @@ sub `isSubtype` parent = do
                 -> ty `isSubtype` parent
             | otherwise -> do
                 put env{ typeVars = Map.insert id parent $ typeVars env }
-                traceM $ "env: " <> show env
-                traceM $ "\nFor " <> show ty <> " <: " <> show parent
                 return True
 
         (_, _) -> return False

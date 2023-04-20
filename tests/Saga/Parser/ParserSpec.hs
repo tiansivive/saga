@@ -28,10 +28,9 @@ parseScript fp = do
 
 spec :: Spec
 spec = do
-  describe "Basic: " $ do
-    it "can parse identifiers"$ do
-        let AST.Identifier (AST.Name _ x) = parse "x"
-        x  `shouldBe` "x"
+  describe "Basic: " $ it "can parse identifiers"$ do
+      let AST.Identifier (AST.Name _ x) = parse "x"
+      x  `shouldBe` "x"
 
   describe "Literal terms:" $ do
     it "can parse integers" $ do
@@ -108,10 +107,10 @@ spec = do
 
   describe "Functions:" $ do
     it "can parse lambdas" $ do
-        let AST.Lambda _ [(AST.Name _ arg)] (AST.Identifier (AST.Name _ arg')) = parse "\\param -> param"
+        let AST.Lambda _ [AST.Name _ arg] (AST.Identifier (AST.Name _ arg')) = parse "\\param -> param"
         arg `shouldBe` "param"
         arg' `shouldBe` "param"
-        let AST.Lambda _ [(AST.Name _ arg1), (AST.Name _ arg2)] (AST.Identifier (AST.Name _ body)) = parse "\\arg1 arg2 -> body"
+        let AST.Lambda _ [AST.Name _ arg1, AST.Name _ arg2] (AST.Identifier (AST.Name _ body)) = parse "\\arg1 arg2 -> body"
         arg1 `shouldBe` "arg1"
         arg2 `shouldBe` "arg2"
         body `shouldBe` "body"
@@ -127,17 +126,15 @@ spec = do
         arg1 `shouldBe` "arg1"
         arg2 `shouldBe` "arg2"
 
-  describe "Assignments: " $ do
-    it "can parse variable assignments" $ do
-        let AST.Assign (AST.Name _ life) (AST.Term (AST.LInt _ x)) = parse "life = 42"
-        x `shouldBe` 42
-        life `shouldBe` "life"
+  describe "Assignments: " $ it "can parse variable assignments" $ do
+      let AST.Assign (AST.Name _ life) (AST.Term (AST.LInt _ x)) = parse "life = 42"
+      x `shouldBe` 42
+      life `shouldBe` "life"
 
-  describe "Top level: " $ do
-    it "can parse declarations" $ do
-        let AST.Define _ (AST.Name _ life) (AST.Term (AST.LInt _ x)) _ = parseDec "let life = 42"
-        x `shouldBe` 42
-        life `shouldBe` "life"
+  describe "Top level: " $ it "can parse declarations" $ do
+      let AST.Define _ (AST.Name _ life) (AST.Term (AST.LInt _ x)) _ = parseDec "let life = 42"
+      x `shouldBe` 42
+      life `shouldBe` "life"
 
 
 
