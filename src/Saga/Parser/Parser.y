@@ -18,7 +18,10 @@ import Data.List (last, head)
 
 import qualified Saga.Lexer.Lexer as L
 import qualified Saga.Lexer.Tokens as T
-import qualified Saga.AST.Syntax as AST
+import qualified Saga.AST.Syntax as Syntax
+import qualified Saga.AST.TypeSystem.Types as Types
+
+import qualified Saga.AST.Scripts as Scripts
 
 }
 
@@ -115,7 +118,7 @@ import qualified Saga.AST.Syntax as AST
 
 
 identifier
-  : id { unTok $1 (\range (T.Id name) -> AST.Name range (BS.unpack name)) }
+  : id { unTok $1 (\range (T.Id name) -> Syntax.Name range (BS.unpack name)) }
 
 path
   : identifier          { [$1] }
@@ -128,7 +131,7 @@ pairs
   | identifier ':' expr             { [($1, $3)] }
 
 record 
-  : '{' pairs '}'   { AST.LRecord (L.rtRange $1 <-> L.rtRange $3) $2 }
+  : '{' pairs '}'   { Syntax.LRecord (L.rtRange $1 <-> L.rtRange $3) $2 }
 
 listElements
   :                         { [] }
@@ -136,14 +139,14 @@ listElements
   | expr ',' listElements   { $1 : $3 }
 
 list 
-  : '[' listElements ']'    { AST.LList (L.rtRange $1 <-> L.rtRange $3) $2 }
+  : '[' listElements ']'    { Syntax.LList (L.rtRange $1 <-> L.rtRange $3) $2 }
 
 tupleElems
   : ',' expr                  { [$2] }
   | ',' expr tupleElems   { $2 : $3 }
 
 tuple
-  : '(' expr tupleElems ')'    { AST.LTuple (L.rtRange $1 <-> L.rtRange $4) ($2:$3) }
+  : '(' expr tupleElems ')'    { Syntax.LTuple (L.rtRange $1 <-> L.rtRange $4) ($2:$3) }
 
 
 -- FUNCTIONS
@@ -156,40 +159,40 @@ params
   | params atom   { $1 ++ [$2] }
 
 fnApplication 
-  : atom params '!' { AST.FnApp (info $1 <-> L.rtRange $3) $1 $2 }
+  : atom params '!' { Syntax.FnApp (info $1 <-> L.rtRange $3) $1 $2 }
   -- : atom { [$1] }
   -- | fnApplication atom { $1 ++ [$2] }
   
 --CONTROL FLOW
 controlFlow 
-  : if expr then expr else expr { AST.IfElse (L.rtRange $1 <-> info $6) $2 $4 $6 }
+  : if expr then expr else expr { Syntax.IfElse (L.rtRange $1 <-> info $6) $2 $4 $6 }
 
 
 -- BLOCKS
 block
-  : return expr   { [AST.Return (L.rtRange $1 <-> info $2) $2] }
+  : return expr   { [Syntax.Return (L.rtRange $1 <-> info $2) $2] }
   | expr block  { $1 : $2 }
 
 
 --EXPRESSIONS
 term 
-  : number     { unTok $1 (\range (T.Number int) -> AST.LInt range int) }
-  | string     { unTok $1 (\range (T.String string) -> AST.LString range string) }
-  | boolean    { unTok $1 (\range (T.Boolean boolean) -> AST.LBool range boolean) }
+  : number     { unTok $1 (\range (T.Number int) -> Syntax.LInt range int) }
+  | string     { unTok $1 (\range (T.String string) -> Syntax.LString range string) }
+  | boolean    { unTok $1 (\range (T.Boolean boolean) -> Syntax.LBool range boolean) }
   | tuple      { $1 }
   | list       { $1 }
   | record     { $1 }
   
 atom
-  : identifier              { AST.Identifier $1 }
-  | atom '.' path           { AST.FieldAccess (info $1 <-> (info $ last $3)) $1 $3 }
-  | term                    { AST.Term $1 }
-  | '{' block '}'           { AST.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
-  | '(' expr ')'            { AST.Parens (L.rtRange  $1 <-> L.rtRange $3) $2 }
+  : identifier              { Syntax.Identifier $1 }
+  | atom '.' path           { Syntax.FieldAccess (info $1 <-> (info $ last $3)) $1 $3 }
+  | term                    { Syntax.Term $1 }
+  | '{' block '}'           { Syntax.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
+  | '(' expr ')'            { Syntax.Parens (L.rtRange  $1 <-> L.rtRange $3) $2 }
 
 
 assignment 
-  : identifier '=' expr     { AST.Assign $1 $3 }  
+  : identifier '=' expr     { Syntax.Assign $1 $3 }  
 
 assignments
   : assignment { [$1] }         
@@ -198,11 +201,11 @@ assignments
 expr
   
   : controlFlow             { $1 }
-  | fnApplication           { $1 }--{ AST.FnApp (info $ head $1 <-> info $ last $1) (head $1) (tail $1) }
-  | '\\' args '->' expr     { AST.Lambda (L.rtRange $1 <-> info $4) $2 $4 }
-  | with assignments in expr { AST.Clause (L.rtRange $1 <-> info $4) $2 $4 }
+  | fnApplication           { $1 }--{ Syntax.FnApp (info $ head $1 <-> info $ last $1) (head $1) (tail $1) }
+  | '\\' args '->' expr     { Syntax.Lambda (L.rtRange $1 <-> info $4) $2 $4 }
+  | with assignments in expr { Syntax.Clause (L.rtRange $1 <-> info $4) $2 $4 }
   | atom %shift             { $1 }
-  | identifier '=' expr     { AST.Assign $1 $3 }  
+  | identifier '=' expr     { Syntax.Assign $1 $3 }  
 
  
 
@@ -229,34 +232,34 @@ tpairs
   | identifier ':' typeExpr             { [($1, $3)] }
 
 trecord 
-  : '{' tpairs '}'   { AST.TRecord (L.rtRange $1 <-> L.rtRange $3) $2 }
+  : '{' tpairs '}'   { Types.TRecord (L.rtRange $1 <-> L.rtRange $3) $2 }
 
 ttupleElems
   : ',' typeExpr                  { [$2] }
   | ',' typeExpr ttupleElems   { $2 : $3 }
 
 ttuple
-  : '(' typeExpr ttupleElems ')'    { AST.TTuple (L.rtRange $1 <-> L.rtRange $4) ($2:$3) }
+  : '(' typeExpr ttupleElems ')'    { Types.TTuple (L.rtRange $1 <-> L.rtRange $4) ($2:$3) }
 
 typeParams
   : typeAtom { $1 }
-  | typeParams typeAtom { AST.Type $ AST.TParametric $1 $2 }
+  | typeParams typeAtom { Types.Type $ Types.TParametric $1 $2 }
 
 
 type 
-  : number { unTok $1 (\range (T.Number int) -> AST.TLiteral $ AST.LInt range int) }
-  | string     { unTok $1 (\range (T.String string) -> AST.TLiteral $ AST.LString range string) }
-  | boolean    { unTok $1 (\range (T.Boolean boolean) -> AST.TLiteral $ AST.LBool range boolean) }
+  : number { unTok $1 (\range (T.Number int) -> Types.TLiteral $ Syntax.LInt range int) }
+  | string     { unTok $1 (\range (T.String string) -> Types.TLiteral $ Syntax.LString range string) }
+  | boolean    { unTok $1 (\range (T.Boolean boolean) -> Types.TLiteral $ Syntax.LBool range boolean) }
   | ttuple      { $1 }
   | trecord     { $1 }
   | identifier   { resolveIdType $1 }
-  | identifier '<' typeParams '>' { AST.TParametric (AST.Type $ resolveIdType $1) $3 }
+  | identifier '<' typeParams '>' { Types.TParametric (Types.Type $ resolveIdType $1) $3 }
 
  
 
 typeAtom
-  : type %shift { AST.Type $1 } 
-  | '(' typeExpr ')' { AST.TParens (L.rtRange  $1 <-> L.rtRange $3) $2 }
+  : type %shift { Types.Type $1 } 
+  | '(' typeExpr ')' { Types.TParens (L.rtRange  $1 <-> L.rtRange $3) $2 }
   
 
 typeFnArgs
@@ -264,9 +267,9 @@ typeFnArgs
   | typeFnArgs typeAtom   { $1 ++ [$2] }
 
 typeExpr 
-  : if typeExpr then typeExpr else typeExpr { AST.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
-  | typeExpr '->' typeExpr  { AST.Type $ AST.TArrow (info $1 <-> info $3) $1 $3 }
-  | typeAtom typeFnArgs '!' { AST.TFnApp (info $1 <-> L.rtRange $3) $1 $2 }
+  : if typeExpr then typeExpr else typeExpr { Types.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
+  | typeExpr '->' typeExpr  { Types.Type $ Types.TArrow (info $1 <-> info $3) $1 $3 }
+  | typeAtom typeFnArgs '!' { Types.TFnApp (info $1 <-> L.rtRange $3) $1 $2 }
   | typeAtom     { $1 }
  
 
@@ -277,39 +280,39 @@ typeAnnotation
 -- SCRIPT
 
 dec 
-  : let identifier typeAnnotation '=' expr {  AST.Define (L.rtRange $1 <-> info $5) $2 $5 $3 }
+  : let identifier typeAnnotation '=' expr {  Scripts.Define (L.rtRange $1 <-> info $5) $2 $5 $3 }
 
 declarations
   : dec              { [$1] }
   | declarations dec { $1 ++ [$2] }
 
 moduleDef
-  : module path where { AST.Mod (L.rtRange $1 <-> L.rtRange $3) ( map (\(AST.Name _ name) -> name) $2 ) } -- TODO: extract to named fn
+  : module path where { Scripts.Mod (L.rtRange $1 <-> L.rtRange $3) ( map (\(Syntax.Name _ name) -> name) $2 ) } -- TODO: extract to named fn
 
 importMod
-  : import path { AST.Import (L.rtRange $1 <-> (info $ last $2)) ( map (\(AST.Name _ name) -> name) $2 ) }
+  : import path { Scripts.Import (L.rtRange $1 <-> (info $ last $2)) ( map (\(Syntax.Name _ name) -> name) $2 ) }
 
 imports
   :                    { [] }
   | importMod imports  { $1 : $2 }
  
 script
-  : moduleDef declarations imports { AST.Script (info $1 <-> (info $ last $2)) $1 $2 $3 }
+  : moduleDef declarations imports { Scripts.Script (info $1 <-> (info $ last $2)) $1 $2 $3 }
 
 
 {
 
 
-resolveIdType :: AST.Name a -> AST.Type a
-resolveIdType name@(AST.Name info id) = 
+resolveIdType :: Syntax.Name a -> Types.Type a
+resolveIdType name@(Syntax.Name info id) = 
   case isLower $ head id of
-    True  -> AST.TVar name
+    True  -> Types.TVar name
     False -> case id of 
-      "Int"    -> AST.TPrimitive info AST.TInt
-      "Bool"   -> AST.TPrimitive info AST.TBool
-      "String" -> AST.TPrimitive info AST.TString
-      "List"   -> AST.TIdentifier name
-      _        -> AST.TIdentifier name
+      "Int"    -> Types.TPrimitive info Types.TInt
+      "Bool"   -> Types.TPrimitive info Types.TBool
+      "String" -> Types.TPrimitive info Types.TString
+      "List"   -> Types.TIdentifier name
+      _        -> Types.TIdentifier name
 
 
 
@@ -322,8 +325,8 @@ info :: Foldable f => f a -> a
 info = fromJust . getFirst . foldMap pure
 
 
-binaryOp :: AST.Expr L.Range -> L.RangedToken -> AST.Expr L.Range -> AST.Expr L.Range 
-binaryOp expr1 op expr2 = AST.FnApp (info expr1 <-> info expr2) (unTok op (\range (T.Operator char) -> AST.Identifier (AST.Name range (BS.unpack char)))) [expr1, expr2]
+binaryOp :: Syntax.Expr L.Range -> L.RangedToken -> Syntax.Expr L.Range -> Syntax.Expr L.Range 
+binaryOp expr1 op expr2 = Syntax.FnApp (info expr1 <-> info expr2) (unTok op (\range (T.Operator char) -> Syntax.Identifier (Syntax.Name range (BS.unpack char)))) [expr1, expr2]
 
 
 -- | Performs the union of two ranges by creating a new range starting at the
@@ -350,16 +353,16 @@ run :: String -> L.Alex a -> Either String a
 run =  L.runAlex . BS.pack
 
 
-runSagaScript :: String -> Either String (AST.Script L.Range)
+runSagaScript :: String -> Either String (Scripts.Script L.Range)
 runSagaScript input = input `run` parseSagaScript
 
-runSagaExpr :: String -> Either String (AST.Expr L.Range)
+runSagaExpr :: String -> Either String (Syntax.Expr L.Range)
 runSagaExpr input = input `run` parseSagaExpr
 
-runSagaType :: String -> Either String (AST.TypeExpr L.Range)
+runSagaType :: String -> Either String (Types.TypeExpr L.Range)
 runSagaType input = input `run` parseSagaType
 
-runSagaDec :: String -> Either String (AST.Declaration L.Range)
+runSagaDec :: String -> Either String (Scripts.Declaration L.Range)
 runSagaDec input = input `run` parseSagaDec
 
 }

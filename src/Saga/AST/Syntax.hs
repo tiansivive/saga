@@ -10,10 +10,6 @@ import           Data.ByteString.Lazy.Char8 (ByteString)
 
 
 
-data Script a =
-    Script a (Module a) [Declaration a] [Import a]
-        deriving (Show)
-
 data Expr a where
   Term           :: Term a -> Expr a
   Identifier     :: Name a -> Expr a
@@ -36,73 +32,15 @@ data Term a where
   LTuple  :: a -> [Expr a] -> Term a
   LRecord :: a -> [(Name a, Expr a)] -> Term a
 
-
-
-data TypeExpr a where
-  Type            :: Type a -> TypeExpr a
-  TParens         :: a -> TypeExpr a -> TypeExpr a
-  TConditional    :: a -> TypeExpr a -> TypeExpr a -> TypeExpr a -> TypeExpr a
-  TClause         :: a -> [Declaration a] -> TypeExpr a -> TypeExpr a
-  TBlock          :: a -> [TypeExpr a] -> TypeExpr a
-  TReturn         :: a -> TypeExpr a -> TypeExpr a
-  TLambda         :: a -> [Name a] -> TypeExpr a -> TypeExpr a
-  TFnApp          :: a -> TypeExpr a -> [TypeExpr a] -> TypeExpr a
-
--- | AKA Literal type
-data Type a where
-  TLiteral :: Term a -> Type a
-  TPrimitive :: a -> BuiltInType -> Type a
-  TTuple :: a -> [TypeExpr a] -> Type a
-  TRecord :: a -> [(Name a, TypeExpr a)] -> Type a
-  TArrow  :: a -> TypeExpr a -> TypeExpr a -> Type a
-  TParametric  :: TypeExpr a -> TypeExpr a -> Type a
-  TIdentifier :: Name a -> Type a
-  TVar :: Name a -> Type a
-  TPolymorphic :: Name a -> Quality -> Type a
-  TQ :: Quality -> Quantity -> Type a -> Type a
-  TUnit :: Type a
-
-data BuiltInType
-    = TBool
-    | TInt
-    | TString
-    deriving (Show, Eq)
-
-
-newtype Kind = Kind Int
-  deriving (Show, Eq)
-
-data Quality = Forall | Exists
-  deriving (Eq, Show)
-data Quantity = Linear | Affine | Relevant | None
-  deriving (Eq, Show)
-
-data Declaration a
-  = Define a (Name a) (Expr a) (Maybe (TypeExpr a))
-  | Data a (Name a) [(String, [TypeExpr a])]
-    deriving (Foldable, Show, Eq)
-
 data Name a = Name a String
     deriving (Foldable, Show, Eq)
 
-data Import a = Import a [String]
-  deriving (Foldable, Show)
-data Module a = Mod a [String]
-  deriving (Foldable, Show)
 
 deriving instance Foldable Expr
 deriving instance Foldable Term
-deriving instance Foldable TypeExpr
-deriving instance Foldable Type
 
 deriving instance Show a => Show (Expr a)
 deriving instance Show a => Show (Term a)
-deriving instance Show a => Show (Type a)
-deriving instance Show a => Show (TypeExpr a)
-
-
 
 deriving instance Eq a => Eq (Expr a)
 deriving instance Eq a => Eq (Term a)
-deriving instance Eq a => Eq (TypeExpr a)
-deriving instance Eq a => Eq (Type a)

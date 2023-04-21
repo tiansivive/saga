@@ -3,6 +3,8 @@
 module Saga.Parser.ParserSpec where
 
 import qualified Saga.AST.Syntax    as AST
+import qualified Saga.AST.Scripts   as Scripts
+import qualified Saga.AST.TypeSystem.Types    as Ty
 import qualified Saga.Lexer.Lexer   as L
 import qualified Saga.Parser.Parser as P
 import           System.IO
@@ -13,7 +15,7 @@ parse str = case P.runSagaExpr str of
     Left msg -> error msg
     Right e  -> e
 
-parseDec :: String -> AST.Declaration L.Range
+parseDec :: String -> Scripts.Declaration L.Range
 parseDec str = case P.runSagaDec str of
     Left msg -> error msg
     Right e  -> e
@@ -132,7 +134,7 @@ spec = do
       life `shouldBe` "life"
 
   describe "Top level: " $ it "can parse declarations" $ do
-      let AST.Define _ (AST.Name _ life) (AST.Term (AST.LInt _ x)) _ = parseDec "let life = 42"
+      let Scripts.Define _ (AST.Name _ life) (AST.Term (AST.LInt _ x)) _ = parseDec "let life = 42"
       x `shouldBe` 42
       life `shouldBe` "life"
 

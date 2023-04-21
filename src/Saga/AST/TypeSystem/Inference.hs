@@ -2,7 +2,7 @@
 {-# HLINT ignore "Use camelCase" #-}
 
 
-module Saga.AST.Inference where
+module Saga.AST.TypeSystem.Inference where
 
 import           Control.Monad.Except
 import           Control.Monad.Identity   (Identity (runIdentity))
@@ -14,11 +14,11 @@ import           Data.List
 import qualified Data.Map                 as Map
 import           Data.Maybe               (fromJust, fromMaybe)
 import qualified Data.Set                 as Set
-import           Saga.AST.Syntax          (BuiltInType (TBool, TInt, TString),
-                                           Expr (..), Name (..),
-                                           Quality (Forall), Term (..),
-                                           Type (TArrow, TLiteral, TParametric, TPolymorphic, TPrimitive, TRecord, TTuple, TUnit, TVar),
-                                           TypeExpr (..))
+import           Saga.AST.Syntax          (
+                                           Expr (..), Name (..), Term(..)
+                                           
+                                       )
+import           Saga.AST.TypeSystem.Types
 import qualified Saga.Lexer.Lexer         as L
 import           Saga.Parser.Parser       (runSagaExpr)
 

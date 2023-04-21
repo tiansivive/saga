@@ -4,8 +4,8 @@
 
 module Saga.AST.Evaluation where
 
-import           Saga.AST.Syntax            (Declaration (..), Expr (..),
-                                             Name (..), Term (..))
+import           Saga.AST.Syntax            (Expr (..),Name (..), Term (..))
+import           Saga.AST.Scripts           (Declaration(..))
 
 import           Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS

@@ -1,8 +1,9 @@
-module Saga.AST.Subtyping where
+module Saga.AST.TypeSystem.Subtyping where
 
 import           Control.Monad            (zipWithM)
 import           Data.Maybe               (fromMaybe, isJust)
-import           Saga.AST.Inference
+import           Saga.AST.TypeSystem.Inference
+import           Saga.AST.TypeSystem.Types
 import           Saga.AST.Syntax
 
 import           Control.Monad.State.Lazy

@@ -28,11 +28,11 @@ let val
     = { field: 1, hidden: "String" }    
 
 let extends 
-    : Type -> Type -> Constraint Subtype
+    : Type -> Type -> Constraint.Subtype
     = \a b -> a |-> b
 
 let Functor 
-    : (Type -> Type) -> Constraint Protocol
+    : (Type -> Type) -> Constraint.Protocol
     = \f -> Protocol 
         { map: a b. (a -> b) -> f a -> f b
         }

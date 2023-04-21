@@ -1,9 +1,10 @@
-module Saga.AST.Check where
+module Saga.AST.TypeSystem.Check where
 
 
-import qualified Saga.AST.Inference       as Infer
-import           Saga.AST.Inference       (Infer)
-import           Saga.AST.Subtyping
+import qualified Saga.AST.TypeSystem.Inference       as Infer
+import           Saga.AST.TypeSystem.Inference       (Infer)
+import           Saga.AST.TypeSystem.Subtyping
+import           Saga.AST.TypeSystem.Types
 import           Saga.AST.Syntax
 
 import           Control.Monad.State.Lazy

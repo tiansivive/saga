@@ -2,9 +2,10 @@ module Saga.AST.SubtypingSpec where
 
 import           Test.Hspec
 
-import qualified Saga.AST.Inference       as I
-import           Saga.AST.Inference       (Env (count, expressions, typeVars))
-import qualified Saga.AST.Subtyping       as ST
+import qualified Saga.AST.TypeSystem.Inference       as I
+import           Saga.AST.TypeSystem.Inference       (Env (count, expressions, typeVars))
+import qualified Saga.AST.TypeSystem.Subtyping       as ST
+import qualified Saga.AST.TypeSystem.Types           as Ty
 import qualified Saga.AST.Syntax          as AST
 
 import           Saga.Parser.Parser       as P
