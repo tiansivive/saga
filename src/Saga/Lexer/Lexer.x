@@ -17,6 +17,8 @@ $digit      = [0-9]
 $alpha      = [a-zA-Z]
 $nl         = [\n]
 $backslash  = [\\]
+-- $forall     = [\∀]
+-- $exists     = [\∃]
 $ws         = [[\ \t\f\v\r]] -- whitespace char set without newline
 
 @id   = ($alpha | \_) ($alpha | $digit | \_ | \' | \? )*
@@ -45,6 +47,15 @@ tokens :-
     
     <0> data                 { tok Data }
 
+    <0> type                 { tok Type }
+    <0> protocol             { tok Protocol }
+    <0> instance             { tok Instance }
+    <0> forall               { tok Forall }
+    -- <0> $forall              { tok Forall }
+    <0> exists               { tok Exists }
+    -- <0> $exists               { tok Exists }
+    <0> alias                { tok Alias }
+
  
 
     <0> $digit+             { tokNumber }
@@ -64,6 +75,8 @@ tokens :-
     <0> ","                 { tok Comma }
     <0> "->"                { tok Arrow }
     <0> "<-"                { tok BackArrow }
+    <0> "=>"                { tok FatArrow }
+    <0> "|->"               { tok PipeArrow }
     <0> "="                 { tok Equals }
     <0> "|"                 { tok Pipe }
     <0> "."                 { tok Dot }

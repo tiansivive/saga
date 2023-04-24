@@ -34,15 +34,23 @@ data Token
   | Type
   | Alias
   | Kind
+  | Forall
+  | Exists
+  | Proof
+  | Infer
+
 
   -- Interfaces
   | Interface
   | Protocol
   | Instance
+  | Implements
 
   -- reserved symbols
   | Arrow
   | BackArrow
+  | FatArrow
+  | PipeArrow
   | Colon
   | Comma
   | Equals

@@ -140,3 +140,9 @@ lexScript fp = do
     pPrint (L.scanMany contents)
     hClose handle
     putStrLn "Bye!"
+
+
+lex :: String -> IO ()
+lex input = do
+    pPrint (L.scanMany input)
+    putStrLn "Bye!"

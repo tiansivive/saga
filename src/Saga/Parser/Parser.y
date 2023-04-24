@@ -76,6 +76,22 @@ import qualified Saga.AST.Scripts as Scripts
   -- Data
   data       { L.RangedToken T.Data _ }
 
+  -- Types
+  ty         { L.RangedToken T.Type _ }
+  alias      { L.RangedToken T.Alias _ }
+  kind       { L.RangedToken T.Kind _ }
+  forall     { L.RangedToken T.Forall _ }
+  exists     { L.RangedToken T.Exists _ }
+  proof      { L.RangedToken T.Proof _ }
+  infer      { L.RangedToken T.Infer _ }
+
+  -- Interfaces
+
+  protocol   { L.RangedToken T.Protocol _ }
+  interface  { L.RangedToken T.Interface _ }
+  instance   { L.RangedToken T.Instance _ }
+  implements { L.RangedToken T.Implements _ }
+
   -- Modules
   module     { L.RangedToken T.Module _ }
   import     { L.RangedToken T.Import _ }
@@ -90,6 +106,9 @@ import qualified Saga.AST.Scripts as Scripts
   ':'        { L.RangedToken T.Colon _ }
   ','        { L.RangedToken T.Comma _ }
   '->'       { L.RangedToken T.Arrow _ }
+  '<-'       { L.RangedToken T.BackArrow _ }
+  '=>'       { L.RangedToken T.FatArrow _ }
+  '|->'      { L.RangedToken T.PipeArrow _ }
   '='        { L.RangedToken T.Equals _ }
   '|'        { L.RangedToken T.Pipe _ }
   '.'        { L.RangedToken T.Dot _ }
@@ -275,10 +294,37 @@ typeExpr
   | typeAtom typeFnArgs '!' { Types.TFnApp (info $1 <-> L.rtRange $3) $1 $2 }
   | typeAtom     { $1 }
  
+qualifier
+  : forall args { Types.TPolyVar Types.Forall Types.None <$> $2  }
+  | exists args { Types.TPolyVar Types.Exists Types.None <$> $2  }
+
+qualifiers
+  : qualifier                  { [$1] }
+  | qualifiers ',' qualifier   { $1 ++ [$3]}
+  | '(' qualifiers ')'         { $2 }
+
+tyQualification
+  :                { [] }             
+  | qualifiers '.' { $1 }
+
+constraint
+  : identifier identifier             { Types.Implements $1 $2 }
+  | identifier implements identifier  { Types.Implements $3 $1 }
+  | identifier '|->' typeAtom         { Types.Extends $3 $1 }
+
+constraints
+  : constraint                  { [$1] }
+  | constraints ',' constraint  { $1 ++ [$3]}
+  | '(' constraints ')'         { $2 }
+
+tyConstraints
+  :                   { [] }
+  | constraints '=>'  { $1 }
+
 
 typeAnnotation
   : { Nothing }
-  | ':' typeExpr { Just $2 } 
+  | ':' tyQualification tyConstraints typeExpr  { Just $ Types.TConstrained (L.rtRange $1 <-> info $4) $2 $3 $4 }
 
 -- SCRIPT
 

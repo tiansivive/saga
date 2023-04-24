@@ -42,7 +42,7 @@ protocol Functor f where
 
 let protoList = List implements Functor where
     map _ [] -> []
-    map f (x: xs) -> (f x) : (map f xås)
+    map f (x: xs) -> (f x) : (map f xas)
 
 
 
