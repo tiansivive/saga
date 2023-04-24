@@ -32,6 +32,7 @@ data Token
 
   -- Types
   | Type
+  | Alias
   | Kind
 
   -- Interfaces

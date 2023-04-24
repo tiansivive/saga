@@ -21,6 +21,7 @@ library
       Saga.AST.Syntax
       Saga.AST.TypeSystem.Check
       Saga.AST.TypeSystem.Inference
+      Saga.AST.TypeSystem.Kinds
       Saga.AST.TypeSystem.Subtyping
       Saga.AST.TypeSystem.Types
       Saga.Lexer.Lexer

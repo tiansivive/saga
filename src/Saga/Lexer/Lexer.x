@@ -42,6 +42,8 @@ tokens :-
     <0> unless               { tok Unless }
     <0> match                { tok Match }
     <0> return               { tok Return }
+    
+    <0> data                 { tok Data }
 
  
 

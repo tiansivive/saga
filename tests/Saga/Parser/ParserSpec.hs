@@ -133,10 +133,18 @@ spec = do
       x `shouldBe` 42
       life `shouldBe` "life"
 
-  describe "Top level: " $ it "can parse declarations" $ do
-      let Scripts.Define _ (AST.Name _ life) (AST.Term (AST.LInt _ x)) _ = parseDec "let life = 42"
+  describe "Top level: " $ do
+    it "can parse declarations" $ do
+      let Scripts.Define (AST.Name _ life) (AST.Term (AST.LInt _ x)) _ = parseDec "let life = 42"
       x `shouldBe` 42
       life `shouldBe` "life"
+    it "can parse data definitions" $ do
+      let Scripts.Data (AST.Name _ one) [Ty.Type (Ty.TVar (AST.Name _ a))] [(AST.Name _ love, [Ty.Type (Ty.TVar (AST.Name _ a1))])] = parseDec "data One a = Love a"
+      one `shouldBe` "One"
+      a `shouldBe` "a"
+      a1 `shouldBe` "a"
+      love `shouldBe` "Love"
+    
 
 
 

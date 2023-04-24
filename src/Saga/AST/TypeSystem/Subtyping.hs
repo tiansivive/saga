@@ -38,10 +38,14 @@ sub `isSubtype` parent = do
 
             in allTrue <$> mapM check pairs2'
 
-        (TParametric cons1 arg1, TParametric cons2 arg2) -> do
-            cons' <- reduce cons1 `isSubtype` reduce cons2
-            arg'  <- reduce arg1  `isSubtype` reduce arg2
-            return $ cons' && arg'
+        (TParametric cons1 args1, TParametric cons2 args2) -> 
+            let 
+                args1' = reduce <$> args1
+                args2' = reduce <$> args2
+            in do
+                cons' <- reduce cons1 `isSubtype` reduce cons2
+                args' <- allTrue <$> zipWithM isSubtype args1' args2'
+                return $ cons' && args'
 
         (TArrow _ input1 output1, TArrow _ input2 output2) -> do
             input' <- reduce input1 `isSubtype` reduce input2

@@ -173,7 +173,7 @@ evalTerm (LRecord _ record) = do
 
 
 evalDeclaration :: (Eq a, Show a) => Declaration a -> EvalState a
-evalDeclaration (Define _ name expr _) = eval $ Assign name expr
+evalDeclaration (Define name expr _) = eval $ Assign name expr
 evalDeclaration _                      = return Void
 
 runEvaluation :: (Eq a, Show a ) => Expr a -> Either String (Value a, Env a)

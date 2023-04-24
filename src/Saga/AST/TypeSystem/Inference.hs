@@ -10,7 +10,7 @@ import           Control.Monad.State.Lazy
 import           Data.Bifunctor           (Bifunctor (first))
 
 import           Control.Applicative      ((<|>))
-import           Data.List
+import Data.List ( find )
 import qualified Data.Map                 as Map
 import           Data.Maybe               (fromJust, fromMaybe)
 import qualified Data.Set                 as Set
@@ -19,6 +19,7 @@ import           Saga.AST.Syntax          (
                                            
                                        )
 import           Saga.AST.TypeSystem.Types
+import           Saga.AST.TypeSystem.Kinds
 import qualified Saga.Lexer.Lexer         as L
 import           Saga.Parser.Parser       (runSagaExpr)
 
@@ -28,11 +29,17 @@ type Infer a = StateT (Env a) (Except (TypeError a))
 data Env a = Env {
     expressions :: Map.Map String (Type a),
     typeVars    :: Map.Map String (Type a),
+    typeKinds   :: Map.Map String (Kind a),
     count       :: Int
 } deriving (Show)
 
 initEnv :: Env a
-initEnv =  Env { expressions = Map.empty, typeVars = Map.empty, count = 0 }
+initEnv =  Env { 
+    expressions = Map.empty, 
+    typeVars = Map.empty, 
+    typeKinds = Map.empty, 
+    count = 0 
+    }
 
 letters :: [String]
 letters = [1..] >>= flip replicateM ['a'..'z']
@@ -52,10 +59,10 @@ data TypeError a
   | UnexpectedType String
   deriving (Show, Eq)
 
-run :: Show a => Infer a Bool -> Either String Bool
+run :: Show a => Infer a b -> Either String b
 run = runInEnv Nothing
 
-runInEnv :: Show a => Maybe (Env a) -> Infer a Bool -> Either String Bool
+runInEnv :: Show a => Maybe (Env a) -> Infer a b -> Either String b
 runInEnv env check = show `first` check'
   where check' = runExcept $ evalStateT check (fromMaybe initEnv env)
 
@@ -158,11 +165,11 @@ typeof_term term = case term of
 
     (LList rt list) -> do
         t <- tyArgs list
-        return $ TParametric builtInList (Type t)
+        return $ TParametric builtInList [Type t]
             where
-                builtInList = Type $ TVar $ Name rt "List"
+                builtInList = Type $ TIdentifier $ Name rt "List"
 
-                tyArgs [] = return $ TVar (Name rt "a")
+                tyArgs [] = fresh rt 
                 tyArgs [expr] = expanded expr
                 tyArgs (expr:rest) = do
                     ty <- expanded expr
@@ -216,3 +223,35 @@ expand ty                        = return ty
 
 unknown :: String -> TypeError a
 unknown id = UnknownType $  "Unknown type \"" <> id <> "\""
+
+
+
+
+
+
+kindOf :: Type a -> Infer a (Kind a)
+kindOf ty = do 
+    env <- get
+    case ty of 
+        TParametric cons args 
+            | (TIdentifier (Name _ id)) <- reduce cons -> resolve env id $ length args
+            | (TVar (Name _ id)) <- reduce cons -> resolve env id $ length args
+            | otherwise -> return Value
+           
+        _ -> return Value
+    where
+        resolve env id l = case Map.lookup id $ typeVars env of 
+            Just (TParametric cons' args') -> do
+                let args'' = drop l args'
+                let tyCons = reduce cons'
+                let tyArgs = reduce <$> args'
+                kind' (tyCons : tyArgs)
+            Just ty -> return Value
+            Nothing -> throwError $ UnknownType id
+        kind' [t]       = kindOf t
+        kind' (t: ts)   = do
+            cons <- kindOf t
+            args <- kind' ts
+            return $ Constructor cons args
+
+

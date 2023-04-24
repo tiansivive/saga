@@ -73,6 +73,9 @@ import qualified Saga.AST.Scripts as Scripts
   match      { L.RangedToken T.Match _ }
   return     { L.RangedToken T.Return _ }
 
+  -- Data
+  data       { L.RangedToken T.Data _ }
+
   -- Modules
   module     { L.RangedToken T.Module _ }
   import     { L.RangedToken T.Import _ }
@@ -242,8 +245,8 @@ ttuple
   : '(' typeExpr ttupleElems ')'    { Types.TTuple (L.rtRange $1 <-> L.rtRange $4) ($2:$3) }
 
 typeParams
-  : typeAtom { $1 }
-  | typeParams typeAtom { Types.Type $ Types.TParametric $1 $2 }
+  : typeAtom { [$1] }
+  | typeParams typeAtom { $1 ++ [$2] }
 
 
 type 
@@ -279,8 +282,13 @@ typeAnnotation
 
 -- SCRIPT
 
+dataExprs
+  : identifier typeFnArgs { [($1, $2)] }
+  | dataExprs '|' identifier typeFnArgs { $1 ++ [($3, $4)] }
+
 dec 
-  : let identifier typeAnnotation '=' expr {  Scripts.Define (L.rtRange $1 <-> info $5) $2 $5 $3 }
+  : let identifier typeAnnotation '=' expr { Scripts.Define $2 $5 $3 }
+  | data identifier args '=' dataExprs     { Scripts.Data $2 (fmap (Types.Type . resolveIdType) $3) $5 }
 
 declarations
   : dec              { [$1] }

@@ -7,6 +7,8 @@ import qualified Saga.AST.Syntax          as AST
 import           Test.Hspec
 
 import           Control.Monad.State.Lazy
+import           Saga.Parser.Parser       as P
+
 
 run :: (Eq a, Show a) => Either String (Ty.Type a) -> Ty.Type a
 run inference = case inference of
@@ -16,9 +18,17 @@ run inference = case inference of
 spec :: Spec
 spec = do
   describe "Inference" $ do
-    it "can infer literal types" $ do
+    describe "Types:" $ do
+      it "can infer literal types" $ do
         (Ty.TLiteral (AST.LInt info n)) <- return $ run $ I.infer "1"
         n `shouldBe` 1
+    -- describe "Kinds:" $ do
+    --   it "can infer higher kinds" $ do
+        
+          
+
+
+
 
 
 

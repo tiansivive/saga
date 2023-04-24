@@ -10,8 +10,8 @@ data Script a =
         deriving (Show)
 
 data Declaration a
-  = Define a (Name a) (Expr a) (Maybe (TypeExpr a))
-  | Data a (Name a) [(String, [TypeExpr a])]
+  = Define (Name a) (Expr a) (Maybe (TypeExpr a))
+  | Data (Name a) [TypeExpr a] [(Name a, [TypeExpr a])]
     deriving (Foldable, Show, Eq)
 
 data Import a = Import a [String]
