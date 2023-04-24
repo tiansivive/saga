@@ -274,13 +274,13 @@ type
   | boolean    { unTok $1 (\range (T.Boolean boolean) -> Types.TLiteral $ Syntax.LBool range boolean) }
   | ttuple      { $1 }
   | trecord     { $1 }
-  | identifier   { resolveIdType $1 }
+  | identifier %shift  { resolveIdType $1 }
   | identifier '<' typeParams '>' { Types.TParametric (Types.Type $ resolveIdType $1) $3 }
 
  
 
 typeAtom
-  : type %shift { Types.Type $1 } 
+  : type  { Types.Type $1 } 
   | '(' typeExpr ')' { Types.TParens (L.rtRange  $1 <-> L.rtRange $3) $2 }
   
 
@@ -293,38 +293,32 @@ typeExpr
   | typeExpr '->' typeExpr  { Types.Type $ Types.TArrow (info $1 <-> info $3) $1 $3 }
   | typeAtom typeFnArgs '!' { Types.TFnApp (info $1 <-> L.rtRange $3) $1 $2 }
   | typeAtom     { $1 }
+  | qualifiers '.' constraints '=>' typeExpr %shift  { Types.TConstrained $1 $3 $5 }
+  | qualifiers '.' typeExpr                          { Types.TConstrained $1 [] $3 }
  
 qualifier
-  : forall args { Types.TPolyVar Types.Forall Types.None <$> $2  }
-  | exists args { Types.TPolyVar Types.Exists Types.None <$> $2  }
+  : forall args { fmap (\a -> Types.TPolyVar Types.Forall Types.None a ) $2  }
+  | exists args { fmap (\a -> Types.TPolyVar Types.Exists Types.None a ) $2  }
 
 qualifiers
-  : qualifier                  { [$1] }
-  | qualifiers ',' qualifier   { $1 ++ [$3]}
+  : qualifier                  { $1 }
+  | qualifiers ',' qualifier   { $1 ++ $3 }
   | '(' qualifiers ')'         { $2 }
 
-tyQualification
-  :                { [] }             
-  | qualifiers '.' { $1 }
 
 constraint
-  : identifier identifier             { Types.Implements $1 $2 }
-  | identifier implements identifier  { Types.Implements $3 $1 }
-  | identifier '|->' typeAtom         { Types.Extends $3 $1 }
+  : identifier identifier %shift            { Types.Implements (Types.Type $ resolveIdType $1) (Types.Type $ resolveIdType $2) }
+  | identifier implements identifier { Types.Implements (Types.Type $ resolveIdType $3) (Types.Type $ resolveIdType $1) }
+  | identifier '|->' typeAtom         { Types.Extends $3 (Types.Type $ resolveIdType $1) }
 
 constraints
   : constraint                  { [$1] }
   | constraints ',' constraint  { $1 ++ [$3]}
   | '(' constraints ')'         { $2 }
 
-tyConstraints
-  :                   { [] }
-  | constraints '=>'  { $1 }
-
-
 typeAnnotation
   : { Nothing }
-  | ':' tyQualification tyConstraints typeExpr  { Just $ Types.TConstrained (L.rtRange $1 <-> info $4) $2 $3 $4 }
+  | ':' typeExpr { Just $2 }
 
 -- SCRIPT
 

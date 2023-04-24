@@ -17,7 +17,7 @@ data TypeExpr a where
   TReturn         :: a -> TypeExpr a -> TypeExpr a
   TLambda         :: a -> [Name a] -> TypeExpr a -> TypeExpr a
   TFnApp          :: a -> TypeExpr a -> [TypeExpr a] -> TypeExpr a
-  TConstrained :: a -> [PolymorphicVar a] -> [Constraint a] -> TypeExpr a -> TypeExpr a
+  TConstrained    :: [PolymorphicVar a] -> [Constraint a] -> TypeExpr a -> TypeExpr a
 
 -- | AKA Literal type
 data Type a where
@@ -29,7 +29,9 @@ data Type a where
   TParametric  :: TypeExpr a -> [TypeExpr a] -> Type a
   TVar :: Name a -> Type a
   TIdentifier :: Name a -> Type a
+  TProtocol :: Name a -> [Name a] -> [(String, Type a)] -> Type a 
   TUnit :: Type a
+  
   
 data BuiltInType
     = TBool
@@ -37,15 +39,12 @@ data BuiltInType
     | TString
     deriving (Show, Eq)
 
-type Argument = String
-data Protocol a = Protocol (Name a) [Argument] [(String, Type a)]
-  deriving (Foldable, Show, Eq)
 
 data PolymorphicVar a = TPolyVar Quality Quantity (Name a) deriving (Foldable, Show, Eq)
 
 data Constraint a
-  = Implements (Protocol a) (Type a)
-  | Extends (Type a) (Type a)
+  = Implements (TypeExpr a) (TypeExpr a)
+  | Extends (TypeExpr a) (TypeExpr a)
     deriving (Foldable, Show, Eq)
 
 data Quality = Forall | Exists

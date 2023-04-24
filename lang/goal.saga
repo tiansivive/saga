@@ -51,7 +51,7 @@ let tsStyle
     . (Show a, Eq b, Functor f)
     , (a |-> { foo: Int, bar: String}, b |-> HideIt, c `extends` a)
     , proof a != b, infer b != c 
-    => a b c -> f a b c
+    => a b c -> f <a b c>
     = \x y z -> pure x y z!
 
 

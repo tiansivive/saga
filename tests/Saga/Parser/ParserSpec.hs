@@ -20,6 +20,11 @@ parseDec str = case P.runSagaDec str of
     Left msg -> error msg
     Right e  -> e
 
+parseType :: String -> Ty.TypeExpr L.Range
+parseType str = case P.runSagaType str of
+    Left msg -> error msg
+    Right e  -> e
+
 
 parseScript :: FilePath -> IO (AST.Expr L.Range)
 parseScript fp = do
@@ -144,7 +149,48 @@ spec = do
       a `shouldBe` "a"
       a1 `shouldBe` "a"
       love `shouldBe` "Love"
+
+  describe "Types: " $ do
+    it "can parse primitive types" $ do
+        let Ty.Type (Ty.TPrimitive _ int) = parseType "Int"
+        let Ty.Type (Ty.TPrimitive _ bool) = parseType "Bool"
+        let Ty.Type (Ty.TPrimitive _ string) = parseType "String"
+        int `shouldBe` Ty.TInt
+        bool `shouldBe` Ty.TBool
+        string `shouldBe` Ty.TString
     
+    it "can parse arrow types" $ do
+        let Ty.Type (Ty.TArrow _ (Ty.Type (Ty.TPrimitive _ int)) (Ty.Type (Ty.TPrimitive _ string))) = parseType "Int -> String"
+        int `shouldBe` Ty.TInt
+        string `shouldBe` Ty.TString
+    
+    it "can parse qualified constrained types" $ do
+        let Ty.TConstrained qualifiers constraints ty = parseType "forall f a, exists b. (Functor f, Show a), a |-> Obj => f <a> -> b"
+        let 
+            [ Ty.TPolyVar Ty.Forall Ty.None (AST.Name _ f)
+                , Ty.TPolyVar Ty.Forall Ty.None (AST.Name _ a)
+                , Ty.TPolyVar Ty.Exists Ty.None (AST.Name _ b)
+                ] = qualifiers 
+        let 
+            [ Ty.Implements (Ty.Type (Ty.TIdentifier (AST.Name _ functor)))  (Ty.Type (Ty.TVar (AST.Name _ f1)))
+                , Ty.Implements (Ty.Type (Ty.TIdentifier (AST.Name _ show))) (Ty.Type (Ty.TVar (AST.Name _ a1)))
+                , Ty.Extends (Ty.Type (Ty.TIdentifier (AST.Name _ obj))) (Ty.Type (Ty.TVar (AST.Name _ a2)))
+                ] = constraints 
+            
+        let Ty.Type (Ty.TArrow _ (Ty.Type (Ty.TParametric cons args)) (Ty.Type (Ty.TVar (AST.Name _ b1)))) = ty 
+
+        f `shouldBe` "f"
+        a `shouldBe` "a"
+        b `shouldBe` "b"
+        f1 `shouldBe` "f"
+        a1 `shouldBe` "a"
+        a2 `shouldBe` "a"
+        b1 `shouldBe` "b"
+        functor `shouldBe` "Functor"
+        show `shouldBe` "Show"
+        obj `shouldBe` "Obj"
+
+
 
 
 
