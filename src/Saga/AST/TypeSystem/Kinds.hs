@@ -1,3 +1,4 @@
+
 {-# LANGUAGE DeriveFoldable     #-}
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -14,3 +15,4 @@ data Kind a
 
 deriving instance Show a => Show (Kind a)
 deriving instance Eq a => Eq (Kind a)
+deriving instance Foldable Kind

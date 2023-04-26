@@ -20,6 +20,7 @@ import qualified Saga.Lexer.Lexer as L
 import qualified Saga.Lexer.Tokens as T
 import qualified Saga.AST.Syntax as Syntax
 import qualified Saga.AST.TypeSystem.Types as Types
+import qualified Saga.AST.TypeSystem.Kinds as Kinds
 
 import qualified Saga.AST.Scripts as Scripts
 
@@ -293,8 +294,8 @@ typeExpr
   | typeExpr '->' typeExpr  { Types.Type $ Types.TArrow (info $1 <-> info $3) $1 $3 }
   | typeAtom typeFnArgs '!' { Types.TFnApp (info $1 <-> L.rtRange $3) $1 $2 }
   | typeAtom     { $1 }
-  | qualifiers '.' constraints '=>' typeExpr %shift  { Types.TConstrained $1 $3 $5 }
-  | qualifiers '.' typeExpr                          { Types.TConstrained $1 [] $3 }
+  | qualifiers '.' constraints '=>' typeExpr %shift  { Types.Type $ Types.TConstrained $1 $3 $5 }
+  | qualifiers '.' typeExpr                          { Types.Type $ Types.TConstrained $1 [] $3 }
  
 qualifier
   : forall args { fmap (\a -> Types.TPolyVar Types.Forall Types.None a ) $2  }
@@ -320,15 +321,36 @@ typeAnnotation
   : { Nothing }
   | ':' typeExpr { Just $2 }
 
+
+-- Kinds
+
+kindExpr
+  : kindExpr '->' kindExpr  { Kinds.Constructor $1 $3 }
+  | identifier { resolveIdKind $1 }
+
+
+
+kindAnnotation
+  : { Nothing }
+  | ':' kindExpr { Just $2 }
+
 -- SCRIPT
 
+
+dataExpr
+  : identifier ':' typeExpr { ($1, $3) }
+
 dataExprs
-  : identifier typeFnArgs { [($1, $2)] }
-  | dataExprs '|' identifier typeFnArgs { $1 ++ [($3, $4)] }
+    : dataExpr { [$1] }
+    | dataExprs '|' dataExpr { $1 ++ [$3] }
+
+
 
 dec 
-  : let identifier typeAnnotation '=' expr { Scripts.Define $2 $5 $3 }
-  | data identifier args '=' dataExprs     { Scripts.Data $2 (fmap (Types.Type . resolveIdType) $3) $5 }
+  : let identifier typeAnnotation '=' expr        { Scripts.Let $2 $3 $5 }
+  | data identifier kindAnnotation '=' dataExprs  { Scripts.Data $2 $3 $5 }
+  | ty identifier kindAnnotation '=' typeExpr     { Scripts.Type $2 $3 $5 }
+ 
 
 declarations
   : dec              { [$1] }
@@ -350,6 +372,15 @@ script
 
 {
 
+
+resolveIdKind :: Syntax.Name a -> Kinds.Kind a
+resolveIdKind (Syntax.Name _ id) = 
+  case isLower $ head id of
+    True  -> Kinds.KVar id
+    False -> case id of 
+      "Type" -> Kinds.Value
+      "Constraint" -> Kinds.Constraint
+      k -> error $ "Unrecognised kind identifier:" <> k
 
 resolveIdType :: Syntax.Name a -> Types.Type a
 resolveIdType name@(Syntax.Name info id) = 

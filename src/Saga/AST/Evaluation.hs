@@ -4,8 +4,8 @@
 
 module Saga.AST.Evaluation where
 
-import           Saga.AST.Syntax            (Expr (..),Name (..), Term (..))
-import           Saga.AST.Scripts           (Declaration(..))
+import           Saga.AST.Scripts           (Declaration (..))
+import           Saga.AST.Syntax            (Expr (..), Name (..), Term (..))
 
 import           Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
@@ -173,8 +173,8 @@ evalTerm (LRecord _ record) = do
 
 
 evalDeclaration :: (Eq a, Show a) => Declaration a -> EvalState a
-evalDeclaration (Define name expr _) = eval $ Assign name expr
-evalDeclaration _                      = return Void
+evalDeclaration (Let name _ expr) = eval $ Assign name expr
+evalDeclaration _                 = return Void
 
 runEvaluation :: (Eq a, Show a ) => Expr a -> Either String (Value a, Env a)
 runEvaluation e = runStateT (eval e) Map.empty

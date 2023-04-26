@@ -48,13 +48,15 @@ tokens :-
     <0> data                 { tok Data }
 
     <0> type                 { tok Type }
-    <0> protocol             { tok Protocol }
-    <0> instance             { tok Instance }
     <0> forall               { tok Forall }
     -- <0> $forall              { tok Forall }
     <0> exists               { tok Exists }
     -- <0> $exists               { tok Exists }
     <0> alias                { tok Alias }
+    <0> protocol             { tok Protocol }
+    <0> implements           { tok Implements }
+    <0> impl                 { tok Instance }
+    <0> instance             { tok Instance }
 
  
 

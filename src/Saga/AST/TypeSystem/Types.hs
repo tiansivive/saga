@@ -1,12 +1,12 @@
+{-# LANGUAGE DeriveFoldable     #-}
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DeriveFoldable     #-}
 
-module Saga.AST.TypeSystem.Types where 
+module Saga.AST.TypeSystem.Types where
 
 
-import Saga.AST.Syntax
-        
+import           Saga.AST.Syntax
+
 
 data TypeExpr a where
   Type            :: Type a -> TypeExpr a
@@ -17,7 +17,7 @@ data TypeExpr a where
   TReturn         :: a -> TypeExpr a -> TypeExpr a
   TLambda         :: a -> [Name a] -> TypeExpr a -> TypeExpr a
   TFnApp          :: a -> TypeExpr a -> [TypeExpr a] -> TypeExpr a
-  TConstrained    :: [PolymorphicVar a] -> [Constraint a] -> TypeExpr a -> TypeExpr a
+
 
 -- | AKA Literal type
 data Type a where
@@ -25,14 +25,21 @@ data Type a where
   TPrimitive :: a -> BuiltInType -> Type a
   TTuple :: a -> [TypeExpr a] -> Type a
   TRecord :: a -> [(Name a, TypeExpr a)] -> Type a
+
   TArrow  :: a -> TypeExpr a -> TypeExpr a -> Type a
   TParametric  :: TypeExpr a -> [TypeExpr a] -> Type a
   TVar :: Name a -> Type a
   TIdentifier :: Name a -> Type a
-  TProtocol :: Name a -> [Name a] -> [(String, Type a)] -> Type a 
+  TProtocol :: Name a -> [Name a] -> [(Name a, TypeExpr a)] -> Type a
+  TConstrained    :: [PolymorphicVar a] -> [Constraint a] -> TypeExpr a -> Type a
   TUnit :: Type a
-  
-  
+
+
+data Foo a where
+  One :: Int -> Foo a
+  Two :: a -> Foo a
+
+
 data BuiltInType
     = TBool
     | TInt

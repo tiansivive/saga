@@ -31,18 +31,61 @@ let extends
     : Type -> Type -> Constraint.Subtype
     = \a b -> a |-> b
 
-let Functor 
+type Functor 
     : (Type -> Type) -> Constraint.Protocol
-    = \f -> Protocol 
-        { map: a b. (a -> b) -> f a -> f b
+    = \f -> 
+        { map: forall a b. (a -> b) -> f a -> f b
         }
 
-protocol Functor f where
-    map: a b. (a -> b) -> f a -> f b
+protocol Functor: f where
+    map: (a -> b) -> f a -> f b
 
-let protoList = List implements Functor where
-    map _ [] -> []
-    map f (x: xs) -> (f x) : (map f xas)
+
+let protoList = Show e => impl Functor: List  where
+    map | _ [] -> []
+        | f (x: xs) -> (f x) : (map f xas)
+
+
+alias Second = Int
+type Lift = exists f a. { of: a -> f <a> }
+type Pointed = forall f, exists a. \f -> { of: a -> f <a> }
+data Custom
+    : (Type -> Type) 
+    = Simple: Custom <Int>   
+    | Product: String -> Custom <Int>
+    | Forall: forall a. Custom <a> 
+    | Constrained: forall a. Show a => Custom <a> 
+    | Parameterized: forall a. a -> Custom <a>
+    | Existential: exists a. a -> Custom <Int>
+    | Complex: forall a, exists b. Show b, a |-> { id: String } => b -> (String, Int) -> Custom <a>
+    | Lambda: forall f, exists a. \f -> Custom <{ of: a -> f <a> }>
+
+type Heterogeneous = forall f, exists a. \f -> f <a>
+
+
+let parVal
+    : Parametric <List>
+    = Const { of: x -> [x] }
+
+// would this work?
+let h:
+    : exists a. a -> Heterogeneous List! <a>
+    = \x -> [x]
+
+let array
+    : Lift 
+    = { of: \n -> [n] } 
+let v = array.of 1!
+
+let other
+    : Pointed List!
+    = { of: \n -> [n] } 
+
+
+
+let protoList = Show e => impl Functor: Either e  where
+    map | _ [] -> []
+        | f (x: xs) -> (f x) : (map f xas)
 
 
 
@@ -50,8 +93,7 @@ let tsStyle
     : forall a b c, exists f
     . (Show a, Eq b, Functor f)
     , (a |-> { foo: Int, bar: String}, b |-> HideIt, c `extends` a)
-    , proof a != b, infer b != c 
-    => a b c -> f <a b c>
+    => a -> b -> c -> f <a b c>
     = \x y z -> pure x y z!
 
 
@@ -73,8 +115,8 @@ let mapType
 
 
 
-type Either = \a b -> Left a | Right b
+data Either = \a b -> Left a | Right b
 
-let e: Either <a> :: Type -> Type 
+let e: Either a! :: Type -> Type 
 
 import P

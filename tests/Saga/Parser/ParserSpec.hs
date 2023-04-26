@@ -2,11 +2,11 @@
 
 module Saga.Parser.ParserSpec where
 
-import qualified Saga.AST.Syntax    as AST
-import qualified Saga.AST.Scripts   as Scripts
-import qualified Saga.AST.TypeSystem.Types    as Ty
-import qualified Saga.Lexer.Lexer   as L
-import qualified Saga.Parser.Parser as P
+import qualified Saga.AST.Scripts          as Scripts
+import qualified Saga.AST.Syntax           as AST
+import qualified Saga.AST.TypeSystem.Types as Ty
+import qualified Saga.Lexer.Lexer          as L
+import qualified Saga.Parser.Parser        as P
 import           System.IO
 import           Test.Hspec
 
@@ -140,14 +140,13 @@ spec = do
 
   describe "Top level: " $ do
     it "can parse declarations" $ do
-      let Scripts.Define (AST.Name _ life) (AST.Term (AST.LInt _ x)) _ = parseDec "let life = 42"
+      let Scripts.Let (AST.Name _ life) _ (AST.Term (AST.LInt _ x)) = parseDec "let life = 42"
       x `shouldBe` 42
       life `shouldBe` "life"
     it "can parse data definitions" $ do
-      let Scripts.Data (AST.Name _ one) [Ty.Type (Ty.TVar (AST.Name _ a))] [(AST.Name _ love, [Ty.Type (Ty.TVar (AST.Name _ a1))])] = parseDec "data One a = Love a"
+      let Scripts.Data (AST.Name _ one) Nothing [(AST.Name _ love, Ty.Type (Ty.TVar (AST.Name _ a)))] = parseDec "data One = Love: a"
       one `shouldBe` "One"
       a `shouldBe` "a"
-      a1 `shouldBe` "a"
       love `shouldBe` "Love"
 
   describe "Types: " $ do
@@ -158,26 +157,26 @@ spec = do
         int `shouldBe` Ty.TInt
         bool `shouldBe` Ty.TBool
         string `shouldBe` Ty.TString
-    
+
     it "can parse arrow types" $ do
         let Ty.Type (Ty.TArrow _ (Ty.Type (Ty.TPrimitive _ int)) (Ty.Type (Ty.TPrimitive _ string))) = parseType "Int -> String"
         int `shouldBe` Ty.TInt
         string `shouldBe` Ty.TString
-    
+
     it "can parse qualified constrained types" $ do
-        let Ty.TConstrained qualifiers constraints ty = parseType "forall f a, exists b. (Functor f, Show a), a |-> Obj => f <a> -> b"
-        let 
+        let Ty.Type (Ty.TConstrained qualifiers constraints ty) = parseType "forall f a, exists b. (Functor f, a implements Show), a |-> Obj => f <a> -> b"
+        let
             [ Ty.TPolyVar Ty.Forall Ty.None (AST.Name _ f)
                 , Ty.TPolyVar Ty.Forall Ty.None (AST.Name _ a)
                 , Ty.TPolyVar Ty.Exists Ty.None (AST.Name _ b)
-                ] = qualifiers 
-        let 
+                ] = qualifiers
+        let
             [ Ty.Implements (Ty.Type (Ty.TIdentifier (AST.Name _ functor)))  (Ty.Type (Ty.TVar (AST.Name _ f1)))
                 , Ty.Implements (Ty.Type (Ty.TIdentifier (AST.Name _ show))) (Ty.Type (Ty.TVar (AST.Name _ a1)))
                 , Ty.Extends (Ty.Type (Ty.TIdentifier (AST.Name _ obj))) (Ty.Type (Ty.TVar (AST.Name _ a2)))
-                ] = constraints 
-            
-        let Ty.Type (Ty.TArrow _ (Ty.Type (Ty.TParametric cons args)) (Ty.Type (Ty.TVar (AST.Name _ b1)))) = ty 
+                ] = constraints
+
+        let Ty.Type (Ty.TArrow _ (Ty.Type (Ty.TParametric cons args)) (Ty.Type (Ty.TVar (AST.Name _ b1)))) = ty
 
         f `shouldBe` "f"
         a `shouldBe` "a"
