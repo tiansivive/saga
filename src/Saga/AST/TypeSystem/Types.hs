@@ -19,25 +19,27 @@ data TypeExpr a where
   TFnApp          :: a -> TypeExpr a -> [TypeExpr a] -> TypeExpr a
 
 
--- | AKA Literal type
+
 data Type a where
   TLiteral :: Term a -> Type a
   TPrimitive :: a -> BuiltInType -> Type a
   TTuple :: a -> [TypeExpr a] -> Type a
   TRecord :: a -> [(Name a, TypeExpr a)] -> Type a
-
   TArrow  :: a -> TypeExpr a -> TypeExpr a -> Type a
+
   TParametric  :: TypeExpr a -> [TypeExpr a] -> Type a
+
   TVar :: Name a -> Type a
   TIdentifier :: Name a -> Type a
-  TProtocol :: Name a -> [Name a] -> [(Name a, TypeExpr a)] -> Type a
   TConstrained    :: [PolymorphicVar a] -> [Constraint a] -> TypeExpr a -> Type a
+
+  TProtocol       :: Name a -> Type a -> Type a
+  TImplementation :: Name a -> TypeExpr a -> [RequiredImplId a] -> Type a
+
   TUnit :: Type a
 
+type RequiredImplId = Name
 
-data Foo a where
-  One :: Int -> Foo a
-  Two :: a -> Foo a
 
 
 data BuiltInType

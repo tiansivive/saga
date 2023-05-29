@@ -15,39 +15,35 @@ let fn
 
 let fn2 = fn<String> 
 
-type HideIt = exists (Show a) => { field: Int, hidden: a } 
-data HideData a = exists (Eq b) => Hide { field: a, hidden: b }
-
-let HideDataFn
-    : Type -> Type
-    = \a -> exists (Eq b) => { field: a, hidden: b }
-
-
-let val
-    : HideDataFn <Int>
-    = { field: 1, hidden: "String" }    
 
 let extends 
     : Type -> Type -> Constraint.Subtype
     = \a b -> a |-> b
 
-type Functor 
-    : (Type -> Type) -> Constraint.Protocol
-    = \f -> 
-        { map: forall a b. (a -> b) -> f a -> f b
-        }
+let get
+    : String -> (Type |-> Record) -> Type
+    = \k r -> r.k
 
-protocol Functor: f where
-    map: (a -> b) -> f a -> f b
+let tsStyle
+    : forall a b c, exists f
+    . (Show a, Eq b, Functor f)
+    , (a |-> { foo: Int, bar: String}, b |-> HideIt, c `extends` a)
+    => a -> b -> c -> f <a b c>
+    = \x y z -> pure x y z!
 
 
-let protoList = Show e => impl Functor: List  where
-    map | _ [] -> []
-        | f (x: xs) -> (f x) : (map f xas)
+let mapType
+    : (Type |-> Record) -> Type
+    = \t -> fold (\r k -> insert k (mapped k!) r ) {} (keys t!)!
+        where 
+            mapped = match 
+                "foo" -> Int
+                k     -> get k t
+       
 
 
 alias Second = Int
-type Lift = exists f a. { of: a -> f <a> }
+type Hidden = exists f a. { of: a -> f <a> }
 type Pointed = forall f, exists a. \f -> { of: a -> f <a> }
 data Custom
     : (Type -> Type) 
@@ -63,9 +59,13 @@ data Custom
 type Heterogeneous = forall f, exists a. \f -> f <a>
 
 
-let parVal
-    : Parametric <List>
-    = Const { of: x -> [x] }
+let hiddenField
+    : Hidden
+    = { of: x -> Just x } // of is a -> f <a>
+
+let paramConstructor
+    : Pointed List!
+    = { of: x -> [x] } // x is a, f is List
 
 // would this work?
 let h:
@@ -81,42 +81,62 @@ let other
     : Pointed List!
     = { of: \n -> [n] } 
 
+/* Investigate also allowing more compact syntax like 
+ * data Either = \e a -> Left <e> | Right <a> 
+ * or
+ * data Either = \e a -> Left: e | Right: a -- possibly leveraging union types?
+*/ 
+data Either 
+    : Type -> Type -> Type
+    = Left: forall a. e -> Either <e a>
+    | Right: forall e. a -> Either <e a>
 
 
-let protoList = Show e => impl Functor: Either e  where
-    map | _ [] -> []
-        | f (x: xs) -> (f x) : (map f xas)
+ 
+// is this allowed?  
+let e: Either <string> :: Type -> Type 
 
+type Show
+    : Type -> Protocol
+    = forall a. \a -> { show: a -> String }
 
+type Functor 
+    : (Type -> Type) -> Protocol
+    = \f -> 
+        { map: forall a b. (a -> b) -> f a -> f b
+        }
 
-let tsStyle
-    : forall a b c, exists f
-    . (Show a, Eq b, Functor f)
-    , (a |-> { foo: Int, bar: String}, b |-> HideIt, c `extends` a)
-    => a -> b -> c -> f <a b c>
-    = \x y z -> pure x y z!
-
-
-
-let get
-    : String -> (Type |-> Record) -> Type
-    = \k r -> r.k
-
-
-let mapType
-    : (Type |-> Record) -> Type
-    = \t -> fold (\r k -> insert k (mapped k!) r ) {} (keys t!)!
-        where 
-            mapped = match 
-                "foo" -> Int
-                k     -> get k t
-       
+type Ord
+    : Type -> Protocol
+    = forall a. Eq a => \a -> 
+        { compare: a -> a -> Ordering
+        , ((<), (<=), (>=), (>)) : a -> a -> Bool
+        , (max, min)             v: a -> a -> a
+        }
 
 
 
 
-data Either = \a b -> Left a | Right b
+let functorEitherImpl 
+    : impl Functor: forall e. Either <e> 
+    = { map: \f fab -> case fab of
+            Right a -> Right $ f a!
+            e -> e
+      }
+        
 
-let e: Either a! :: Type -> Type 
+let functorListImpl
+    : impl Functor: List =
+    { map = \f fa -> case fab of
+        []           -> []
+        (head, tail) -> (f head! : map f tail!)
+    } 
+
+
+
+let ordImpl
+    : with myTypeEqImpl => impl Ord: MyType =
+    { impl... }
+
 
 import P

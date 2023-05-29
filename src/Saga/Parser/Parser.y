@@ -3,9 +3,11 @@ module Saga.Parser.Parser
     ( runSagaScript
     , runSagaExpr
     , runSagaType
+    , runSagaKind
     , runSagaDec
     , parseSagaExpr
     , parseSagaType
+    , parseSagaKind
     , parseSagaDec
     ) where
 
@@ -29,6 +31,7 @@ import qualified Saga.AST.Scripts as Scripts
 %name parseSagaScript script
 %name parseSagaExpr expr
 %name parseSagaType typeExpr
+%name parseSagaKind kindExpr
 %name parseSagaDec dec
 %tokentype { L.RangedToken }
 %error { parseError }
@@ -294,9 +297,11 @@ typeExpr
   | typeExpr '->' typeExpr  { Types.Type $ Types.TArrow (info $1 <-> info $3) $1 $3 }
   | typeAtom typeFnArgs '!' { Types.TFnApp (info $1 <-> L.rtRange $3) $1 $2 }
   | typeAtom     { $1 }
-  | qualifiers '.' constraints '=>' typeExpr %shift  { Types.Type $ Types.TConstrained $1 $3 $5 }
   | qualifiers '.' typeExpr                          { Types.Type $ Types.TConstrained $1 [] $3 }
- 
+  | qualifiers '.' constraints '=>' typeExpr %shift  { Types.Type $ Types.TConstrained $1 $3 $5 }
+  | implements identifier ':' typeExpr %shift { Types.Type (Types.TImplementation $2 $4 []) }
+  | with args '=>' implements identifier ':' typeExpr %shift { Types.Type (Types.TImplementation $5 $7 $2) }
+
 qualifier
   : forall args { fmap (\a -> Types.TPolyVar Types.Forall Types.None a ) $2  }
   | exists args { fmap (\a -> Types.TPolyVar Types.Exists Types.None a ) $2  }
@@ -325,7 +330,7 @@ typeAnnotation
 -- Kinds
 
 kindExpr
-  : kindExpr '->' kindExpr  { Kinds.Constructor $1 $3 }
+  : kindExpr '->' kindExpr  { Kinds.KConstructor $1 $3 }
   | identifier { resolveIdKind $1 }
 
 
@@ -378,8 +383,9 @@ resolveIdKind (Syntax.Name _ id) =
   case isLower $ head id of
     True  -> Kinds.KVar id
     False -> case id of 
-      "Type" -> Kinds.Value
-      "Constraint" -> Kinds.Constraint
+      "Type" -> Kinds.KValue
+      "Protocol" -> Kinds.KProtocol
+      "Constraint" -> Kinds.KConstraint
       k -> error $ "Unrecognised kind identifier:" <> k
 
 resolveIdType :: Syntax.Name a -> Types.Type a
@@ -440,6 +446,9 @@ runSagaExpr input = input `run` parseSagaExpr
 
 runSagaType :: String -> Either String (Types.TypeExpr L.Range)
 runSagaType input = input `run` parseSagaType
+
+runSagaKind :: String -> Either String (Kinds.Kind L.Range)
+runSagaKind input = input `run` parseSagaKind
 
 runSagaDec :: String -> Either String (Scripts.Declaration L.Range)
 runSagaDec input = input `run` parseSagaDec

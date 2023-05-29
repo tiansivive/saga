@@ -55,7 +55,7 @@ tokens :-
     <0> alias                { tok Alias }
     <0> protocol             { tok Protocol }
     <0> implements           { tok Implements }
-    <0> impl                 { tok Instance }
+    <0> impl                 { tok Implements }
     <0> instance             { tok Instance }
 
  

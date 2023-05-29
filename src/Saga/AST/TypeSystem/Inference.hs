@@ -5,23 +5,21 @@
 module Saga.AST.TypeSystem.Inference where
 
 import           Control.Monad.Except
-import           Control.Monad.Identity   (Identity (runIdentity))
+import           Control.Monad.Identity    (Identity (runIdentity))
 import           Control.Monad.State.Lazy
-import           Data.Bifunctor           (Bifunctor (first))
+import           Data.Bifunctor            (Bifunctor (first))
 
-import           Control.Applicative      ((<|>))
-import Data.List ( find )
-import qualified Data.Map                 as Map
-import           Data.Maybe               (fromJust, fromMaybe)
-import qualified Data.Set                 as Set
-import           Saga.AST.Syntax          (
-                                           Expr (..), Name (..), Term(..)
-                                           
-                                       )
+import           Control.Applicative       ((<|>))
+import           Data.List                 (find)
+import qualified Data.Map                  as Map
+import           Data.Maybe                (fromJust, fromMaybe)
+import qualified Data.Set                  as Set
+import           Saga.AST.Syntax           (Expr (..), Name (..), Term (..))
+
+import           Saga.AST.TypeSystem.Kinds (Kind (KConstraint, KConstructor, KProtocol, KValue, KVar))
 import           Saga.AST.TypeSystem.Types
-import           Saga.AST.TypeSystem.Kinds
-import qualified Saga.Lexer.Lexer         as L
-import           Saga.Parser.Parser       (runSagaExpr)
+import qualified Saga.Lexer.Lexer          as L
+import           Saga.Parser.Parser        (runSagaExpr)
 
 
 type Infer a = StateT (Env a) (Except (TypeError a))
@@ -34,11 +32,11 @@ data Env a = Env {
 } deriving (Show)
 
 initEnv :: Env a
-initEnv =  Env { 
-    expressions = Map.empty, 
-    typeVars = Map.empty, 
-    typeKinds = Map.empty, 
-    count = 0 
+initEnv =  Env {
+    expressions = Map.empty,
+    typeVars = Map.empty,
+    typeKinds = Map.empty,
+    count = 0
     }
 
 letters :: [String]
@@ -169,7 +167,7 @@ typeof_term term = case term of
             where
                 builtInList = Type $ TIdentifier $ Name rt "List"
 
-                tyArgs [] = fresh rt 
+                tyArgs [] = fresh rt
                 tyArgs [expr] = expanded expr
                 tyArgs (expr:rest) = do
                     ty <- expanded expr
@@ -230,28 +228,31 @@ unknown id = UnknownType $  "Unknown type \"" <> id <> "\""
 
 
 kindOf :: Type a -> Infer a (Kind a)
-kindOf ty = do 
+kindOf ty = do
     env <- get
-    case ty of 
-        TParametric cons args 
+    case ty of
+        TProtocol _ _ -> return KProtocol
+        TConstrained {} -> return KConstraint
+
+        TParametric cons args
             | (TIdentifier (Name _ id)) <- reduce cons -> resolve env id $ length args
             | (TVar (Name _ id)) <- reduce cons -> resolve env id $ length args
-            | otherwise -> return Value
-           
-        _ -> return Value
+            | otherwise -> return KValue
+
+        _ -> return KValue
     where
-        resolve env id l = case Map.lookup id $ typeVars env of 
+        resolve env id l = case Map.lookup id $ typeVars env of
             Just (TParametric cons' args') -> do
                 let args'' = drop l args'
                 let tyCons = reduce cons'
                 let tyArgs = reduce <$> args'
                 kind' (tyCons : tyArgs)
-            Just ty -> return Value
+            Just ty -> return KValue
             Nothing -> throwError $ UnknownType id
         kind' [t]       = kindOf t
         kind' (t: ts)   = do
             cons <- kindOf t
             args <- kind' ts
-            return $ Constructor cons args
+            return $ KConstructor cons args
 
 

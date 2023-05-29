@@ -23,6 +23,7 @@ data Expr a where
   Parens         :: a -> Expr a -> Expr a
   FieldAccess    :: a -> Expr a -> [Name a] -> Expr a
 
+
 -- | AKA Literal term
 data Term a where
   LInt    :: a -> Int -> Term a

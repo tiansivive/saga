@@ -2,6 +2,7 @@
 
 module Saga.Parser.ParserSpec where
 
+
 import qualified Saga.AST.Scripts          as Scripts
 import qualified Saga.AST.Syntax           as AST
 import qualified Saga.AST.TypeSystem.Types as Ty
@@ -140,14 +141,44 @@ spec = do
 
   describe "Top level: " $ do
     it "can parse declarations" $ do
-      let Scripts.Let (AST.Name _ life) _ (AST.Term (AST.LInt _ x)) = parseDec "let life = 42"
+      let Scripts.Let (AST.Name _ life) Nothing (AST.Term (AST.LInt _ x)) = parseDec "let life = 42"
       x `shouldBe` 42
       life `shouldBe` "life"
+
+    it "can parse protocol implementations" $ do
+      let Scripts.Let
+            (AST.Name _ id)
+            (Just (Ty.Type (Ty.TImplementation protocol (Ty.Type ty) [])))
+            (AST.Term (AST.LRecord _ r)) = parseDec "let functorListImpl: impl Functor: List = { }"
+
+      let AST.Name _ functor = protocol
+      let Ty.TIdentifier (AST.Name _ tyId) = ty
+
+      r `shouldBe` []
+      id `shouldBe` "functorListImpl"
+      functor `shouldBe` "Functor"
+      tyId `shouldBe` "List"
+
+
     it "can parse data definitions" $ do
       let Scripts.Data (AST.Name _ one) Nothing [(AST.Name _ love, Ty.Type (Ty.TVar (AST.Name _ a)))] = parseDec "data One = Love: a"
       one `shouldBe` "One"
       a `shouldBe` "a"
       love `shouldBe` "Love"
+
+    it "can parse sum datatype definitions" $ do
+      let Scripts.Data
+            (AST.Name _ sum)
+            Nothing
+            [ (AST.Name _ one, Ty.Type (Ty.TPrimitive _ int))
+            , (AST.Name _ two, Ty.Type (Ty.TPrimitive _ string))
+            ] = parseDec "data Sum = One: Int | Two: String"
+
+      sum `shouldBe` "Sum"
+      one `shouldBe` "One"
+      two `shouldBe` "Two"
+      int `shouldBe` Ty.TInt
+      string `shouldBe` Ty.TString
 
   describe "Types: " $ do
     it "can parse primitive types" $ do
@@ -157,6 +188,14 @@ spec = do
         int `shouldBe` Ty.TInt
         bool `shouldBe` Ty.TBool
         string `shouldBe` Ty.TString
+
+    it "can parse parametric types" $ do
+        let Ty.Type (Ty.TParametric id args) = parseType "List <a>"
+        let Ty.Type (Ty.TIdentifier (AST.Name _ list)) = id
+        list `shouldBe` "List"
+        let  [Ty.Type (Ty.TVar (AST.Name _ a))] = args
+        a `shouldBe` "a"
+
 
     it "can parse arrow types" $ do
         let Ty.Type (Ty.TArrow _ (Ty.Type (Ty.TPrimitive _ int)) (Ty.Type (Ty.TPrimitive _ string))) = parseType "Int -> String"

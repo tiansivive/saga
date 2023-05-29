@@ -3,24 +3,25 @@
 
 module Main (main) where
 
-import qualified Saga.AST.Syntax          as AST
-import qualified Saga.AST.Scripts         as Scripts
-import qualified Saga.Lexer.Lexer         as L
-import           Saga.Parser.Parser       (runSagaDec, runSagaExpr,
-                                           runSagaScript, runSagaType)
+import qualified Saga.AST.Scripts              as Scripts
+import qualified Saga.AST.Syntax               as AST
+import qualified Saga.Lexer.Lexer              as L
+import           Saga.Parser.Parser            (runSagaDec, runSagaExpr,
+                                                runSagaKind, runSagaScript,
+                                                runSagaType)
 
-import qualified Data.Map                 as Map
-import qualified Saga.AST.Evaluation      as E
-import qualified Saga.AST.TypeSystem.Inference       as Infer
+import qualified Data.Map                      as Map
+import qualified Saga.AST.Evaluation           as E
+import qualified Saga.AST.TypeSystem.Inference as Infer
 
 import           Control.Monad.State.Lazy
-import           Data.Maybe               (fromJust)
+import           Data.Maybe                    (fromJust)
 
-import           Saga.AST.TypeSystem.Check           (check)
+import           Saga.AST.TypeSystem.Check     (check)
 import           System.Console.Haskeline
-import           System.IO                (IOMode (ReadMode, ReadWriteMode, WriteMode),
-                                           hClose, hGetContents, openFile)
-import           Text.Pretty.Simple       (pPrint)
+import           System.IO                     (IOMode (ReadMode, ReadWriteMode, WriteMode),
+                                                hClose, hGetContents, openFile)
+import           Text.Pretty.Simple            (pPrint)
 
 
 
@@ -33,16 +34,24 @@ main = do
     line <- getLine
     pPrint (runSagaExpr line)
 
+data Sort = Type | Kind
 
-data SagaCmd = Type String | Quit | Help | None | TypeCheck String String
+data SagaCmd = Parse Sort String | Infer Sort String | Quit | Help | None | TypeCheck String String
 
 repl :: IO ()
 repl = runInputT defaultSettings $ repl' Map.empty
     where
         getCmd ":q"                  = Quit
-        getCmd (':' : 't' :' ' : ty) = Type ty
-        getCmd ":h"                  = Help
+
+        getCmd (':' : 't' : ' ' : ty) = Infer Type ty
+        getCmd (':' : 'k' : ' ' : k) = Infer Kind k
+
+        getCmd (':' : 'p' : 't' : ' ' : ty) = Parse Type ty
+        getCmd (':' : 'p' : 'k' : ' ' : k) = Parse Kind k
+
         getCmd input | [":check", expr, ty] <- words input = TypeCheck expr ty
+
+        getCmd ":h"                  = Help
         getCmd _                     = None
 
         repl' env = let
@@ -88,12 +97,27 @@ repl = runInputT defaultSettings $ repl' Map.empty
                     (Right ty) -> pPrint ty
                 repl' env
 
+            parseKind input = do
+                case runSagaKind input of
+                    (Left e)   -> pPrint e
+                    (Right ty) -> pPrint ty
+                repl' env
+
+            inferType input = do
+                case Infer.infer input of
+                    (Left e)   -> pPrint e
+                    (Right ty) -> pPrint ty
+                repl' env
+
             in do
                 (Just line) <- getInputLine "Saga λ> "
                 case getCmd line of
                     Quit -> return ()
                     None -> parseExpr line
-                    Type ty -> parseType ty
+                    Infer Type ty -> inferType ty
+                    Infer Kind k -> inferType k
+                    Parse Type ty -> parseType ty
+                    Parse Kind k -> parseKind k
                     TypeCheck expr ty -> do
                         typecheck expr ty
                         repl' env

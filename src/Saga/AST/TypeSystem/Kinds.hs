@@ -8,9 +8,10 @@ module Saga.AST.TypeSystem.Kinds where
 
 
 data Kind a
-  = Value
-  | Constructor (Kind a) (Kind a)
-  | Constraint
+  = KValue
+  | KConstructor (Kind a) (Kind a)
+  | KConstraint
+  | KProtocol
   | KVar String
 
 deriving instance Show a => Show (Kind a)
