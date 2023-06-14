@@ -29,27 +29,32 @@ sub `isSubtype` parent = do
             tup2' <- mapM reduce tup2
             allTrue <$> zipWithM isSubtype tup1' tup2'
 
-        (TRecord _ pairs1, TRecord _ pairs2)  -> let
-            pairs1' = mapM (reduce . snd) pairs1
-            pairs2' = mapM (reduce . snd) pairs2
-            check (name, ty2) = case lookup name pairs1' of
-                Nothing  -> return False
-                Just ty1 -> ty1 `isSubtype` ty2
+        (TRecord _ pairs1, TRecord _ pairs2)  -> do
+            pairs1' <- mapM (mapM reduce) pairs1
+            pairs2' <- mapM (mapM reduce) pairs2
+            let check (name, ty2) = case lookup name pairs1' of
+                    Nothing  -> return False
+                    Just ty1 -> ty1 `isSubtype` ty2
 
-            in allTrue <$> mapM check pairs2'
+            allTrue <$> mapM check pairs2'
 
-        (TParametric cons1 args1, TParametric cons2 args2) ->
-            let
-                args1' = reduce <$> args1
-                args2' = reduce <$> args2
-            in do
-                cons' <- reduce cons1 `isSubtype` reduce cons2
-                args' <- allTrue <$> zipWithM isSubtype args1' args2'
-                return $ cons' && args'
+        (TParametric cons1 args1, TParametric cons2 args2) -> do
+            args1' <- mapM reduce args1
+            args2' <- mapM reduce args2
+            cons1' <- reduce cons1
+            cons2' <- reduce cons2
+            cons' <- cons1' `isSubtype` cons2'
+            args' <- allTrue <$> zipWithM isSubtype args1' args2'
+            return $ cons' && args'
 
         (TArrow _ input1 output1, TArrow _ input2 output2) -> do
-            input' <- reduce input1 `isSubtype` reduce input2
-            output' <- reduce output1 `isSubtype` reduce output2
+            input1' <- reduce input1
+            input2' <- reduce input2
+            input' <- input1' `isSubtype` input2'
+            output1' <- reduce output1
+            output2' <- reduce output2
+
+            output' <- output1' `isSubtype`  output2'
             return $ input' && output'
 
         (TIdentifier (Name _ id), TIdentifier (Name _ id'))

@@ -19,101 +19,63 @@ import           Control.Monad.State.Lazy
 
 
 
+run :: (Eq a, Show a) => Either String (Ty.Type a) -> Ty.Type a
+run inference = case inference of
+    Left msg  -> error msg
+    Right val -> val
 
+check :: String -> String -> Either String Bool
+check ty sub = I.run $ do
+  let (Right ty') = P.runSagaType ty
+  let (Right sub') = P.runSagaType sub
+  ty''  <- I.reduce ty'
+  sub'' <- I.reduce sub'
+  sub'' `ST.isSubtype` ty''
 
 spec :: Spec
 spec = do
   describe "Subtyping" $ do
-    it "can check primitive subtypes" $ let
-      check = do
-        ty  <- I.reduce <$> P.runSagaType "String"
-        sub <- I.reduce <$> P.runSagaType "String"
-        I.run $ sub `ST.isSubtype` ty
+    it "can check primitive subtypes" $ 
+      check "String" "String" `shouldBe` Right True
 
-      in check `shouldBe` Right True
+    it "can check polymorphic subtypes" $ 
+      check "1" "a" `shouldBe` Right True
 
-    it "can check polymorphic subtypes" $ let
-      check = do
-        ty  <- I.reduce <$> P.runSagaType "1"
-        sub <- I.reduce <$> P.runSagaType "a"
-        I.run $ sub `ST.isSubtype` ty
+    it "can check literal subtypes" $ 
+      sequence [check "String" "\"str\"", check "Int" "1", check "Bool" "true"] `shouldBe` Right [True, True, True]
 
-      in check `shouldBe` Right True
+    it "can check tuple subtypes" $
+      check "(Int, Bool)" "(Int, Bool, String)" `shouldBe` Right True
 
-    it "can check literal subtypes" $ let
-      checkStr = do
-        ty  <- I.reduce <$> P.runSagaType "String"
-        sub <- I.reduce <$> P.runSagaType "\"str\""
-        I.run $ sub `ST.isSubtype` ty
-      checkInt = do
-        ty  <- I.reduce <$> P.runSagaType "Int"
-        sub <- I.reduce <$> P.runSagaType "1"
-        I.run $ sub `ST.isSubtype` ty
-      checkBool = do
-        ty  <- I.reduce <$> P.runSagaType "Bool"
-        sub <- I.reduce <$> P.runSagaType "true"
-        I.run $ sub `ST.isSubtype` ty
+    it "can check record subtypes" $ 
+      check "{ foo: Int, bar: Bool }" "{ foo: Int, bar: Bool, str: String }" `shouldBe` Right True
 
-      in sequence [checkStr, checkInt, checkBool] `shouldBe` Right [True, True, True]
+    it "can check parametric subtypes" $
+      check "List <Int>" "List <1>" `shouldBe` Right True
 
-    it "can check tuple subtypes" $ let
-      check = do
-        ty  <- I.reduce <$> P.runSagaType "(Int, Bool)"
-        sub <- I.reduce <$> P.runSagaType "(Int, Bool, String)"
-        I.run $ sub `ST.isSubtype` ty
-
-      in check `shouldBe` Right True
-
-    it "can check record subtypes" $ let
-      check = do
-        ty  <- I.reduce <$> P.runSagaType "{ foo: Int, bar: Bool }"
-        sub <- I.reduce <$> P.runSagaType "{ foo: Int, bar: Bool, str: String }"
-        I.run $ sub `ST.isSubtype` ty
-
-      in check `shouldBe` Right True
-
-    it "can check parametric subtypes" $ let
-      check = do
-        ty  <- I.reduce <$> P.runSagaType "List <Int>"
-        sub <- I.reduce <$> P.runSagaType "List <1>"
-        I.run $ sub `ST.isSubtype` ty
-
-      in check `shouldBe` Right True
-
-    it "can check polymorphic parametric subtypes" $ let
-      check = do
-        ty  <- I.reduce <$> P.runSagaType "List <Int>"
-        sub <- I.reduce <$> P.runSagaType "f <a>"
-        I.run $ sub `ST.isSubtype` ty
-
-      in check `shouldBe` Right True
+    it "can check polymorphic parametric subtypes" $
+      check "List <Int>" "f <a>" `shouldBe` Right True
 
     it "can check identifier subtypes" $ let
-      check = do
-        ty    <- I.reduce <$> P.runSagaType "Int"
-        subId <- I.reduce <$> P.runSagaType "MyTypeId"
-        subTy <- I.reduce <$> P.runSagaType "1"
-        let env = Just $ I.Env { typeVars = Map.fromList [("MyTypeId", subTy)], typeKinds = Map.empty, expressions = Map.empty, count = 0 }
-        I.runInEnv env $ subId `ST.isSubtype` ty
+      check = I.run $ do
+        let (Right ty) = P.runSagaType "Int"
+        let (Right subId) = P.runSagaType "MyTypeId"
+        let (Right subTy) = P.runSagaType "1"
+        ty'  <- I.reduce ty
+        subId' <- I.reduce subId
+        subTy' <- I.reduce subTy
+        let env = Just $ I.Env { typeVars = Map.fromList [("MyTypeId", subTy')], typeKinds = Map.empty, expressions = Map.empty, count = 0 }
+        let (Right val) = I.runInEnv env $ subId' `ST.isSubtype` ty'
+        return val
 
       in check `shouldBe` Right True
 
     describe "can check arrow subtypes" $ do
-      it "a -> a is subtype of Int -> Int" $ let
-        check = do
-          ty  <- I.reduce <$> P.runSagaType "Int -> Int"
-          sub <- I.reduce <$> P.runSagaType "a -> a"
-          I.run $ sub `ST.isSubtype` ty
+      it "a -> a is subtype of Int -> Int" $
+        check "Int -> Int" "a -> a" `shouldBe` Right True
 
-        in check `shouldBe` Right True
-
-      it "a -> a is not a subtype of Int -> String" $ let
-        check = do
-          ty  <- I.reduce <$> P.runSagaType "Int -> String"
-          sub <- I.reduce <$> P.runSagaType "a -> a"
-          I.run $ sub `ST.isSubtype` ty
-
-        in check `shouldBe` Right False
+      it "a -> a is not a subtype of Int -> String" $ 
+        check "Int -> String" "a -> a" `shouldBe` Right False
 
 
 
