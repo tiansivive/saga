@@ -11,7 +11,7 @@ data Script a =
         deriving (Show)
 
 data Declaration a
-  = Let  (Name a) (Maybe (TypeExpr a)) (Expr a)
+  = Let  (Name a) (Maybe (TypeExpr a)) (Maybe (Kind a)) (Expr a)
   | Data (Name a) (Maybe (Kind a))     [(Name a, TypeExpr a)]
   | Type (Name a) (Maybe (Kind a))     (TypeExpr a)
     deriving (Foldable, Show, Eq)

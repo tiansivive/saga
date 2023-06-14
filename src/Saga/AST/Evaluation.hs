@@ -103,9 +103,7 @@ eval (Block _ exprs) = do
       eval' es | [] <- es = return Void
                | otherwise = eval $ head es
 
-eval (Lambda _ args body) = do
-  env <- get
-  VClosure args body <$> get
+eval (Lambda _ args body) = VClosure args body <$> get
 
 eval (FnApp _ fnExpr argExprs) = do
   vals <- mapM eval argExprs
@@ -173,8 +171,8 @@ evalTerm (LRecord _ record) = do
 
 
 evalDeclaration :: (Eq a, Show a) => Declaration a -> EvalState a
-evalDeclaration (Let name _ expr) = eval $ Assign name expr
-evalDeclaration _                 = return Void
+evalDeclaration (Let name _ _ expr) = eval $ Assign name expr
+evalDeclaration _                   = return Void
 
 runEvaluation :: (Eq a, Show a ) => Expr a -> Either String (Value a, Env a)
 runEvaluation e = runStateT (eval e) Map.empty

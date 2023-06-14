@@ -82,6 +82,7 @@ tokens :-
     <0> "="                 { tok Equals }
     <0> "|"                 { tok Pipe }
     <0> "."                 { tok Dot }
+    <0> "::"                 { tok Section }
     <0> $backslash          { tok BackSlash }
 
     <0> "+"                 { tok $ Operator "+" }

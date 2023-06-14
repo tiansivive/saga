@@ -1,14 +1,14 @@
 module Saga.AST.TypeSystem.Subtyping where
 
-import           Control.Monad            (zipWithM)
-import           Data.Maybe               (fromMaybe, isJust)
+import           Control.Monad                 (zipWithM)
+import           Data.Maybe                    (fromMaybe, isJust)
+import           Saga.AST.Syntax
 import           Saga.AST.TypeSystem.Inference
 import           Saga.AST.TypeSystem.Types
-import           Saga.AST.Syntax
 
 import           Control.Monad.State.Lazy
-import qualified Data.Map                 as Map
-import           Debug.Trace              (trace, traceM)
+import qualified Data.Map                      as Map
+import           Debug.Trace                   (trace, traceM)
 
 
 
@@ -24,22 +24,22 @@ sub `isSubtype` parent = do
 
         (TPrimitive _ prim1, TPrimitive _ prim2)       -> return $ prim1 == prim2
 
-        (TTuple _ tup1, TTuple _ tup2)  -> let
-            tup1' = reduce <$> tup1
-            tup2' = reduce <$> tup2
-            in allTrue <$> zipWithM isSubtype tup1' tup2'
+        (TTuple _ tup1, TTuple _ tup2)  -> do
+            tup1' <- mapM reduce tup1
+            tup2' <- mapM reduce tup2
+            allTrue <$> zipWithM isSubtype tup1' tup2'
 
         (TRecord _ pairs1, TRecord _ pairs2)  -> let
-            pairs1' = fmap reduce <$> pairs1
-            pairs2' = fmap reduce <$> pairs2
+            pairs1' = mapM (reduce . snd) pairs1
+            pairs2' = mapM (reduce . snd) pairs2
             check (name, ty2) = case lookup name pairs1' of
                 Nothing  -> return False
                 Just ty1 -> ty1 `isSubtype` ty2
 
             in allTrue <$> mapM check pairs2'
 
-        (TParametric cons1 args1, TParametric cons2 args2) -> 
-            let 
+        (TParametric cons1 args1, TParametric cons2 args2) ->
+            let
                 args1' = reduce <$> args1
                 args2' = reduce <$> args2
             in do

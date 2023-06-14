@@ -141,7 +141,7 @@ spec = do
 
   describe "Top level: " $ do
     it "can parse declarations" $ do
-      let Scripts.Let (AST.Name _ life) Nothing (AST.Term (AST.LInt _ x)) = parseDec "let life = 42"
+      let Scripts.Let (AST.Name _ life) Nothing Nothing (AST.Term (AST.LInt _ x)) = parseDec "let life = 42"
       x `shouldBe` 42
       life `shouldBe` "life"
 
@@ -149,6 +149,7 @@ spec = do
       let Scripts.Let
             (AST.Name _ id)
             (Just (Ty.Type (Ty.TImplementation protocol (Ty.Type ty) [])))
+            Nothing
             (AST.Term (AST.LRecord _ r)) = parseDec "let functorListImpl: impl Functor: List = { }"
 
       let AST.Name _ functor = protocol

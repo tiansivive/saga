@@ -63,6 +63,7 @@ data Token
   | RBrack
   | LCurly
   | RCurly
+  | Section
   | Operator ByteString
 
   -- primitives

@@ -28,8 +28,8 @@ spec = do
         (Ty.TArrow info arg body) <- return $ run $ I.infer "\\n -> n"
         let Ty.Type (Ty.TVar (AST.Name _ a1)) = arg
         let (Ty.Type (Ty.TVar (AST.Name _ a2))) = body
-        a1 `shouldBe` "a"
-        a2 `shouldBe` "a"
+        a1 `shouldBe` "ta"
+        a2 `shouldBe` "ta"
 
 
     -- describe "Kinds:" $ do

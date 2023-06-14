@@ -8,7 +8,7 @@ module Saga.AST.TypeSystem.Kinds where
 
 
 data Kind a
-  = KValue
+  = KType
   | KConstructor (Kind a) (Kind a)
   | KConstraint
   | KProtocol

@@ -46,7 +46,7 @@ alias Second = Int
 type Hidden = exists f a. { of: a -> f <a> }
 type Pointed = forall f, exists a. \f -> { of: a -> f <a> }
 data Custom
-    : (Type -> Type) 
+    :: (Type -> Type) 
     = Simple: Custom <Int>   
     | Product: String -> Custom <Int>
     | Forall: forall a. Custom <a> 
@@ -81,15 +81,32 @@ let other
     : Pointed List!
     = { of: \n -> [n] } 
 
+
+type IntOrString
+    :: Type -> Type
+    = \x -> if (impl Num: x) 
+            then String
+            else Bool
+
+
+data Maybe
+    : Type -> Type
+    = \x 
+        -> Just: x
+        |  Nothing
+
+
 /* Investigate also allowing more compact syntax like 
- * data Either = \e a -> Left <e> | Right <a> 
+ * data Either = \e a -> Left: e | Right: a 
  * or
- * data Either = \e a -> Left: e | Right: a -- possibly leveraging union types?
+ * data Either = \e a 
+    -> Left: e 
+     | Right: a -- possibly leveraging union types?
 */ 
 data Either 
     : Type -> Type -> Type
-    = Left: forall a. e -> Either <e a>
-    | Right: forall e. a -> Either <e a>
+    = Left: forall a. e -> Either e a!
+    | Right: forall e. a -> Either e a!
 
 
  
@@ -97,17 +114,17 @@ data Either
 let e: Either <string> :: Type -> Type 
 
 type Show
-    : Type -> Protocol
+    :: Type -> Protocol
     = forall a. \a -> { show: a -> String }
 
 type Functor 
-    : (Type -> Type) -> Protocol
+    :: (Type -> Type) -> Protocol
     = \f -> 
         { map: forall a b. (a -> b) -> f a -> f b
         }
 
 type Ord
-    : Type -> Protocol
+    :: Type -> Protocol
     = forall a. Eq a => \a -> 
         { compare: a -> a -> Ordering
         , ((<), (<=), (>=), (>)) : a -> a -> Bool
@@ -118,12 +135,14 @@ type Ord
 
 
 let functorEitherImpl 
-    : impl Functor: forall e. Either <e> 
+    : impl Functor: forall e. Either e! 
+    :: Type -> Type
     = { map: \f fab -> case fab of
             Right a -> Right $ f a!
             e -> e
       }
-        
+
+let strEitherImp =  functorEitherImpl<String>   
 
 let functorListImpl
     : impl Functor: List =
@@ -131,8 +150,6 @@ let functorListImpl
         []           -> []
         (head, tail) -> (f head! : map f tail!)
     } 
-
-
 
 let ordImpl
     : with myTypeEqImpl => impl Ord: MyType =

@@ -116,6 +116,7 @@ import qualified Saga.AST.Scripts as Scripts
   '='        { L.RangedToken T.Equals _ }
   '|'        { L.RangedToken T.Pipe _ }
   '.'        { L.RangedToken T.Dot _ }
+  '::'        { L.RangedToken T.Section _ }
   '\\'       { L.RangedToken T.BackSlash _ } 
 
 
@@ -295,6 +296,7 @@ typeFnArgs
 typeExpr 
   : if typeExpr then typeExpr else typeExpr { Types.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
   | typeExpr '->' typeExpr  { Types.Type $ Types.TArrow (info $1 <-> info $3) $1 $3 }
+  | '\\' args '->' typeExpr { Types.TLambda (L.rtRange $1 <-> info $4) $2 $4 }
   | typeAtom typeFnArgs '!' { Types.TFnApp (info $1 <-> L.rtRange $3) $1 $2 }
   | typeAtom     { $1 }
   | qualifiers '.' typeExpr                          { Types.Type $ Types.TConstrained $1 [] $3 }
@@ -337,7 +339,7 @@ kindExpr
 
 kindAnnotation
   : { Nothing }
-  | ':' kindExpr { Just $2 }
+  | '::' kindExpr { Just $2 }
 
 -- SCRIPT
 
@@ -352,9 +354,9 @@ dataExprs
 
 
 dec 
-  : let identifier typeAnnotation '=' expr        { Scripts.Let $2 $3 $5 }
-  | data identifier kindAnnotation '=' dataExprs  { Scripts.Data $2 $3 $5 }
-  | ty identifier kindAnnotation '=' typeExpr     { Scripts.Type $2 $3 $5 }
+  : let identifier typeAnnotation kindAnnotation '=' expr { Scripts.Let $2 $3 $4 $6 }
+  | data identifier kindAnnotation '=' dataExprs          { Scripts.Data $2 $3 $5 }
+  | ty identifier kindAnnotation '=' typeExpr             { Scripts.Type $2 $3 $5 }
  
 
 declarations
@@ -383,7 +385,7 @@ resolveIdKind (Syntax.Name _ id) =
   case isLower $ head id of
     True  -> Kinds.KVar id
     False -> case id of 
-      "Type" -> Kinds.KValue
+      "Type" -> Kinds.KType
       "Protocol" -> Kinds.KProtocol
       "Constraint" -> Kinds.KConstraint
       k -> error $ "Unrecognised kind identifier:" <> k

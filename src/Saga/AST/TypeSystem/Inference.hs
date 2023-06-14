@@ -16,10 +16,11 @@ import           Data.Maybe                (fromJust, fromMaybe)
 import qualified Data.Set                  as Set
 import           Saga.AST.Syntax           (Expr (..), Name (..), Term (..))
 
-import           Saga.AST.TypeSystem.Kinds (Kind (KConstraint, KConstructor, KProtocol, KValue, KVar))
+import           Saga.AST.TypeSystem.Kinds (Kind (KConstraint, KConstructor, KProtocol, KType, KVar))
 import           Saga.AST.TypeSystem.Types
 import qualified Saga.Lexer.Lexer          as L
 import           Saga.Parser.Parser        (runSagaExpr)
+
 
 
 type Infer a = StateT (Env a) (Except (TypeError a))
@@ -46,8 +47,15 @@ fresh :: a -> Infer a (Type a)
 fresh info = do
   s <- get
   put s{count = count s + 1}
-  let id = Name info (letters !! count s)
+  let id = Name info $ "t" ++ (letters !! count s)
   return $ TVar id
+
+fresh_k :: Infer a (Kind a)
+fresh_k = do
+  s <- get
+  put s{count = count s + 1}
+  let id = "k" ++ (letters !! count s)
+  return $ KVar id
 
 
 
@@ -102,7 +110,9 @@ typeof (FieldAccess _ recExpr path) = do
         typeof' (TRecord _ pairs) (id:rest) =
             let found = find (\(name, typeExpr) -> name == id) pairs in
             case found of
-                Just (_, tyExpr) -> typeof' (reduce tyExpr) rest
+                Just (_, tyExpr) -> do
+                    ty <- reduce tyExpr
+                    typeof' ty rest
                 Nothing -> throwError $ UnknownType $ "No field: " <> show id
 
         typeof' ty _ = throwError $ UnexpectedType $ "Non record type: " <> show ty
@@ -134,12 +144,14 @@ typeof (FnApp rt fnExpr args) = do
 
     where
         typeof' ty [] = return ty
-        typeof' (TArrow _ argTyExp result) (argExp:rest) = do
+        typeof' (TArrow _ argTyExp resultTyExpr) (argExp:rest) = do
             ty <- typeof argExp
-            let argTy = reduce argTyExp
+            argTy <- reduce argTyExp
             if argTy /= ty
                 then throwError $ TypeMismatch argTy ty
-                else typeof' (reduce result) rest
+                else do
+                    r <- reduce resultTyExpr
+                    typeof' r rest
 
         typeof' ty _ = throwError $ UnexpectedType $ "Non arrow type: " <> show ty
 
@@ -184,30 +196,41 @@ typeof_term term = case term of
         expanded = typeof >=> expand
 
 
+type TypeEvaluation a = StateT (Env a) (Except (TypeError a)) (Type a)
 
-reduce :: TypeExpr a -> Type a
-reduce (Type ty)                        = ty
+reduce :: TypeExpr a -> Infer a (Type a)
+reduce (Type ty)                        = return ty
 reduce (TParens _ tyExp)                = reduce tyExp
 reduce (TClause _ _ tyExp)              = reduce tyExp
-reduce (TBlock _ [])                    = TUnit
+reduce (TBlock _ [])                    = return TUnit
 reduce (TBlock _ tyExps)                = reduce $ last tyExps
 reduce (TReturn _ tyExp)                = reduce tyExp
 reduce (TConditional _ cond true false) = reduce true -- assumes same return type, will change with union types
-reduce (TFnApp _ fnExpr args)           = returnType fnExpr 0
-    where
-        returnType ty i
-            | i == length args -1 = reduce ty
-            | otherwise = case reduce ty of
-                (TArrow _ _ return) -> returnType return (i +1)
-                _ -> error "Tried to apply a type other than function"
+reduce (TFnApp _ fnExpr argExprs)       = do
+    vals <- mapM reduce argExprs
+    closure <- reduce fnExpr
+    env <- get
+    case closure of
+        TClosure paramNames bodyExpr ->
+            if length paramNames == length vals then
+                let
+                    pairs = zip paramNames vals
+                    insert' (Name _ name, t) = Map.insert name t
+                    tVars = foldr insert' (typeVars env) pairs
+                    tVars' = Map.union tVars (typeVars env) -- left side overrides any duplicates
+                in lift $ evalStateT (reduce bodyExpr) (env{ typeVars = tVars'})
+            else throwError $ UnexpectedType "Wrong number of params"
+        _ -> throwError $ UnexpectedType "Cannot apply this type expression"
+        -- if length paramNames == length vals then
 
-reduce (TLambda info args body)         = TArrow info (Type args') body
+
+
     where
-        arrow = TArrow info
-        build [] = TUnit
-        build [arg] = arg
-        build (ty:rest) = foldr (\returnTy argTy -> Type returnTy `arrow` Type argTy) ty rest
-        args' = build (TVar <$> args)
+      vals = reduce <$> argExprs
+      t = reduce fnExpr
+
+
+reduce (TLambda info args body) = return $ TClosure args body
 
 
 
@@ -234,20 +257,24 @@ kindOf ty = do
         TProtocol _ _ -> return KProtocol
         TConstrained {} -> return KConstraint
 
-        TParametric cons args
-            | (TIdentifier (Name _ id)) <- reduce cons -> resolve env id $ length args
-            | (TVar (Name _ id)) <- reduce cons -> resolve env id $ length args
-            | otherwise -> return KValue
+        TParametric cons args -> do
+            ty <- reduce cons
+            case ty of
+              TIdentifier (Name _ id) -> resolve env id $ length args
+              TVar (Name _ id)        -> resolve env id $ length args
+              _                       -> return KType
 
-        _ -> return KValue
+
+        TVar (Name _ id) -> maybe fresh_k return $ Map.lookup id $ typeKinds env
+        _ -> return KType
     where
         resolve env id l = case Map.lookup id $ typeVars env of
             Just (TParametric cons' args') -> do
                 let args'' = drop l args'
-                let tyCons = reduce cons'
-                let tyArgs = reduce <$> args'
+                tyCons <- reduce cons'
+                tyArgs <- mapM reduce args'
                 kind' (tyCons : tyArgs)
-            Just ty -> return KValue
+            Just ty -> return KType
             Nothing -> throwError $ UnknownType id
         kind' [t]       = kindOf t
         kind' (t: ts)   = do
@@ -255,4 +282,7 @@ kindOf ty = do
             args <- kind' ts
             return $ KConstructor cons args
 
+
+-- kindOfE :: TypeExpr a -> Infer a (Kind a)
+-- kindOfE (Type te) = kindOf
 
