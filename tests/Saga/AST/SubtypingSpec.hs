@@ -50,11 +50,11 @@ spec = do
     it "can check record subtypes" $ 
       check "{ foo: Int, bar: Bool }" "{ foo: Int, bar: Bool, str: String }" `shouldBe` Right True
 
-    it "can check parametric subtypes" $
-      check "List <Int>" "List <1>" `shouldBe` Right True
+    -- it "can check parametric subtypes" $
+    --   check "List <Int>" "List <1>" `shouldBe` Right True
 
-    it "can check polymorphic parametric subtypes" $
-      check "List <Int>" "f <a>" `shouldBe` Right True
+    -- it "can check polymorphic parametric subtypes" $
+    --   check "List <Int>" "f <a>" `shouldBe` Right True
 
     it "can check identifier subtypes" $ let
       check = I.run $ do

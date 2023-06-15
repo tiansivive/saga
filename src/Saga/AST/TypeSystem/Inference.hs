@@ -19,7 +19,7 @@ import           Saga.AST.Syntax           (Expr (..), Name (..), Term (..))
 import           Saga.AST.TypeSystem.Kinds (Kind (KConstraint, KConstructor, KProtocol, KType, KVar))
 import           Saga.AST.TypeSystem.Types
 import qualified Saga.Lexer.Lexer          as L
-import           Saga.Parser.Parser        (runSagaExpr)
+import           Saga.Parser.Parser        (runSagaExpr, runSagaType)
 
 
 
@@ -79,6 +79,21 @@ infer input = do
         where
             infer' :: (Eq a, Show a) => Expr a -> Except (TypeError a) (Type a)
             infer' expr = evalStateT (typeof expr) initEnv
+
+inferKind :: String -> Either String (Kind L.Range)
+inferKind input = do
+    parsed <- runSagaType input
+    show `first` runExcept (infer' parsed)
+        where
+            infer' :: (Eq a, Show a) => TypeExpr a -> Except (TypeError a) (Kind a)
+            infer' tyExpr = evalStateT (kindOf tyExpr) initEnv
+
+
+tyLookup :: Name a -> Infer a (Type a)
+tyLookup (Name info id) = do
+    env <- get
+    maybe (fresh info) return $ Map.lookup id $ typeVars env
+
 
 
 typeof :: (Eq a, Show a) => Expr a -> Infer a (Type a)
@@ -251,22 +266,23 @@ unknown id = UnknownType $  "Unknown type \"" <> id <> "\""
 
 
 
-kindOf :: Type a -> Infer a (Kind a)
-kindOf ty = do
+kindOf :: TypeExpr a -> Infer a (Kind a)
+kindOf tyExpr = do
     env <- get
+    ty <- reduce tyExpr
     case ty of
         TProtocol _ _ -> return KProtocol
         TConstrained {} -> return KConstraint
 
         TParametric (Name info param) out -> do
             case Map.lookup param (typeVars env) of
-                Just ty -> kindOf ty
+                Just ty -> kindOf (Type ty)
                 Nothing -> do
                     t <- fresh info
-                    k <- kindOf t
+                    k <- kindOf (Type t)
                     let typeVars' = Map.insert param t $ typeVars env
                     put $ env{ typeVars = Map.union typeVars' $ typeVars env}
-                    out' <- reduce out >>= kindOf
+                    out' <- kindOf out
                     return $ KConstructor k out'
         TVar (Name _ id) -> maybe fresh_k return $ Map.lookup id $ typeKinds env
         _ -> return KType

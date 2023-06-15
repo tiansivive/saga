@@ -116,12 +116,12 @@ import qualified Saga.AST.Scripts as Scripts
   '='        { L.RangedToken T.Equals _ }
   '|'        { L.RangedToken T.Pipe _ }
   '.'        { L.RangedToken T.Dot _ }
-  '::'        { L.RangedToken T.Section _ }
+  '::'       { L.RangedToken T.Section _ }
   '\\'       { L.RangedToken T.BackSlash _ } 
 
 
 
-  newline         { L.RangedToken T.Newline _ }
+  newline    { L.RangedToken T.Newline _ }
   eof        { L.RangedToken T.EOF _ }
 
 

@@ -28,13 +28,11 @@ data Type a where
   TArrow  :: a -> TypeExpr a -> TypeExpr a -> Type a
 
   TParametric  :: Name a -> TypeExpr a -> Type a
-  -- TConstructor :: TypeExpr a -> TypeExpr a -> Type a
-  -- TClosure :: [Name a] -> TypeExpr a -> Type a
 
   TVar :: Name a -> Type a
   TIdentifier :: Name a -> Type a
-  TConstrained    :: [PolymorphicVar a] -> [Constraint a] -> TypeExpr a -> Type a
 
+  TConstrained    :: [PolymorphicVar a] -> [Constraint a] -> TypeExpr a -> Type a
   TProtocol       :: Name a -> Type a -> Type a
   TImplementation :: Name a -> TypeExpr a -> [RequiredImplId a] -> Type a
 

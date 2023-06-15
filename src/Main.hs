@@ -108,6 +108,11 @@ repl = runInputT defaultSettings $ repl' Map.empty
                     (Left e)   -> pPrint e
                     (Right ty) -> pPrint ty
                 repl' env
+            inferKind input = do
+                case Infer.inferKind input of
+                    (Left e)  -> pPrint e
+                    (Right k) -> pPrint k
+                repl' env
 
             in do
                 (Just line) <- getInputLine "Saga λ> "
@@ -115,7 +120,7 @@ repl = runInputT defaultSettings $ repl' Map.empty
                     Quit -> return ()
                     None -> parseExpr line
                     Infer Type ty -> inferType ty
-                    Infer Kind k -> inferType k
+                    Infer Kind k -> inferKind k
                     Parse Type ty -> parseType ty
                     Parse Kind k -> parseKind k
                     TypeCheck expr ty -> do

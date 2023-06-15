@@ -4,6 +4,7 @@ import           Control.Monad                 (zipWithM)
 import           Data.Maybe                    (fromMaybe, isJust)
 import           Saga.AST.Syntax
 import           Saga.AST.TypeSystem.Inference
+
 import           Saga.AST.TypeSystem.Types
 
 import           Control.Monad.State.Lazy
@@ -38,14 +39,14 @@ sub `isSubtype` parent = do
 
             allTrue <$> mapM check pairs2'
 
-        (TParametric cons1 args1, TParametric cons2 args2) -> do
-            args1' <- mapM reduce args1
-            args2' <- mapM reduce args2
-            cons1' <- reduce cons1
-            cons2' <- reduce cons2
-            cons' <- cons1' `isSubtype` cons2'
-            args' <- allTrue <$> zipWithM isSubtype args1' args2'
-            return $ cons' && args'
+        (TParametric arg1 out1, TParametric arg2 out2) -> do
+            arg1' <- tyLookup arg1
+            arg2' <- tyLookup arg2
+            out1' <- reduce out1
+            out2' <- reduce out2
+            out' <- out1' `isSubtype` out2'
+            arg' <- arg1' `isSubtype` arg2'
+            return $ out' && arg'
 
         (TArrow _ input1 output1, TArrow _ input2 output2) -> do
             input1' <- reduce input1
