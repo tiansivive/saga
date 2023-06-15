@@ -280,7 +280,7 @@ type
   | ttuple      { $1 }
   | trecord     { $1 }
   | identifier %shift  { resolveIdType $1 }
-  | identifier '<' typeParams '>' { Types.TParametric (Types.Type $ resolveIdType $1) $3 }
+  -- | identifier '<' typeParams '>' { Types.TParametric (Types.Type $ resolveIdType $1) $3 }
 
  
 
