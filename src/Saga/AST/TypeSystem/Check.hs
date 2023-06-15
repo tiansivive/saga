@@ -38,5 +38,5 @@ check_kind (TVar (Name _ id)) k = do
             return True
 
 check_kind ty k = do
-    inferred <- Infer.kindOf ty
+    inferred <- Infer.kindOf (Type ty)
     return $ inferred == k

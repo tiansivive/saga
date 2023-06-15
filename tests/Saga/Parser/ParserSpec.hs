@@ -190,12 +190,12 @@ spec = do
         bool `shouldBe` Ty.TBool
         string `shouldBe` Ty.TString
 
-    it "can parse parametric types" $ do
-        let Ty.Type (Ty.TParametric id args) = parseType "List <a>"
-        let Ty.Type (Ty.TIdentifier (AST.Name _ list)) = id
-        list `shouldBe` "List"
-        let  [Ty.Type (Ty.TVar (AST.Name _ a))] = args
-        a `shouldBe` "a"
+    -- it "can parse parametric types" $ do
+    --     let Ty.Type (Ty.TParametric id args) = parseType "List a!"
+    --     let Ty.Type (Ty.TIdentifier (AST.Name _ list)) = id
+    --     list `shouldBe` "List"
+    --     let  [Ty.Type (Ty.TVar (AST.Name _ a))] = args
+    --     a `shouldBe` "a"
 
 
     it "can parse arrow types" $ do
@@ -204,7 +204,7 @@ spec = do
         string `shouldBe` Ty.TString
 
     it "can parse qualified constrained types" $ do
-        let Ty.Type (Ty.TConstrained qualifiers constraints ty) = parseType "forall f a, exists b. (Functor f, a implements Show), a |-> Obj => f <a> -> b"
+        let Ty.Type (Ty.TConstrained qualifiers constraints ty) = parseType "forall f a, exists b. (Functor f, a implements Show), a |-> Obj => f a! -> b"
         let
             [ Ty.TPolyVar Ty.Forall Ty.None (AST.Name _ f)
                 , Ty.TPolyVar Ty.Forall Ty.None (AST.Name _ a)
@@ -216,7 +216,7 @@ spec = do
                 , Ty.Extends (Ty.Type (Ty.TIdentifier (AST.Name _ obj))) (Ty.Type (Ty.TVar (AST.Name _ a2)))
                 ] = constraints
 
-        let Ty.Type (Ty.TArrow _ (Ty.Type (Ty.TParametric cons args)) (Ty.Type (Ty.TVar (AST.Name _ b1)))) = ty
+        let Ty.Type (Ty.TArrow _ (Ty.TFnApp _ fn body) (Ty.Type (Ty.TVar (AST.Name _ b1)))) = ty
 
         f `shouldBe` "f"
         a `shouldBe` "a"

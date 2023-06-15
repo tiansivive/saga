@@ -19,7 +19,7 @@ import           Saga.AST.Syntax           (Expr (..), Name (..), Term (..))
 import           Saga.AST.TypeSystem.Kinds (Kind (KConstraint, KConstructor, KProtocol, KType, KVar))
 import           Saga.AST.TypeSystem.Types
 import qualified Saga.Lexer.Lexer          as L
-import           Saga.Parser.Parser        (runSagaExpr)
+import           Saga.Parser.Parser        (runSagaExpr, runSagaType)
 
 
 
@@ -79,6 +79,21 @@ infer input = do
         where
             infer' :: (Eq a, Show a) => Expr a -> Except (TypeError a) (Type a)
             infer' expr = evalStateT (typeof expr) initEnv
+
+inferKind :: String -> Either String (Kind L.Range)
+inferKind input = do
+    parsed <- runSagaType input
+    show `first` runExcept (infer' parsed)
+        where
+            infer' :: (Eq a, Show a) => TypeExpr a -> Except (TypeError a) (Kind a)
+            infer' tyExpr = evalStateT (kindOf tyExpr) initEnv
+
+
+tyLookup :: Name a -> Infer a (Type a)
+tyLookup (Name info id) = do
+    env <- get
+    maybe (fresh info) return $ Map.lookup id $ typeVars env
+
 
 
 typeof :: (Eq a, Show a) => Expr a -> Infer a (Type a)
@@ -175,10 +190,8 @@ typeof_term term = case term of
 
     (LList rt list) -> do
         t <- tyArgs list
-        return $ TParametric builtInList [Type t]
+        return $ TParametric (Name rt "List") (Type t)
             where
-                builtInList = Type $ TIdentifier $ Name rt "List"
-
                 tyArgs [] = fresh rt
                 tyArgs [expr] = expanded expr
                 tyArgs (expr:rest) = do
@@ -206,31 +219,34 @@ reduce (TBlock _ [])                    = return TUnit
 reduce (TBlock _ tyExps)                = reduce $ last tyExps
 reduce (TReturn _ tyExp)                = reduce tyExp
 reduce (TConditional _ cond true false) = reduce true -- assumes same return type, will change with union types
-reduce (TFnApp _ fnExpr argExprs)       = do
+reduce (TFnApp info fnExpr argExprs)       = do
     vals <- mapM reduce argExprs
-    closure <- reduce fnExpr
+    constructor <- reduce fnExpr
     env <- get
-    case closure of
-        TClosure paramNames bodyExpr ->
-            if length paramNames == length vals then
-                let
-                    pairs = zip paramNames vals
-                    insert' (Name _ name, t) = Map.insert name t
-                    tVars = foldr insert' (typeVars env) pairs
-                    tVars' = Map.union tVars (typeVars env) -- left side overrides any duplicates
-                in lift $ evalStateT (reduce bodyExpr) (env{ typeVars = tVars'})
-            else throwError $ UnexpectedType "Wrong number of params"
+    case (constructor, argExprs) of
+
+        (TParametric _ _, []) -> throwError $ UnexpectedType "Not enough arguments provided!"
+        (TParametric (Name _ arg) body, [tyExpr]) -> do
+            updateEnv arg tyExpr
+            reduce body
+        (TParametric (Name _ arg) body, tyExpr:tail) -> do
+            updateEnv arg tyExpr
+            reduce $ TFnApp info body tail
+
         _ -> throwError $ UnexpectedType "Cannot apply this type expression"
-        -- if length paramNames == length vals then
-
-
 
     where
-      vals = reduce <$> argExprs
-      t = reduce fnExpr
+      updateEnv arg tyExpr = do
+        env' <- get
+        ty <- reduce tyExpr
+        let tyVars = Map.insert arg ty (typeVars env')
+        put $ env'{ typeVars = Map.union tyVars $ typeVars env' }
 
+reduce (TLambda _ args body) = return $ fn args
+    where
+        fn [id]      = TParametric id body
+        fn (id:tail) = TParametric id $ Type (fn tail)
 
-reduce (TLambda info args body) = return $ TClosure args body
 
 
 
@@ -250,39 +266,28 @@ unknown id = UnknownType $  "Unknown type \"" <> id <> "\""
 
 
 
-kindOf :: Type a -> Infer a (Kind a)
-kindOf ty = do
+kindOf :: TypeExpr a -> Infer a (Kind a)
+kindOf tyExpr = do
     env <- get
+    ty <- reduce tyExpr
     case ty of
         TProtocol _ _ -> return KProtocol
         TConstrained {} -> return KConstraint
 
-        TParametric cons args -> do
-            ty <- reduce cons
-            case ty of
-              TIdentifier (Name _ id) -> resolve env id $ length args
-              TVar (Name _ id)        -> resolve env id $ length args
-              _                       -> return KType
-
-
+        TParametric (Name info param) out -> do
+            case Map.lookup param (typeVars env) of
+                Just ty -> kindOf (Type ty)
+                Nothing -> do
+                    t <- fresh info
+                    k <- kindOf (Type t)
+                    let typeVars' = Map.insert param t $ typeVars env
+                    put $ env{ typeVars = Map.union typeVars' $ typeVars env}
+                    out' <- kindOf out
+                    return $ KConstructor k out'
         TVar (Name _ id) -> maybe fresh_k return $ Map.lookup id $ typeKinds env
         _ -> return KType
-    where
-        resolve env id l = case Map.lookup id $ typeVars env of
-            Just (TParametric cons' args') -> do
-                let args'' = drop l args'
-                tyCons <- reduce cons'
-                tyArgs <- mapM reduce args'
-                kind' (tyCons : tyArgs)
-            Just ty -> return KType
-            Nothing -> throwError $ UnknownType id
-        kind' [t]       = kindOf t
-        kind' (t: ts)   = do
-            cons <- kindOf t
-            args <- kind' ts
-            return $ KConstructor cons args
 
 
--- kindOfE :: TypeExpr a -> Infer a (Kind a)
--- kindOfE (Type te) = kindOf
+
+
 

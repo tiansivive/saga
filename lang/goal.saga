@@ -41,7 +41,6 @@ let mapType
                 k     -> get k t
        
 
-
 alias Second = Int
 type Hidden = exists f a. { of: a -> f <a> }
 type Pointed = forall f, exists a. \f -> { of: a -> f <a> }
