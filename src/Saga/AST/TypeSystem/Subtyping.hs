@@ -14,7 +14,7 @@ import           Debug.Trace                   (trace, traceM)
 
 
 isSubtype ::(Eq a, Show a) => Type a -> Type a -> Infer a Bool
---isSubtype  a b | trace ("subtype " ++ (show a) ++ " <: " ++ (show b) ++ "\n  ") False = undefined
+-- isSubtype  a b | trace ("subtype " ++ (show a) ++ " <: " ++ (show b) ++ "\n  ") False = undefined
 sub `isSubtype` parent = do
     env <- get
     case (sub, parent) of

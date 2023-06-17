@@ -16,6 +16,7 @@ import           Data.Maybe                (fromJust, fromMaybe)
 import qualified Data.Set                  as Set
 import           Saga.AST.Syntax           (Expr (..), Name (..), Term (..))
 
+import           Debug.Trace               (trace, traceM)
 import           Saga.AST.TypeSystem.Kinds (Kind (KConstraint, KConstructor, KProtocol, KType, KVar))
 import           Saga.AST.TypeSystem.Types
 import qualified Saga.Lexer.Lexer          as L
@@ -46,14 +47,17 @@ letters = [1..] >>= flip replicateM ['a'..'z']
 fresh :: a -> Infer a (Type a)
 fresh info = do
   s <- get
-  put s{count = count s + 1}
+  traceM $ "fresh: count is " <> show (count s)
+
   let id = Name info $ "t" ++ (letters !! count s)
+  put s{count = count s + 1}
   return $ TVar id
 
 fresh_k :: Infer a (Kind a)
 fresh_k = do
   s <- get
   put s{count = count s + 1}
+  traceM $ "fresh_k: count is " <> show (count s)
   let id = "k" ++ (letters !! count s)
   return $ KVar id
 
@@ -71,6 +75,11 @@ run = runInEnv Nothing
 runInEnv :: Show a => Maybe (Env a) -> Infer a b -> Either String b
 runInEnv env check = show `first` check'
   where check' = runExcept $ evalStateT check (fromMaybe initEnv env)
+
+
+doInEnv :: Show a => Maybe (Env a) -> Infer a b -> Either String (b, Env a)
+doInEnv env check = show `first` check'
+  where check' = runExcept $ runStateT check (fromMaybe initEnv env)
 
 infer :: String -> Either String (Type L.Range)
 infer input = do
@@ -97,6 +106,8 @@ tyLookup (Name info id) = do
 
 
 typeof :: (Eq a, Show a) => Expr a -> Infer a (Type a)
+typeof  a | trace ("typeof " ++ show a ) False = undefined
+
 typeof (Term t) = typeof_term t
 typeof (Assign _ expr) = typeof expr
 
@@ -146,7 +157,7 @@ typeof (IfElse rt cond true false) = do
 
 typeof (Lambda rt args body) = do
     bodyTy <- typeof body
-    args' <- mapM typeofArg args
+    args' <- mapM typeofArg args -- // TODO: figure out why this is not increasing env.count
     return $ foldr arrow bodyTy args'
         where
             typeofArg = typeof . Identifier
@@ -260,8 +271,6 @@ expand ty                        = return ty
 
 unknown :: String -> TypeError a
 unknown id = UnknownType $  "Unknown type \"" <> id <> "\""
-
-
 
 
 

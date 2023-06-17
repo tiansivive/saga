@@ -12,6 +12,7 @@ import           Saga.AST.TypeSystem.Types
 
 import           Control.Monad.State.Lazy
 import qualified Data.Map                      as Map
+import           Debug.Trace                   (trace)
 
 
 
@@ -19,6 +20,7 @@ import qualified Data.Map                      as Map
 
 
 check :: (Eq a, Show a) => Expr a -> TypeExpr a -> Infer a Bool
+check  a b | trace ("check " ++ (show a) ++ " AGAINST: " ++ (show b) ++ "\n  ") False = undefined
 check expr ty = do
     inferred <- Infer.typeof expr
     ty' <- Infer.reduce ty
@@ -28,15 +30,20 @@ check expr ty = do
 
 
 
-check_kind :: (Eq a, Show a) => Type a -> Kind a -> Infer a Bool
-check_kind (TVar (Name _ id)) k = do
-    env <- get
-    case Map.lookup id $ Infer.typeKinds env of
-        Just k' -> return $ k == k'
-        Nothing -> do
-            put env{ Infer.typeKinds = Map.insert id k $ Infer.typeKinds env }
-            return True
+check_kind :: (Eq a, Show a) => TypeExpr a -> Kind a -> Infer a Bool
+check_kind tyExpr k = do
+    ty <- Infer.reduce tyExpr
+    case ty of
+        TVar (Name _ id) -> do
+            env <- get
+            case Map.lookup id $ Infer.typeKinds env of
+                Just k' -> return $ k == k'
+                Nothing -> do
+                    put env{ Infer.typeKinds = Map.insert id k $ Infer.typeKinds env }
+                    return True
+        _ -> do
+            inferred <- Infer.kindOf (Type ty)
+            return $ inferred == k
 
-check_kind ty k = do
-    inferred <- Infer.kindOf (Type ty)
-    return $ inferred == k
+
+

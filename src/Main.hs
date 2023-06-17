@@ -17,11 +17,14 @@ import qualified Saga.AST.TypeSystem.Inference as Infer
 import           Control.Monad.State.Lazy
 import           Data.Maybe                    (fromJust)
 
-import           Saga.AST.TypeSystem.Check     (check)
+import           Data.Bifunctor                (first)
+import           Saga.AST.TypeSystem.Check     (check, check_kind)
+import           Saga.AST.TypeSystem.Inference (kindOf)
+import qualified Saga.AST.TypeSystem.Types     as T
 import           System.Console.Haskeline
 import           System.IO                     (IOMode (ReadMode, ReadWriteMode, WriteMode),
                                                 hClose, hGetContents, openFile)
-import           Text.Pretty.Simple            (pPrint)
+import           Text.Pretty.Simple            (pHPrint, pPrint)
 
 
 
@@ -136,22 +139,69 @@ repl = runInputT defaultSettings $ repl' Map.empty
 script :: FilePath -> IO ()
 script fp =
     let
-        script' str = do
+        check' (Scripts.Let name tyExpr kind expr) = case (tyExpr, kind) of
+            (Just tyExpr', Just kind') -> do
+                check_kind tyExpr' kind'
+                check expr tyExpr'
+            (Just tyExpr', Nothing) -> do
+                k <- Infer.kindOf tyExpr'
+                check_kind tyExpr' k
+                check expr tyExpr'
+            (Nothing, Just kind') -> do
+                ty <- Infer.typeof expr
+                let tyExpr' = T.Type ty
+                check_kind tyExpr' kind'
+                check expr tyExpr'
+            (Nothing, Nothing) -> do
+                ty <- Infer.typeof expr
+                let tyExpr' = T.Type ty
+                k <- Infer.kindOf tyExpr'
+                check_kind tyExpr' k
+                check expr tyExpr'
+
+
+        typecheck' str = do
+            (Scripts.Script _ _ decs _) <- runSagaScript str
+            results <- Infer.doInEnv Nothing $ mapM check' decs
+            return $  and `first` results
+        eval' str = do
             (Scripts.Script _ _ decs _) <- runSagaScript str
             runStateT (mapM E.evalDeclaration decs) Map.empty
 
 
     in do
         handle <- openFile fp ReadMode
+        evalH <- openFile "./lang/evaluation.log" WriteMode
+        tcH <- openFile "./lang/typecheck.log" WriteMode
+
         contents <- hGetContents handle
-        case script' contents of
-            Left e           -> putStrLn e
-            Right (val, env) -> do
-                putStrLn "Value:"
-                pPrint val
-                putStrLn "\nEnv:"
-                pPrint env
+        case typecheck' contents of
+            Left e -> putStrLn e
+            Right val -> do
+                case val of
+                    (False, env) -> do
+                        putStrLn "Found errors!"
+                        pPrint env
+                        pHPrint tcH env
+                    (True, env) -> do
+                        putStrLn "No errors found!"
+                        pPrint env
+                        pHPrint tcH env
+                        case eval' contents of
+                            Left e           -> putStrLn e
+                            Right (val, env) -> do
+                                putStrLn "Value:"
+                                pPrint val
+                                putStrLn "\n\nEnv:"
+                                pPrint env
+                                pHPrint evalH val
+                                pHPrint evalH "\n\n------------------------------------\n------------------------------------\n\nEnv:\n"
+                                pHPrint evalH env
+
+
         hClose handle
+        hClose evalH
+        hClose tcH
         putStrLn "Bye!"
 
 

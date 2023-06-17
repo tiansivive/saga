@@ -1,16 +1,21 @@
 module test where
 
+let i
+    : Int -> Bool -> String 
+    = \n b -> "hello"
 
+
+
+/*
 let obj
-    : { fn: Int -> Int }
+    : { fn: Int -> String }
     = { fn: \x -> x + 1 }
-
 let a: Int = obj.fn 1!
 
 
 let fn
     : a -> Int
     = \x -> x
-
+*/
 
 import P

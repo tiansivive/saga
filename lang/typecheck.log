@@ -1,0 +1,22 @@
+Env
+    { expressions = fromList
+        [
+            ( "b"
+            , TVar
+                ( Name  "ta" )
+            )
+        ,
+            ( "n"
+            , TVar
+                ( Name  "ta" )
+            )
+        ]
+    , typeVars = fromList
+        [
+            ( "ta"
+            , TPrimitive  TInt
+            )
+        ]
+    , typeKinds = fromList []
+    , count = 0
+    }
