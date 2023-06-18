@@ -20,7 +20,7 @@ import           Debug.Trace                   (trace)
 
 
 check :: (Eq a, Show a) => Expr a -> TypeExpr a -> Infer a Bool
-check  a b | trace ("check " ++ (show a) ++ " AGAINST: " ++ (show b) ++ "\n  ") False = undefined
+--check  a b | trace ("check " ++ show a ++ " AGAINST: " ++ show b ++ "\n  ") False = undefined
 check expr ty = do
     inferred <- Infer.typeof expr
     ty' <- Infer.reduce ty
@@ -31,6 +31,8 @@ check expr ty = do
 
 
 check_kind :: (Eq a, Show a) => TypeExpr a -> Kind a -> Infer a Bool
+--check_kind  a b | trace ("check kind: " ++ show a ++ " AGAINST: " ++ show b ++ "\n  ") False = undefined
+
 check_kind tyExpr k = do
     ty <- Infer.reduce tyExpr
     case ty of
@@ -39,7 +41,7 @@ check_kind tyExpr k = do
             case Map.lookup id $ Infer.typeKinds env of
                 Just k' -> return $ k == k'
                 Nothing -> do
-                    put env{ Infer.typeKinds = Map.insert id k $ Infer.typeKinds env }
+                    modify $ \s -> s{ Infer.typeKinds = Map.insert id k $ Infer.typeKinds s }
                     return True
         _ -> do
             inferred <- Infer.kindOf (Type ty)

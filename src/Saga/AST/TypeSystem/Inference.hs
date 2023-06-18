@@ -47,8 +47,6 @@ letters = [1..] >>= flip replicateM ['a'..'z']
 fresh :: a -> Infer a (Type a)
 fresh info = do
   s <- get
-  traceM $ "fresh: count is " <> show (count s)
-
   let id = Name info $ "t" ++ (letters !! count s)
   put s{count = count s + 1}
   return $ TVar id
@@ -56,9 +54,8 @@ fresh info = do
 fresh_k :: Infer a (Kind a)
 fresh_k = do
   s <- get
-  put s{count = count s + 1}
-  traceM $ "fresh_k: count is " <> show (count s)
   let id = "k" ++ (letters !! count s)
+  put s{count = count s + 1}
   return $ KVar id
 
 
@@ -124,7 +121,7 @@ typeof (Identifier (Name info id)) = do
         Just ty -> return ty
         Nothing -> do
             ty <- fresh info
-            put env{ expressions = Map.insert id ty $ expressions env }
+            modify $ \s -> s{ expressions = Map.insert id ty $ expressions env }
             return ty
 
 typeof (FieldAccess _ recExpr path) = do
@@ -156,8 +153,9 @@ typeof (IfElse rt cond true false) = do
             else return trueTy
 
 typeof (Lambda rt args body) = do
+    env <- get
     bodyTy <- typeof body
-    args' <- mapM typeofArg args -- // TODO: figure out why this is not increasing env.count
+    args' <- mapM typeofArg args
     return $ foldr arrow bodyTy args'
         where
             typeofArg = typeof . Identifier
@@ -251,7 +249,7 @@ reduce (TFnApp info fnExpr argExprs)       = do
         env' <- get
         ty <- reduce tyExpr
         let tyVars = Map.insert arg ty (typeVars env')
-        put $ env'{ typeVars = Map.union tyVars $ typeVars env' }
+        modify $ \s -> s{ typeVars = Map.union tyVars $ typeVars s }
 
 reduce (TLambda _ args body) = return $ fn args
     where
@@ -275,7 +273,9 @@ unknown id = UnknownType $  "Unknown type \"" <> id <> "\""
 
 
 
-kindOf :: TypeExpr a -> Infer a (Kind a)
+kindOf :: Show a => TypeExpr a -> Infer a (Kind a)
+--kindOf a | trace ("kind of: " ++ (show a)) False = undefined
+
 kindOf tyExpr = do
     env <- get
     ty <- reduce tyExpr
@@ -290,7 +290,7 @@ kindOf tyExpr = do
                     t <- fresh info
                     k <- kindOf (Type t)
                     let typeVars' = Map.insert param t $ typeVars env
-                    put $ env{ typeVars = Map.union typeVars' $ typeVars env}
+                    modify $ \s -> s{ typeVars = Map.union typeVars' $ typeVars s}
                     out' <- kindOf out
                     return $ KConstructor k out'
         TVar (Name _ id) -> maybe fresh_k return $ Map.lookup id $ typeKinds env
