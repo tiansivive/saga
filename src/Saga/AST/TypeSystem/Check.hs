@@ -30,6 +30,10 @@ check expr ty = do
 
 
 
+
+
+
+
 check_kind :: (Eq a, Show a) => TypeExpr a -> Kind a -> Infer a Bool
 --check_kind  a b | trace ("check kind: " ++ show a ++ " AGAINST: " ++ show b ++ "\n  ") False = undefined
 

@@ -12,35 +12,18 @@ Env
                 )
             )
         ,
-            ( "a"
-            , TVar
-                ( Name  "ta" )
-            )
-        ,
-            ( "b"
-            , TVar
-                ( Name  "tb" )
-            )
-        ,
-            ( "x"
-            , TVar
-                ( Name  "tc" )
+            ( "i"
+            , TArrow
+                ( Type ( TPrimitive  TInt ) )
+                ( Type
+                    ( TArrow
+                        ( Type ( TPrimitive  TBool ) )
+                        ( Type ( TPrimitive  TString ) )
+                    )
+                )
             )
         ]
-    , typeVars = fromList
-        [
-            ( "ta"
-            , TPrimitive  TInt
-            )
-        ,
-            ( "tb"
-            , TPrimitive  TBool
-            )
-        ,
-            ( "tc"
-            , TPrimitive  TInt
-            )
-        ]
+    , typeVars = fromList []
     , typeKinds = fromList []
-    , count = 3
+    , count = 0
     }

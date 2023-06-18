@@ -17,6 +17,7 @@ import qualified Saga.AST.TypeSystem.Inference as Infer
 import           Control.Monad.State.Lazy
 import           Data.Maybe                    (fromJust)
 
+import           Control.Monad.Except
 import           Data.Bifunctor                (first)
 import           Saga.AST.TypeSystem.Check     (check, check_kind)
 import           Saga.AST.TypeSystem.Inference (kindOf)
@@ -139,26 +140,43 @@ repl = runInputT defaultSettings $ repl' Map.empty
 script :: FilePath -> IO ()
 script fp =
     let
-        check' (Scripts.Let name tyExpr kind expr) = case (tyExpr, kind) of
+        check' (Scripts.Let (AST.Name _ id) tyExpr kind expr) = case (tyExpr, kind) of
             (Just tyExpr', Just kind') -> do
                 check_kind tyExpr' kind'
-                check expr tyExpr'
+                inferred <- Infer.typeof expr
+                ty <- Infer.reduce tyExpr'
+                matches <- check expr tyExpr'
+                update id inferred ty matches
+
             (Just tyExpr', Nothing) -> do
                 k <- Infer.kindOf tyExpr'
                 check_kind tyExpr' k
-                check expr tyExpr'
+                inferred <- Infer.typeof expr
+                ty <- Infer.reduce tyExpr'
+                matches <- check expr tyExpr'
+                update id inferred ty matches
+
             (Nothing, Just kind') -> do
-                ty <- Infer.typeof expr
-                let tyExpr' = T.Type ty
+                inferred <- Infer.typeof expr
+                let tyExpr' = T.Type inferred
                 check_kind tyExpr' kind'
-                check expr tyExpr'
+                matches <- check expr tyExpr'
+                update id inferred inferred matches
+
             (Nothing, Nothing) -> do
-                ty <- Infer.typeof expr
-                let tyExpr' = T.Type ty
+                inferred <- Infer.typeof expr
+                let tyExpr' = T.Type inferred
                 k <- Infer.kindOf tyExpr'
                 check_kind tyExpr' k
-                check expr tyExpr'
+                matches <- check expr tyExpr'
+                update id inferred inferred matches
 
+        update :: String -> T.Type a -> T.Type a -> Bool -> Infer.Infer a Bool
+        update id inferred ty matches = if not matches
+            then throwError $ Infer.TypeMismatch inferred ty
+            else do
+                modify $ \s -> s{ Infer.expressions = Map.insert id ty $ Infer.expressions s }
+                return matches
 
         typecheck' str = do
             (Scripts.Script _ _ decs _) <- runSagaScript str
@@ -190,10 +208,10 @@ script fp =
                         case eval' contents of
                             Left e           -> putStrLn e
                             Right (val, env) -> do
-                                putStrLn "Value:"
-                                pPrint val
-                                putStrLn "\n\nEnv:"
-                                pPrint env
+                                -- putStrLn "Value:"
+                                -- pPrint val
+                                -- putStrLn "\n\nEnv:"
+                                -- pPrint env
                                 pHPrint evalH val
                                 pHPrint evalH "\n\n------------------------------------\n------------------------------------\n\nEnv:\n"
                                 pHPrint evalH env

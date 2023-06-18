@@ -4,15 +4,12 @@ let i
     : Int -> Bool -> String 
     = \a b -> "hello"
 
+/*
 let obj
     : { fn: Int -> Int }
     = { fn: \x -> x + 1 }
 
-/*
-let obj
-    : { fn: Int -> String }
-    = { fn: \x -> x + 1 }
-let a: Int = obj.fn 1!
+let result = obj.fn 1!
 
 
 let fn

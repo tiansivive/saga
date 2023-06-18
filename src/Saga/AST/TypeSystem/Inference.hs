@@ -157,9 +157,8 @@ typeof (IfElse rt cond true false) = do
                 else return trueTy
 
 typeof (Lambda rt args body) = do
-    env <- get
-    bodyTy <- typeof body
-    args' <- mapM typeofArg args
+    (args', env') <- runScoped $ mapM typeofArg args
+    bodyTy <- lift $ evalStateT (typeof body) env'
     return $ foldr arrow bodyTy args'
         where
             typeofArg = typeof . Identifier
@@ -168,11 +167,14 @@ typeof (Lambda rt args body) = do
 
 typeof (FnApp rt fnExpr args) = do
     ty  <- typeof fnExpr
-    typeof' ty args
+    -- | run another state computation to correctly scope the function arguments
+    evalScoped $ apply' ty args
+
+
 
     where
-        typeof' ty [] = return ty
-        typeof' (TArrow _ argTyExp resultTyExpr) (argExp:rest) = do
+        apply' ty [] = return ty
+        apply' (TArrow _ argTyExp resultTyExpr) (argExp:rest) = do
             ty <- typeof argExp
             argTy <- reduce argTyExp
             match <- unify ty argTy
@@ -180,9 +182,9 @@ typeof (FnApp rt fnExpr args) = do
                 then throwError $ TypeMismatch ty argTy
                 else do
                     r <- reduce resultTyExpr
-                    typeof' r rest
+                    apply' r rest
 
-        typeof' ty _ = throwError $ UnexpectedType $ "Non arrow type: " <> show ty
+        apply' ty _ = throwError $ UnexpectedType $ "Non arrow type: " <> show ty
 
 
 
@@ -234,18 +236,18 @@ reduce (TBlock _ tyExps)                = reduce $ last tyExps
 reduce (TReturn _ tyExp)                = reduce tyExp
 reduce (TConditional _ cond true false) = reduce true -- assumes same return type, will change with union types
 reduce (TFnApp info fnExpr argExprs)       = do
-    vals <- mapM reduce argExprs
     constructor <- reduce fnExpr
-    env <- get
+    vals <- mapM reduce argExprs
+
     case (constructor, argExprs) of
 
         (TParametric _ _, []) -> throwError $ UnexpectedType "Not enough arguments provided!"
         (TParametric (Name _ arg) body, [tyExpr]) -> do
-            updateEnv arg tyExpr
-            reduce body
+            (_, env') <- runScoped $ updateEnv arg tyExpr
+            lift $ evalStateT (reduce body) env'
         (TParametric (Name _ arg) body, tyExpr:tail) -> do
-            updateEnv arg tyExpr
-            reduce $ TFnApp info body tail
+            (_, env') <- runScoped $ updateEnv arg tyExpr
+            lift $ evalStateT (reduce $ TFnApp info body tail) env'
 
         _ -> throwError $ UnexpectedType "Cannot apply this type expression"
 
@@ -314,18 +316,18 @@ sub `isSubtype` parent = do
             arg2' <- tyLookup arg2
             out1' <- reduce out1
             out2' <- reduce out2
-            out' <- out1' `isSubtype` out2'
-            arg' <- arg1' `isSubtype` arg2'
+            (out', env') <- runScoped $ out1' `isSubtype` out2'
+            arg' <- lift $ evalStateT (arg1' `isSubtype` arg2') env'
             return $ out' && arg'
 
         (TArrow _ input1 output1, TArrow _ input2 output2) -> do
             input1' <- reduce input1
             input2' <- reduce input2
-            input' <- input1' `isSubtype` input2'
+            (input', env') <- runScoped $ input1' `isSubtype` input2'
             output1' <- reduce output1
             output2' <- reduce output2
 
-            output' <- output1' `isSubtype`  output2'
+            output' <- lift $ evalStateT (output1' `isSubtype`  output2') env'
             return $ input' && output'
 
         (TIdentifier (Name _ id), TIdentifier (Name _ id'))
@@ -397,4 +399,12 @@ kindOf tyExpr = do
 
 
 
+runScoped :: (MonadState s (t m), MonadTrans t, Monad m) => StateT s m a -> t m (a, s)
+runScoped action = do
+    env <- get
+    lift $ runStateT action env
 
+evalScoped :: (MonadState s (t m), MonadTrans t, Monad m) => StateT s m b -> t m b
+evalScoped action = do
+    env <- get
+    lift $ evalStateT action env
