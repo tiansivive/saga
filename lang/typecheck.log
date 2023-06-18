@@ -11,19 +11,23 @@ Env
                     )
                 )
             )
-        ,
-            ( "i"
-            , TArrow
-                ( Type ( TPrimitive  TInt ) )
-                ( Type
-                    ( TArrow
-                        ( Type ( TPrimitive  TBool ) )
-                        ( Type ( TPrimitive  TString ) )
+        ]
+    , typeVars = fromList
+        [
+            ( "GenericType"
+            , TParametric
+                ( Name  "f" )
+                ( TFnApp
+                    ( Type
+                        ( TVar
+                            ( Name  "f" )
+                        )
                     )
+                    [ Type ( TPrimitive  TInt ) ]
                 )
             )
         ]
-    , typeVars = fromList []
     , typeKinds = fromList []
-    , count = 0
+    , tcount = 0
+    , kcount = 0
     }

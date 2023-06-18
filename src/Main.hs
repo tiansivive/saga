@@ -171,6 +171,18 @@ script fp =
                 matches <- check expr tyExpr'
                 update id inferred inferred matches
 
+        check' (Scripts.Type (AST.Name _ id) kind tyExpr) = do
+            k <- Infer.kindOf tyExpr
+            ty <- Infer.reduce tyExpr
+            matches <- check_kind tyExpr k
+            if not matches
+                then throwError $ Infer.WrongKind ty k
+                else do
+                    modify $ \s -> s{ Infer.typeVars = Map.insert id ty $ Infer.typeVars s }
+                    return matches
+
+
+
         update :: String -> T.Type a -> T.Type a -> Bool -> Infer.Infer a Bool
         update id inferred ty matches = if not matches
             then throwError $ Infer.TypeMismatch inferred ty

@@ -1,12 +1,4 @@
-[ VClosure
-    [ Name  "a"
-    , Name  "b"
-    ]
-    ( Term
-        ( LString  "hello" )
-    )
-    ( fromList [] )
-]
+[ Void ]
 "
 
 ------------------------------------
@@ -14,16 +6,4 @@
 
 Env:
 "
-fromList
-    [
-        ( "i"
-        , VClosure
-            [ Name  "a"
-            , Name  "b"
-            ]
-            ( Term
-                ( LString  "hello" )
-            )
-            ( fromList [] )
-        )
-    ]
+fromList []

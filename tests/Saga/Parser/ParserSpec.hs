@@ -181,6 +181,18 @@ spec = do
       int `shouldBe` Ty.TInt
       string `shouldBe` Ty.TString
 
+    it "can parse type level definitions" $ do
+      let Scripts.Type (AST.Name _ t) Nothing lambda = parseDec "type T = \\f -> f Int!"
+      let Ty.TLambda _ [AST.Name _ f1] (Ty.TFnApp _ fn args) = lambda
+    --   let Ty.Type (Ty.TIdentifier (AST.Name _ f2)) = fn
+      let [Ty.Type (Ty.TPrimitive _ int)] = args
+
+      t `shouldBe` "T"
+      f1 `shouldBe` "f"
+    --   f1 `shouldBe` f2
+      int `shouldBe` Ty.TInt
+
+
   describe "Types: " $ do
     it "can parse primitive types" $ do
         let Ty.Type (Ty.TPrimitive _ int) = parseType "Int"

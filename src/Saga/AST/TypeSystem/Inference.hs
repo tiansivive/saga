@@ -32,7 +32,8 @@ data Env a = Env {
     expressions :: Map.Map String (Type a),
     typeVars    :: Map.Map String (Type a),
     typeKinds   :: Map.Map String (Kind a),
-    count       :: Int
+    tcount      :: Int,
+    kcount      :: Int
 } deriving (Show)
 
 initEnv :: Env a
@@ -40,7 +41,8 @@ initEnv =  Env {
     expressions = Map.fromList operatorFnTypes,
     typeVars = Map.empty,
     typeKinds = Map.empty,
-    count = 0
+    tcount = 0,
+    kcount = 0
     }
 
 letters :: [String]
@@ -49,21 +51,23 @@ letters = [1..] >>= flip replicateM ['a'..'z']
 fresh :: a -> Infer a (Type a)
 fresh info = do
   s <- get
-  let id = Name info $ "t" ++ (letters !! count s)
-  put s{count = count s + 1}
+  let id = Name info $ "t" ++ (letters !! tcount s)
+  put s{tcount = tcount s + 1}
   return $ TVar id
 
 fresh_k :: Infer a (Kind a)
 fresh_k = do
   s <- get
-  let id = "k" ++ (letters !! count s)
-  put s{count = count s + 1}
+  let id = "k" ++ (letters !! kcount s)
+  put s{tcount = kcount s + 1}
   return $ KVar id
 
 
 
 data TypeError a
   = TypeMismatch (Type a) (Type a)
+  | WrongType (Expr a) (Type a)
+  | WrongKind (Type a) (Kind a)
   | UnknownType String
   | UnexpectedType String
   | UnificationError (Type a) (Type a)
@@ -227,7 +231,8 @@ typeof_term term = case term of
         expanded = typeof >=> expand
 
 
-reduce :: TypeExpr a -> Infer a (Type a)
+reduce :: Show a => TypeExpr a -> Infer a (Type a)
+reduce a | trace ("reduce: " ++ show a) False = undefined
 reduce (Type ty)                        = return ty
 reduce (TParens _ tyExp)                = reduce tyExp
 reduce (TClause _ _ tyExp)              = reduce tyExp
@@ -235,13 +240,19 @@ reduce (TBlock _ [])                    = return TUnit
 reduce (TBlock _ tyExps)                = reduce $ last tyExps
 reduce (TReturn _ tyExp)                = reduce tyExp
 reduce (TConditional _ cond true false) = reduce true -- assumes same return type, will change with union types
-reduce (TFnApp info fnExpr argExprs)       = do
+reduce (TFnApp info fnExpr argExprs)    = do
     constructor <- reduce fnExpr
-    vals <- mapM reduce argExprs
+    traceM $ "Fn Expression: " <> show constructor
+
 
     case (constructor, argExprs) of
+        (TVar t, []) -> evalScoped $ tyLookup  t
+        (TVar t, [last]) -> return $ TParametric t last
+        (TVar t@(Name info id), tyExpr:tail) -> do
+            out <- evalScoped $ reduce $ TFnApp info tyExpr tail
+            return $ TParametric t (Type out)
 
-        (TParametric _ _, []) -> throwError $ UnexpectedType "Not enough arguments provided!"
+        (TParametric _ body, []) -> reduce body
         (TParametric (Name _ arg) body, [tyExpr]) -> do
             (_, env') <- runScoped $ updateEnv arg tyExpr
             lift $ evalStateT (reduce body) env'
@@ -374,7 +385,7 @@ unknown id = UnknownType $  "Unknown type \"" <> id <> "\""
 
 
 kindOf :: Show a => TypeExpr a -> Infer a (Kind a)
---kindOf a | trace ("kind of: " ++ (show a)) False = undefined
+kindOf a | trace ("kind of: " ++ show a) False = undefined
 
 kindOf tyExpr = do
     env <- get
@@ -383,18 +394,25 @@ kindOf tyExpr = do
         TProtocol _ _ -> return KProtocol
         TConstrained {} -> return KConstraint
 
-        TParametric (Name info param) out -> do
+        TParametric p@(Name info param) out -> do
             case Map.lookup param (typeVars env) of
                 Just ty -> kindOf (Type ty)
-                Nothing -> do
-                    t <- fresh info
-                    k <- kindOf (Type t)
-                    let typeVars' = Map.insert param t $ typeVars env
-                    modify $ \s -> s{ typeVars = Map.union typeVars' $ typeVars s}
-                    out' <- kindOf out
-                    return $ KConstructor k out'
+                Nothing -> evalScoped $ build p out
+
         TVar (Name _ id) -> maybe fresh_k return $ Map.lookup id $ typeKinds env
         _ -> return KType
+
+    where
+        build arg@(Name _ id) out  = do
+            let ty' = TVar arg
+            env <- get
+            k <- kindOf (Type ty')
+            traceM $ "Inferred kind: " ++ show k
+            let typeVars' = Map.insert id ty' $ typeVars env
+            modify $ \s -> s{ typeVars = Map.union typeVars' $ typeVars s}
+            out' <- kindOf out
+            traceM $ "Inferred out kind: " ++ show out'
+            return $ KConstructor k out'
 
 
 
