@@ -19,10 +19,10 @@ library
       Saga.AST.Evaluation
       Saga.AST.Scripts
       Saga.AST.Syntax
+      Saga.AST.TypeSystem.BuiltIns
       Saga.AST.TypeSystem.Check
       Saga.AST.TypeSystem.Inference
       Saga.AST.TypeSystem.Kinds
-      Saga.AST.TypeSystem.Subtyping
       Saga.AST.TypeSystem.Types
       Saga.Lexer.Lexer
       Saga.Lexer.Tokens

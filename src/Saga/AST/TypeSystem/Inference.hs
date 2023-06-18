@@ -5,22 +5,24 @@
 module Saga.AST.TypeSystem.Inference where
 
 import           Control.Monad.Except
-import           Control.Monad.Identity    (Identity (runIdentity))
+import           Control.Monad.Identity       (Identity (runIdentity))
 import           Control.Monad.State.Lazy
-import           Data.Bifunctor            (Bifunctor (first))
+import           Data.Bifunctor               (Bifunctor (first))
 
-import           Control.Applicative       ((<|>))
-import           Data.List                 (find)
-import qualified Data.Map                  as Map
-import           Data.Maybe                (fromJust, fromMaybe)
-import qualified Data.Set                  as Set
-import           Saga.AST.Syntax           (Expr (..), Name (..), Term (..))
+import           Control.Applicative          ((<|>))
+import           Data.List                    (elemIndex, find, findIndex)
+import qualified Data.Map                     as Map
+import           Data.Maybe                   (fromJust, fromMaybe)
+import qualified Data.Set                     as Set
+import           Saga.AST.Syntax              (Expr (..), Name (..), Term (..))
 
-import           Debug.Trace               (trace, traceM)
-import           Saga.AST.TypeSystem.Kinds (Kind (KConstraint, KConstructor, KProtocol, KType, KVar))
+import           Debug.Trace                  (trace, traceM)
+import           Saga.AST.TypeSystem.BuiltIns (operatorFnTypes)
+import           Saga.AST.TypeSystem.Kinds    (Kind (KConstraint, KConstructor, KProtocol, KType, KVar))
+
 import           Saga.AST.TypeSystem.Types
-import qualified Saga.Lexer.Lexer          as L
-import           Saga.Parser.Parser        (runSagaExpr, runSagaType)
+import qualified Saga.Lexer.Lexer             as L
+import           Saga.Parser.Parser           (runSagaExpr, runSagaType)
 
 
 
@@ -35,7 +37,7 @@ data Env a = Env {
 
 initEnv :: Env a
 initEnv =  Env {
-    expressions = Map.empty,
+    expressions = Map.fromList operatorFnTypes,
     typeVars = Map.empty,
     typeKinds = Map.empty,
     count = 0
@@ -64,6 +66,7 @@ data TypeError a
   = TypeMismatch (Type a) (Type a)
   | UnknownType String
   | UnexpectedType String
+  | UnificationError (Type a) (Type a)
   deriving (Show, Eq)
 
 run :: Show a => Infer a b -> Either String b
@@ -140,17 +143,18 @@ typeof (FieldAccess _ recExpr path) = do
 
         typeof' ty _ = throwError $ UnexpectedType $ "Non record type: " <> show ty
 
-
-
 typeof (IfElse rt cond true false) = do
     condTy <- typeof cond
     trueTy <- typeof true
     falseTy <- typeof false
-    if condTy /= TPrimitive rt TBool
+    isBool <- unify condTy (TPrimitive rt TBool)
+    if not isBool
         then throwError $ TypeMismatch condTy (TPrimitive rt TBool)
-        else if trueTy /= falseTy
-            then throwError $ TypeMismatch trueTy falseTy
-            else return trueTy
+        else do
+            match <- unify trueTy falseTy
+            if not match
+                then throwError $ TypeMismatch trueTy falseTy
+                else return trueTy
 
 typeof (Lambda rt args body) = do
     env <- get
@@ -171,8 +175,9 @@ typeof (FnApp rt fnExpr args) = do
         typeof' (TArrow _ argTyExp resultTyExpr) (argExp:rest) = do
             ty <- typeof argExp
             argTy <- reduce argTyExp
-            if argTy /= ty
-                then throwError $ TypeMismatch argTy ty
+            match <- unify ty argTy
+            if not match
+                then throwError $ TypeMismatch ty argTy
                 else do
                     r <- reduce resultTyExpr
                     typeof' r rest
@@ -207,18 +212,18 @@ typeof_term term = case term of
                     ty <- expanded expr
                     tys <- mapM expanded rest
 
-                    let mismatch = find (/= ty) tys
+                    vals <- mapM (unify ty) tys
+                    let mismatch = elemIndex False vals
+
                     case mismatch of
-                        Just ty' -> throwError $ TypeMismatch ty ty'
-                        Nothing  -> return ty
+                        Just i  -> throwError $ TypeMismatch ty (tys !! i)
+                        Nothing -> return ty
 
     lit -> return $ TLiteral lit
     where
         expanded :: (Eq a, Show a ) => Expr a -> Infer a (Type a)
         expanded = typeof >=> expand
 
-
-type TypeEvaluation a = StateT (Env a) (Except (TypeError a)) (Type a)
 
 reduce :: TypeExpr a -> Infer a (Type a)
 reduce (Type ty)                        = return ty
@@ -256,6 +261,99 @@ reduce (TLambda _ args body) = return $ fn args
         fn [id]      = TParametric id body
         fn (id:tail) = TParametric id $ Type (fn tail)
 
+
+unify :: (Eq a, Show a) => Type a -> Type a -> Infer a Bool
+unify a b | trace ("unify: " ++ show a ++ " WITH: " ++ show b) False = undefined
+unify t1 t2 = case (t1, t2) of
+    (TVar (Name _ id), _) -> unify' id t2
+    (_, TVar (Name _ id)) -> unify' id t1
+    _                     -> do
+        match <- t1 `isSubtype` t2
+        if not match
+            then throwError $ UnificationError t1 t2
+            else return match
+    where
+        unify' :: (Eq a, Show a) => String -> Type a -> Infer a Bool
+        unify' id' ty = do
+            env <- get
+            case Map.lookup id' $ typeVars env of
+                Nothing -> do
+                    modify $ \s -> s{ typeVars = Map.insert id' ty $ typeVars s }
+                    return True
+                Just ty' -> return $ ty == ty'
+
+
+isSubtype ::(Eq a, Show a) => Type a -> Type a -> Infer a Bool
+isSubtype  a b | trace ("subtype " ++ show a ++ " <: " ++ show b ++ "\n  ") False = undefined
+sub `isSubtype` parent = do
+    env <- get
+    case (sub, parent) of
+
+        (TLiteral (LInt _ _), TPrimitive _ TInt)       -> return True
+        (TLiteral (LString _ _), TPrimitive _ TString) -> return True
+        (TLiteral (LBool _ _), TPrimitive _ TBool)     -> return True
+
+        (TPrimitive _ prim1, TPrimitive _ prim2)       -> return $ prim1 == prim2
+
+        (TTuple _ tup1, TTuple _ tup2)  -> do
+            tup1' <- mapM reduce tup1
+            tup2' <- mapM reduce tup2
+            allTrue <$> zipWithM isSubtype tup1' tup2'
+
+        (TRecord _ pairs1, TRecord _ pairs2)  -> do
+            pairs1' <- mapM (mapM reduce) pairs1
+            pairs2' <- mapM (mapM reduce) pairs2
+            let check (name, ty2) = case lookup name pairs1' of
+                    Nothing  -> return False
+                    Just ty1 -> ty1 `isSubtype` ty2
+
+            allTrue <$> mapM check pairs2'
+
+        (TParametric arg1 out1, TParametric arg2 out2) -> do
+            arg1' <- tyLookup arg1
+            arg2' <- tyLookup arg2
+            out1' <- reduce out1
+            out2' <- reduce out2
+            out' <- out1' `isSubtype` out2'
+            arg' <- arg1' `isSubtype` arg2'
+            return $ out' && arg'
+
+        (TArrow _ input1 output1, TArrow _ input2 output2) -> do
+            input1' <- reduce input1
+            input2' <- reduce input2
+            input' <- input1' `isSubtype` input2'
+            output1' <- reduce output1
+            output2' <- reduce output2
+
+            output' <- output1' `isSubtype`  output2'
+            return $ input' && output'
+
+        (TIdentifier (Name _ id), TIdentifier (Name _ id'))
+            | id == id' -> return True
+            | Just ty  <- Map.lookup id  $ typeVars env
+            , Just ty' <- Map.lookup id' $ typeVars env
+                -> ty `isSubtype` ty'
+            | otherwise -> return False
+
+        (TIdentifier (Name _ id), _)
+            | Just ty  <- Map.lookup id  $ typeVars env
+                -> ty `isSubtype` parent
+            | otherwise -> return False
+
+        (TVar (Name _ id), TVar (Name _ id')) -> return $ id == id'
+
+        (ty@(TVar (Name info id)), _)
+            | Just ty <- Map.lookup id $ typeVars env
+                -> ty `isSubtype` parent
+            | otherwise -> do
+                modify $ \s -> s{ typeVars = Map.insert id parent $ typeVars s }
+                return True
+
+        (_, _) -> return False
+
+    where
+        allTrue :: Foldable t => t Bool -> Bool
+        allTrue = and
 
 
 

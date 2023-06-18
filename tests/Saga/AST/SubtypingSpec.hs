@@ -4,7 +4,6 @@ import           Test.Hspec
 
 import qualified Saga.AST.TypeSystem.Inference       as I
 import           Saga.AST.TypeSystem.Inference       (Env (count, expressions, typeVars, typeKinds))
-import qualified Saga.AST.TypeSystem.Subtyping       as ST
 import qualified Saga.AST.TypeSystem.Types           as Ty
 import qualified Saga.AST.Syntax          as AST
 
@@ -30,7 +29,7 @@ check ty sub = I.run $ do
   let (Right sub') = P.runSagaType sub
   ty''  <- I.reduce ty'
   sub'' <- I.reduce sub'
-  sub'' `ST.isSubtype` ty''
+  sub'' `I.isSubtype` ty''
 
 spec :: Spec
 spec = do
@@ -65,7 +64,7 @@ spec = do
         subId' <- I.reduce subId
         subTy' <- I.reduce subTy
         let env = Just $ I.Env { typeVars = Map.fromList [("MyTypeId", subTy')], typeKinds = Map.empty, expressions = Map.empty, count = 0 }
-        let (Right val) = I.runInEnv env $ subId' `ST.isSubtype` ty'
+        let (Right val) = I.runInEnv env $ subId' `I.isSubtype` ty'
         return val
 
       in check `shouldBe` Right True

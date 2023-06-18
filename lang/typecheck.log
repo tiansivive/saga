@@ -1,0 +1,46 @@
+Env
+    { expressions = fromList
+        [
+            ( "+"
+            , TArrow
+                ( Type ( TPrimitive  TInt ) )
+                ( Type
+                    ( TArrow
+                        ( Type ( TPrimitive  TInt ) )
+                        ( Type ( TPrimitive  TInt ) )
+                    )
+                )
+            )
+        ,
+            ( "a"
+            , TVar
+                ( Name  "ta" )
+            )
+        ,
+            ( "b"
+            , TVar
+                ( Name  "tb" )
+            )
+        ,
+            ( "x"
+            , TVar
+                ( Name  "tc" )
+            )
+        ]
+    , typeVars = fromList
+        [
+            ( "ta"
+            , TPrimitive  TInt
+            )
+        ,
+            ( "tb"
+            , TPrimitive  TBool
+            )
+        ,
+            ( "tc"
+            , TPrimitive  TInt
+            )
+        ]
+    , typeKinds = fromList []
+    , count = 3
+    }

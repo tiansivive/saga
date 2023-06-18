@@ -1,0 +1,94 @@
+[ VClosure
+    [ Name  "a"
+    , Name  "b"
+    ]
+    ( Term
+        ( LString  "hello" )
+    )
+    ( fromList [] )
+, VRecord
+    [
+        ( "fn"
+        , VClosure
+            [ Name  "x" ]
+            ( FnApp
+                ( Identifier
+                    ( Name  "+" )
+                )
+                [ Identifier
+                    ( Name  "x" )
+                , Term
+                    ( LInt  1 )
+                ]
+            )
+            ( fromList
+                [
+                    ( "i"
+                    , VClosure
+                        [ Name  "a"
+                        , Name  "b"
+                        ]
+                        ( Term
+                            ( LString  "hello" )
+                        )
+                        ( fromList [] )
+                    )
+                ]
+            )
+        )
+    ]
+]
+"
+
+------------------------------------
+------------------------------------
+
+Env:
+"
+fromList
+    [
+        ( "i"
+        , VClosure
+            [ Name  "a"
+            , Name  "b"
+            ]
+            ( Term
+                ( LString  "hello" )
+            )
+            ( fromList [] )
+        )
+    ,
+        ( "obj"
+        , VRecord
+            [
+                ( "fn"
+                , VClosure
+                    [ Name  "x" ]
+                    ( FnApp
+                        ( Identifier
+                            ( Name  "+" )
+                        )
+                        [ Identifier
+                            ( Name  "x" )
+                        , Term
+                            ( LInt  1 )
+                        ]
+                    )
+                    ( fromList
+                        [
+                            ( "i"
+                            , VClosure
+                                [ Name  "a"
+                                , Name  "b"
+                                ]
+                                ( Term
+                                    ( LString  "hello" )
+                                )
+                                ( fromList [] )
+                            )
+                        ]
+                    )
+                )
+            ]
+        )
+    ]

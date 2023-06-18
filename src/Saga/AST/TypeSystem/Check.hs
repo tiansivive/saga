@@ -5,9 +5,9 @@ module Saga.AST.TypeSystem.Check where
 
 import           Saga.AST.Syntax
 import qualified Saga.AST.TypeSystem.Inference as Infer
-import           Saga.AST.TypeSystem.Inference (Infer)
+import           Saga.AST.TypeSystem.Inference (Infer, isSubtype)
 import           Saga.AST.TypeSystem.Kinds
-import           Saga.AST.TypeSystem.Subtyping
+
 import           Saga.AST.TypeSystem.Types
 
 import           Control.Monad.State.Lazy
