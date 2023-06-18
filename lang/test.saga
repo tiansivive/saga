@@ -1,9 +1,11 @@
 module test where
 
 
-type GenericType = \f -> f Int!
 
-/*
+let hof = \f -> f 1!
+
+/* type GenericType = \f -> f Int!
+
 let i
     : Int -> Bool -> String 
     = \a b -> "hello"

@@ -177,7 +177,6 @@ typeof (FnApp rt fnExpr args) = do
 
 
     where
-        apply' ty [] = return ty
         apply' (TArrow _ argTyExp resultTyExpr) (argExp:rest) = do
             ty <- typeof argExp
             argTy <- reduce argTyExp
@@ -186,7 +185,27 @@ typeof (FnApp rt fnExpr args) = do
                 then throwError $ TypeMismatch ty argTy
                 else do
                     r <- reduce resultTyExpr
-                    apply' r rest
+                    evalScoped $ apply' r rest
+
+        apply' ty@(TVar (Name info id)) (argExpr:rest) = do
+            env <- get
+            case Map.lookup id $ typeVars env of
+                Just ty@(TArrow {}) -> evalScoped $ apply' ty (argExpr:rest)
+                Just ty             -> throwError $ UnexpectedType $ "Non arrow type: " <> show ty
+                Nothing             -> do
+                    ty <- typeof argExpr
+                    out <- fresh info
+                    let fn = TArrow info (Type ty) (Type out)
+                    evalScoped $ apply' fn (argExpr:rest)
+
+
+        apply' ty@(TVar (Name _ id)) [] = do
+            env <- get
+            case Map.lookup id $ typeVars env of
+                Just ty' -> return ty'
+                Nothing  -> return ty
+        apply' ty [] = return ty
+
 
         apply' ty _ = throwError $ UnexpectedType $ "Non arrow type: " <> show ty
 
@@ -280,11 +299,14 @@ unify a b | trace ("unify: " ++ show a ++ " WITH: " ++ show b) False = undefined
 unify t1 t2 = case (t1, t2) of
     (TVar (Name _ id), _) -> unify' id t2
     (_, TVar (Name _ id)) -> unify' id t1
-    _                     -> do
-        match <- t1 `isSubtype` t2
-        if not match
-            then throwError $ UnificationError t1 t2
-            else return match
+    _                     ->
+        if t1 == t2
+            then return True
+            else do
+                match <- t1 `isSubtype` t2
+                if not match
+                    then throwError $ UnificationError t1 t2
+                    else return match
     where
         unify' :: (Eq a, Show a) => String -> Type a -> Infer a Bool
         unify' id' ty = do

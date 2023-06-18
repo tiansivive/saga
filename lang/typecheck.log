@@ -11,22 +11,22 @@ Env
                     )
                 )
             )
-        ]
-    , typeVars = fromList
-        [
-            ( "GenericType"
-            , TParametric
-                ( Name  "f" )
-                ( TFnApp
-                    ( Type
-                        ( TVar
-                            ( Name  "f" )
-                        )
+        ,
+            ( "hof"
+            , TArrow
+                ( Type
+                    ( TVar
+                        ( Name  "ta" )
                     )
-                    [ Type ( TPrimitive  TInt ) ]
+                )
+                ( Type
+                    ( TVar
+                        ( Name  "tb" )
+                    )
                 )
             )
         ]
+    , typeVars = fromList []
     , typeKinds = fromList []
     , tcount = 0
     , kcount = 0

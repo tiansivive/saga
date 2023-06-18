@@ -1,4 +1,15 @@
-[ Void ]
+[ VClosure
+    [ Name  "f" ]
+    ( FnApp
+        ( Identifier
+            ( Name  "f" )
+        )
+        [ Term
+            ( LInt  1 )
+        ]
+    )
+    ( fromList [] )
+]
 "
 
 ------------------------------------
@@ -6,4 +17,19 @@
 
 Env:
 "
-fromList []
+fromList
+    [
+        ( "hof"
+        , VClosure
+            [ Name  "f" ]
+            ( FnApp
+                ( Identifier
+                    ( Name  "f" )
+                )
+                [ Term
+                    ( LInt  1 )
+                ]
+            )
+            ( fromList [] )
+        )
+    ]
