@@ -155,4 +155,9 @@ let ordImpl
     { impl... }
 
 
+
+type Foo = \f -> f Int!
+
+type Bar = Foo List!
+
 import P

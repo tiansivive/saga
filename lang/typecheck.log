@@ -1,17 +1,6 @@
 Env
     { expressions = fromList
         [
-            ( "+"
-            , TArrow
-                ( Type ( TPrimitive  TInt ) )
-                ( Type
-                    ( TArrow
-                        ( Type ( TPrimitive  TInt ) )
-                        ( Type ( TPrimitive  TInt ) )
-                    )
-                )
-            )
-        ,
             ( "hof"
             , TArrow
                 ( Type

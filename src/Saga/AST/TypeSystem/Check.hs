@@ -14,6 +14,7 @@ import           Control.Monad.State.Lazy
 import qualified Data.Map                      as Map
 import           Debug.Trace                   (trace, traceIO, traceM,
                                                 traceShow)
+import           Foreign                       (ptrToIntPtr)
 
 
 
@@ -39,6 +40,7 @@ check_kind :: (Eq a, Show a) => TypeExpr a -> Kind a -> Infer a Bool
 check_kind  a b | trace ("\n---------------\nCHECK KIND:\n" ++ show a ++ "\nAGAINST: " ++ show b ) False = undefined
 
 check_kind tyExpr k = do
+
     ty <- Infer.reduce tyExpr
     traceM $ "Reduced tyExpr to: " <> show ty
     case ty of
@@ -58,6 +60,10 @@ check_kind tyExpr k = do
             traceM $ "Equality check: " <> show (inferred == k)
 
             return $ inferred == k
+
+
+
+
 
 
 

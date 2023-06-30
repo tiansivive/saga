@@ -38,7 +38,7 @@ data Env a = Env {
 
 initEnv :: Env a
 initEnv =  Env {
-    expressions = Map.fromList operatorFnTypes,
+    expressions = Map.fromList [], --operatorFnTypes,
     typeVars = Map.empty,
     typeKinds = Map.empty,
     tcount = 0,
@@ -109,105 +109,117 @@ tyLookup (Name info id) = do
 
 
 
+
+
 typeof :: (Eq a, Show a) => Expr a -> Infer a (Type a)
-typeof  a | trace ("typeof " ++ show a ) False = undefined
-
-typeof (Term t) = typeof_term t
-typeof (Assign _ expr) = typeof expr
-
-typeof (Clause _ _ expr) = typeof expr
-typeof (Block _ []) = return TUnit
-typeof (Block _ exprs) = typeof $ last exprs
-typeof (Return _ expr) = typeof expr
-
-typeof (Parens _ expr) = typeof expr
-
-typeof (Identifier (Name info id)) = do
+typeof a = do
     env <- get
-    case Map.lookup id $ expressions env of
-        Just ty -> return ty
-        Nothing -> do
-            ty <- fresh info
-            modify $ \s -> s{ expressions = Map.insert id ty $ expressions env }
-            return ty
-
-typeof (FieldAccess _ recExpr path) = do
-    ty <- typeof recExpr
-    typeof' ty path
-    where
-        typeof' :: (Eq a, Show a) => Type a -> [Name a] -> Infer a (Type a)
-        typeof' ty [] = return ty
-        typeof' (TRecord _ pairs) (id:rest) =
-            let found = find (\(name, typeExpr) -> name == id) pairs in
-            case found of
-                Just (_, tyExpr) -> do
-                    ty <- reduce tyExpr
-                    typeof' ty rest
-                Nothing -> throwError $ UnknownType $ "No field: " <> show id
-
-        typeof' ty _ = throwError $ UnexpectedType $ "Non record type: " <> show ty
-
-typeof (IfElse rt cond true false) = do
-    condTy <- typeof cond
-    trueTy <- typeof true
-    falseTy <- typeof false
-    isBool <- unify condTy (TPrimitive rt TBool)
-    if not isBool
-        then throwError $ TypeMismatch condTy (TPrimitive rt TBool)
-        else do
-            match <- unify trueTy falseTy
-            if not match
-                then throwError $ TypeMismatch trueTy falseTy
-                else return trueTy
-
-typeof (Lambda rt args body) = do
-    (args', env') <- runScoped $ mapM typeofArg args
-    bodyTy <- lift $ evalStateT (typeof body) env'
-    return $ foldr arrow bodyTy args'
-        where
-            typeofArg = typeof . Identifier
-            arrow arg ty = TArrow rt (Type arg) (Type ty)
-
-
-typeof (FnApp rt fnExpr args) = do
-    ty  <- typeof fnExpr
-    -- | run another state computation to correctly scope the function arguments
-    evalScoped $ apply' ty args
-
-
+    traceM $ "\nENVIRONMENT: " ++ show env
+    typeof' a
 
     where
-        apply' (TArrow _ argTyExp resultTyExpr) (argExp:rest) = do
-            ty <- typeof argExp
-            argTy <- reduce argTyExp
-            match <- unify ty argTy
-            if not match
-                then throwError $ TypeMismatch ty argTy
+        typeof' :: (Eq a, Show a) => Expr a -> Infer a (Type a)
+        typeof' a | trace ("TYPEOF' " ++ show a ) False = undefined
+        typeof' (Term t) = typeof_term t
+        typeof' (Assign _ expr) = typeof expr
+
+        typeof' (Clause _ _ expr) = typeof expr
+        typeof' (Block _ []) = return TUnit
+        typeof' (Block _ exprs) = typeof $ last exprs
+        typeof' (Return _ expr) = typeof expr
+
+        typeof' (Parens _ expr) = typeof expr
+
+        typeof' (Identifier (Name info id)) = do
+            env <- get
+            case Map.lookup id $ expressions env of
+                Just ty -> return ty
+                Nothing -> do
+                    ty <- fresh info
+                    modify $ \s -> s{ expressions = Map.insert id ty $ expressions env }
+                    return ty
+
+        typeof' (FieldAccess _ recExpr path) = do
+            ty <- typeof recExpr
+            typeof'' ty path
+            where
+                typeof'' :: (Eq a, Show a) => Type a -> [Name a] -> Infer a (Type a)
+                typeof'' ty [] = return ty
+                typeof'' (TRecord _ pairs) (id:rest) =
+                    let found = find (\(name, typeExpr) -> name == id) pairs in
+                    case found of
+                        Just (_, tyExpr) -> do
+                            ty <- reduce tyExpr
+                            typeof'' ty rest
+                        Nothing -> throwError $ UnknownType $ "No field: " <> show id
+
+                typeof'' ty _ = throwError $ UnexpectedType $ "Non record type: " <> show ty
+
+        typeof' (IfElse rt cond true false) = do
+            condTy <- typeof cond
+            trueTy <- typeof true
+            falseTy <- typeof false
+            isBool <- unify condTy (TPrimitive rt TBool)
+            if not isBool
+                then throwError $ TypeMismatch condTy (TPrimitive rt TBool)
                 else do
-                    r <- reduce resultTyExpr
-                    evalScoped $ apply' r rest
+                    match <- unify trueTy falseTy
+                    if not match
+                        then throwError $ TypeMismatch trueTy falseTy
+                        else return trueTy
 
-        apply' ty@(TVar (Name info id)) (argExpr:rest) = do
-            env <- get
-            case Map.lookup id $ typeVars env of
-                Just ty@(TArrow {}) -> evalScoped $ apply' ty (argExpr:rest)
-                Just ty             -> throwError $ UnexpectedType $ "Non arrow type: " <> show ty
-                Nothing             -> do
-                    ty <- typeof argExpr
-                    out <- fresh info
-                    let fn = TArrow info (Type ty) (Type out)
-                    evalScoped $ apply' fn (argExpr:rest)
-
-
-        apply' ty@(TVar (Name _ id)) [] = do
-            env <- get
-            case Map.lookup id $ typeVars env of
-                Just ty' -> return ty'
-                Nothing  -> return ty
-        apply' ty [] = return ty
+        typeof' (Lambda rt args body) = do
+            (args', env') <- runScoped $ mapM typeofArg args
+            bodyTy <- lift $ evalStateT (typeof body) env'
+            return $ foldr arrow bodyTy args'
+                where
+                    typeofArg = typeof . Identifier
+                    arrow arg ty = TArrow rt (Type arg) (Type ty)
 
 
-        apply' ty _ = throwError $ UnexpectedType $ "Non arrow type: " <> show ty
+        typeof' (FnApp rt fnExpr args) = do
+            ty  <- typeof fnExpr
+            -- | run another state computation to correctly scope the function arguments
+            evalScoped $ apply' ty args
+
+
+
+            where
+                apply' a b | trace ("FN APPLY:\n\t" <> show a <> "\n\t" <> show b) False = undefined
+                apply' (TArrow _ argTyExp resultTyExpr) (argExp:rest) = do
+                    ty <- typeof argExp
+                    argTy <- reduce argTyExp
+                    match <- unify ty argTy
+                    if not match
+                        then throwError $ TypeMismatch ty argTy
+                        else do
+                            r <- reduce resultTyExpr
+                            evalScoped $ apply' r rest
+
+                apply' ty@(TVar (Name info id)) (argExpr:rest) = do
+                    env <- get
+                    case Map.lookup id $ typeVars env of
+                        Just f@(TArrow {}) -> evalScoped $ do
+                            unify ty f
+                            apply' f (argExpr:rest)
+                        Just ty             -> throwError $ UnexpectedType $ "Non arrow type: " <> show ty
+                        Nothing             -> do
+                            tyArg <- typeof argExpr
+                            out <- fresh info
+                            let fn = TArrow info (Type tyArg) (Type out)
+                            unify ty fn
+                            evalScoped $ apply' fn (argExpr:rest)
+
+
+                apply' ty@(TVar (Name _ id)) [] = do
+                    env <- get
+                    case Map.lookup id $ typeVars env of
+                        Just ty' -> return ty'
+                        Nothing  -> return ty
+                apply' ty [] = return ty
+
+
+                apply' ty _ = throwError $ UnexpectedType $ "Non arrow type: " <> show ty
 
 
 
@@ -292,6 +304,9 @@ reduce (TLambda _ args body) = return $ fn args
     where
         fn [id]      = TParametric id body
         fn (id:tail) = TParametric id $ Type (fn tail)
+
+
+
 
 
 unify :: (Eq a, Show a) => Type a -> Type a -> Infer a Bool
