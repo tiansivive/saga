@@ -380,10 +380,10 @@ script
 
 {
 
-instance P.ParsingInfo L.Range where
-  --L.Range a1 _ (<->) L.Range _ b2 = L.Range a1 b2
-  (<->) r r' = L.Range (L.start r) (L.stop r')
-  details _ = P.ParseError 0 0
+-- instance P.ParsingInfo L.Range where
+--   --L.Range a1 _ (<->) L.Range _ b2 = L.Range a1 b2
+--   (<->) r r' = L.Range (L.start r) (L.stop r')
+--   details _ = P.ParseError 0 0
 
 resolveIdKind :: Syntax.Name a -> Kinds.Kind a
 resolveIdKind (Syntax.Name _ id) = 

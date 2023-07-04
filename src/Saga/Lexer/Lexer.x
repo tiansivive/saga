@@ -136,7 +136,7 @@ data Range = Range
   { start :: AlexPosn
   , stop :: AlexPosn
   } 
-  | NoInfo 
+
   
 data RangedToken = RangedToken
   { rtToken :: Token

@@ -3,29 +3,34 @@
 
 module Main (main) where
 
-import qualified Saga.AST.Scripts              as Scripts
-import qualified Saga.AST.Syntax               as AST
-import qualified Saga.Lexer.Lexer              as L
-import           Saga.Parser.Parser            (runSagaDec, runSagaExpr,
-                                                runSagaKind, runSagaScript,
-                                                runSagaType)
+import qualified Saga.AST.Scripts                            as Scripts
+import qualified Saga.AST.Syntax                             as AST
+import qualified Saga.Lexer.Lexer                            as L
+import           Saga.Parser.Parser                          (runSagaDec,
+                                                              runSagaExpr,
+                                                              runSagaKind,
+                                                              runSagaScript,
+                                                              runSagaType)
 
-import qualified Data.Map                      as Map
-import qualified Saga.AST.Evaluation           as E
-import qualified Saga.AST.TypeSystem.Inference as Infer
+import qualified Data.Map                                    as Map
+import qualified Saga.AST.Evaluation                         as E
+import qualified Saga.AST.TypeSystem.HindleyMilner.Inference as HMI
+import qualified Saga.AST.TypeSystem.Inference               as Infer
 
 import           Control.Monad.State.Lazy
-import           Data.Maybe                    (fromJust)
+import           Data.Maybe                                  (fromJust)
 
 import           Control.Monad.Except
-import           Data.Bifunctor                (first)
-import           Saga.AST.TypeSystem.Check     (check, check_kind)
-import           Saga.AST.TypeSystem.Inference (kindOf)
-import qualified Saga.AST.TypeSystem.Types     as T
+import           Data.Bifunctor                              (first)
+import           Saga.AST.TypeSystem.Check                   (check, check_kind)
+import           Saga.AST.TypeSystem.Inference               (kindOf)
+import qualified Saga.AST.TypeSystem.Types                   as T
 import           System.Console.Haskeline
-import           System.IO                     (IOMode (ReadMode, ReadWriteMode, WriteMode),
-                                                hClose, hGetContents, openFile)
-import           Text.Pretty.Simple            (pHPrint, pPrint)
+import           System.IO                                   (IOMode (ReadMode, ReadWriteMode, WriteMode),
+                                                              hClose,
+                                                              hGetContents,
+                                                              openFile)
+import           Text.Pretty.Simple                          (pHPrint, pPrint)
 
 
 
