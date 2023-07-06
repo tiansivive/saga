@@ -69,6 +69,7 @@ instance Eq Type where
     TConstrained vars constraints ty == TConstrained vars' constraints' ty' =
         vars == vars' && constraints == constraints' && ty == ty'
 
+    _ == _ = False
 
 
 type RequiredImplId = String

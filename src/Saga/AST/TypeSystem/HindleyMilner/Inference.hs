@@ -155,7 +155,7 @@ s `compose` s' = do
   return $ s'' `Map.union` s
 
 unify ::  Type -> Type -> Infer Subst
-unify (inL `TArrow` outL) (inR `TArrow` outR)  = do
+unify (inL `TArrow` outL) (inR `TArrow` outR) = do
   il <- refine inL
   ir <- refine inR
   ol <- refine outL
@@ -240,6 +240,7 @@ lookupEnv x = do
                     return (nullSubst, t)
 
 infer :: Expr -> Infer (Subst, Type)
+infer ex | trace ("Inferring: " ++ show ex) False = undefined
 infer ex = case ex of
 
   Identifier x -> lookupEnv x
@@ -255,13 +256,13 @@ infer ex = case ex of
     return (s, Type t' `TArrow` Type t) -- TO
 
 
-  FnApp fn (arg:rest) -> do
+  FnApp fn args -> do
     tv <- fresh
     (s, t) <- infer fn
     modifyM $ apply s
-    (s', t') <- infer $ case rest of
+    (s', t') <- infer $ case args of
       [body] -> body
-      _      -> FnApp arg rest
+      a:as   -> FnApp a as
 
     ty <- apply s' t
     s3       <- unify ty (Type t' `TArrow` Type tv)
@@ -289,6 +290,20 @@ infer ex = case ex of
 
   -- Op op e e' -> do
   --   inferPrim env [e, e'] (ops op)
+
+  Term (LTuple elems) -> do
+    tElems <- mapM infer' elems
+    return (nullSubst, TTuple tElems)
+    where
+      infer' = extract . infer
+      extract = fmap (Type . snd)
+
+  Term (LRecord pairs) -> do
+    tPairs <- mapM infer' pairs
+    return (nullSubst, TRecord tPairs)
+    where
+      infer' = mapM $ extract . infer
+      extract = fmap (Type . snd)
 
   Term (LInt i)  -> return (nullSubst, TLiteral (LInt i))
   Term (LBool b) -> return (nullSubst, TLiteral (LBool b))

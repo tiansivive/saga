@@ -155,14 +155,14 @@ identifier
 --   : identifier          { \(range, id) -> (range, [$1]) }
 --   | path '.' identifier { \(range, path) _ (range', id) -> (range <-> range') (path ++ [id])}
 
---  -- COLLECTIONS
--- pairs
---   :                                 { [] }
---   | identifier ':' expr ',' pairs   { ($1, $3) : $5 }
---   | identifier ':' expr             { [($1, $3)] }
+ -- COLLECTIONS
+pairs
+  :                                 { [] }
+  | identifier ':' expr ',' pairs   { (P.keyValPair $1 $3) : $5 }
+  | identifier ':' expr             { [P.keyValPair $1 $3] }
 
--- record 
---   : '{' pairs '}'   { (L.rtRange $1 <-> L.rtRange $3, HM.LRecord $2) }
+record 
+  : '{' pairs '}'   { P.record $2 $1 $3 }
 
 -- listElements
 --   :                         { [] }
@@ -172,12 +172,12 @@ identifier
 -- list 
 --   : '[' listElements ']'    { (L.rtRange $1 <-> L.rtRange $3, HM.LList $2) }
 
--- tupleElems
---   : ',' expr                  { [$2] }
---   | ',' expr tupleElems   { $2 : $3 }
+tupleElems
+  : ',' expr              { [$2] }
+  | ',' expr tupleElems   { $2 : $3 }
 
--- tuple
---   : '(' expr tupleElems ')'    { (L.rtRange $1 <-> L.rtRange $4, HM.LTuple ($2:$3)) }
+tuple
+  : '(' expr tupleElems ')'    { P.tuple ($2:$3) $1 $4 }
 
 
 -- FUNCTIONS
@@ -208,9 +208,9 @@ term
   : number     { P.number HM.LInt $1 }
   | boolean    { P.boolean HM.LBool $1 }
   | string     { P.string HM.LString $1 }
---   | tuple      { $1 }
+  | tuple      { $1 }
 --   | list       { $1 }
---   | record     { $1 }
+  | record     { $1 }
   
 atom
   : identifier              { $1 }
@@ -236,12 +236,28 @@ expr
 
 
 -- Types
+tpairs
+  :                                     { [] }
+  | identifier ':' typeExpr ',' tpairs  { (P.keyValPair $1 $3) : $5 }
+  | identifier ':' typeExpr             { [P.keyValPair $1 $3] }
+
+trecord 
+  : '{' tpairs '}'   { P.tyRecord $2 $1 $3 }
+
+ttupleElems
+  : ',' typeExpr              { [$2] }
+  | ',' typeExpr ttupleElems   { $2 : $3 }
+
+ttuple
+  : '(' typeExpr ttupleElems ')'    { P.tyTuple ($2:$3) $1 $4 }
+
 
 type 
   : number     { P.number (HM.TLiteral . HM.LInt) $1 }
   | boolean    { P.boolean (HM.TLiteral . HM.LBool) $1 }
   | string     { P.string (HM.TLiteral . HM.LString) $1 }
- 
+  | ttuple     { $1 }
+  | trecord    { $1 }
   
   -- | identifier '<' typeParams '>' { Types.TParametric (Types.Type $ resolveIdType $1) $3 }
 

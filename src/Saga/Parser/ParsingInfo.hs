@@ -12,19 +12,22 @@ import           Data.Char                               (isLower)
 import           Data.List                               (nub)
 import           Data.Maybe                              (Maybe (..), fromJust)
 import           Data.Monoid                             (First (..))
-import           Saga.AST.Syntax                         (Expr (FnApp))
+import           Saga.AST.Syntax                         (Expr (FnApp),
+                                                          Term (LRecord))
 import           Saga.Lexer.Lexer                        (RangedToken (rtToken))
 
 data ParseError = ParseError { col:: Int, line:: Int }
 
 
--- class (Show a) => ParsingInfo a where
---     (<->) :: a -> a -> a
---     details :: a -> ParseError
+class Expandable a where
+    (<->) :: a -> a -> a
 
+instance Expandable L.Range where
+    (<->) r r' = L.Range (L.start r) (L.stop r')
 
-(<->) :: L.Range -> L.Range -> L.Range
-(<->) r r' = L.Range (L.start r) (L.stop r')
+-- instance Expandable [T.Token] where
+--     (<->) toks toks' = nub $ toks ++ toks'
+
 
 pRange :: ParsedData a -> L.Range
 pRange (Parsed _ r _) = r
@@ -74,8 +77,28 @@ string = literal $ \(T.String s) -> BS.unpack s
 boolean :: (Bool -> a) -> RangedToken -> ParsedData a
 boolean = literal $ \(T.Boolean b) -> b
 
+keyValPair :: ParsedData HM.Expr -> ParsedData a -> ParsedData (String, a)
+keyValPair k v = Parsed (id, value v) range' toks
+    where
+        HM.Identifier id = value k
+        range' = range k <-> range v
+        toks = tokens k ++ tokens v
+
+record :: [ParsedData (String, HM.Expr)] -> RangedToken -> RangedToken -> ParsedData HM.Term
+record pairs start end = Parsed rec' range' toks
+    where
+        rec' = HM.LRecord $ map value pairs
+        range' = L.rtRange start <-> L.rtRange end
+        toks = foldl (\toks' parsed -> tokens parsed ++ toks') [start, end] pairs
 
 
+
+tuple :: [ParsedData HM.Expr] -> RangedToken -> RangedToken -> ParsedData HM.Term
+tuple elems start end =  Parsed tuple' range' toks
+    where
+        tuple' = HM.LTuple $ map value elems
+        range' = L.rtRange start <-> L.rtRange end
+        toks = foldl (\toks' parsed -> tokens parsed ++ toks') [start, end] elems
 
 
 
@@ -132,6 +155,22 @@ fnApplication fn args rt =
 
 tyExpr :: ParsedData HM.Type -> ParsedData HM.TypeExpr
 tyExpr = fmap HM.Type
+
+tyRecord :: [ParsedData (String, HM.TypeExpr)] -> RangedToken -> RangedToken -> ParsedData HM.Type
+tyRecord pairs start end = Parsed rec' range' toks
+    where
+        rec' = HM.TRecord $ map value pairs
+        range' = L.rtRange start <-> L.rtRange end
+        toks = foldl (\toks' parsed -> tokens parsed ++ toks') [start, end] pairs
+
+tyTuple :: [ParsedData HM.TypeExpr] -> RangedToken -> RangedToken -> ParsedData HM.Type
+tyTuple elems start end =  Parsed tuple' range' toks
+    where
+        tuple' = HM.TTuple $ map value elems
+        range' = L.rtRange start <-> L.rtRange end
+        toks = foldl (\toks' parsed -> tokens parsed ++ toks') [start, end] elems
+
+
 
 tyParenthesised :: ParsedData HM.TypeExpr -> RangedToken -> RangedToken -> ParsedData HM.TypeExpr
 tyParenthesised expr@(Parsed val range _) start end = expr
