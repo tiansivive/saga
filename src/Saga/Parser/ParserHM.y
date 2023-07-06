@@ -2,11 +2,11 @@
 module Saga.Parser.ParserHM
     ( runSagaExpr
     -- , runSagaScript
-    -- , runSagaType
+    , runSagaType
     -- , runSagaKind
     -- , runSagaDec
     , parseSagaExpr
-    -- , parseSagaType
+    , parseSagaType
     -- , parseSagaKind
     -- , parseSagaDec
     ) where
@@ -34,7 +34,7 @@ import qualified Saga.AST.Scripts as Scripts
 
 -- %name parseSagaScript script
 %name parseSagaExpr expr
--- %name parseSagaType typeExpr
+%name parseSagaType typeExpr
 -- %name parseSagaKind kindExpr
 -- %name parseSagaDec dec
 %tokentype { L.RangedToken }
@@ -235,14 +235,50 @@ expr
 
 
 
+-- Types
+
+type 
+  : number     { P.number (HM.TLiteral . HM.LInt) $1 }
+  | boolean    { P.boolean (HM.TLiteral . HM.LBool) $1 }
+  | string     { P.string (HM.TLiteral . HM.LString) $1 }
+ 
+  
+  -- | identifier '<' typeParams '>' { Types.TParametric (Types.Type $ resolveIdType $1) $3 }
+
+
+typeAtom
+  : type  { P.tyExpr $1 } 
+  | identifier %shift  { P.tyIdentifier $1 }
+  | '(' typeExpr ')' { P.tyParenthesised $2 $1 $3 }
+
+typeArgs
+  :                     { [] }
+  | typeArgs typeAtom   { $1 ++ [$2] }
+
+typeExpr 
+  -- : if typeExpr then typeExpr else typeExpr { Types.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
+  : typeExpr '->' typeExpr  { P.typeArrow $1 $3 }
+  | '\\' params '->' typeExpr { P.typeLambda $2 $4 $1 }
+  | typeAtom typeArgs '!' { P.typeFnApplication $1 $2 $3 }
+  | typeAtom     { $1 }
+  -- | qualifiers '.' typeExpr                          { Types.Type $ Types.TConstrained $1 [] $3 }
+  -- | qualifiers '.' constraints '=>' typeExpr %shift  { Types.Type $ Types.TConstrained $1 $3 $5 }
+  -- | implements identifier ':' typeExpr %shift { Types.Type (Types.TImplementation $2 $4 []) }
+  -- | with args '=>' implements identifier ':' typeExpr %shift { Types.Type (Types.TImplementation $5 $7 $2) }
+
+typeAnnotation
+  : { Nothing }
+  | ':' typeExpr { Just $2 }
+
+
+-- Kinds
+
+
+
+
 
 
 {
-
-
-
-
-
 
 
 
@@ -259,8 +295,8 @@ expr
 runSagaExpr :: String -> Either String (P.ParsedData HM.Expr)
 runSagaExpr input = input `P.run` parseSagaExpr
 
--- runSagaType :: String -> Either String HM.TypeExpr
--- runSagaType input = input `run` parseSagaType
+runSagaType :: String -> Either String (P.ParsedData HM.TypeExpr)
+runSagaType input = input `P.run` parseSagaType
 
 -- runSagaKind :: String -> Either String (Kinds.Kind L.Range)
 -- runSagaKind input = input `run` parseSagaKind

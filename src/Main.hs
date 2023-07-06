@@ -16,6 +16,7 @@ import qualified Data.Map                                    as Map
 import qualified Saga.AST.Evaluation                         as E
 import qualified Saga.AST.TypeSystem.HindleyMilner.Inference as HMI
 import qualified Saga.AST.TypeSystem.Inference               as Infer
+import qualified Saga.Parser.ParserHM                        as HMP
 
 import           Control.Monad.State.Lazy
 import           Data.Maybe                                  (fromJust)
@@ -43,7 +44,7 @@ main = do
     line <- getLine
     pPrint (runSagaExpr line)
 
-data Sort = Type | Kind
+data Sort = Type | Kind | Term
 
 data SagaCmd = Parse Sort String | Infer Sort String | Quit | Help | None | TypeCheck String String
 
@@ -55,6 +56,7 @@ repl = runInputT defaultSettings $ repl' Map.empty
         getCmd (':' : 't' : ' ' : ty) = Infer Type ty
         getCmd (':' : 'k' : ' ' : k) = Infer Kind k
 
+        getCmd (':' : 'p' : 'e' : ' ' : e) = Parse Term e
         getCmd (':' : 'p' : 't' : ' ' : ty) = Parse Type ty
         getCmd (':' : 'p' : 'k' : ' ' : k) = Parse Kind k
 
@@ -100,8 +102,14 @@ repl = runInputT defaultSettings $ repl' Map.empty
                         outputStrLn "\nTypecheck:"
                         pPrint $ Infer.run $ check expr' ty'
 
+            parseTerm input = do
+                case HMP.runSagaExpr input of
+                    (Left e)  -> pPrint e
+                    (Right t) -> pPrint t
+                repl' env
+
             parseType input = do
-                case runSagaType input of
+                case HMP.runSagaType input of
                     (Left e)   -> pPrint e
                     (Right ty) -> pPrint ty
                 repl' env
@@ -113,7 +121,7 @@ repl = runInputT defaultSettings $ repl' Map.empty
                 repl' env
 
             inferType input = do
-                case Infer.infer input of
+                case HMI.run input of
                     (Left e)   -> pPrint e
                     (Right ty) -> pPrint ty
                 repl' env
@@ -130,6 +138,7 @@ repl = runInputT defaultSettings $ repl' Map.empty
                     None -> parseExpr line
                     Infer Type ty -> inferType ty
                     Infer Kind k -> inferKind k
+                    Parse Term e -> parseTerm e
                     Parse Type ty -> parseType ty
                     Parse Kind k -> parseKind k
                     TypeCheck expr ty -> do

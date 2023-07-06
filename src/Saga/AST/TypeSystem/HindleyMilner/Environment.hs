@@ -12,7 +12,7 @@ import           Saga.AST.TypeSystem.HindleyMilner.Types
 
 type TVar = String
 type Alias = String
-data Scheme = Scheme [TVar] Type
+data Scheme = Scheme [TVar] Type deriving (Show, Eq)
 
 data TypeEnv = Env { typeVars :: Map.Map TVar Scheme, typeAliases :: Map.Map Alias TypeExpr, count :: Int }
 
@@ -44,19 +44,33 @@ modify f = ST.modify push
     push [te]     = [f te]
     push (_:rest) = push rest
 
+modifyM :: (TypeEnv -> Infer TypeEnv) -> Infer ()
+modifyM f = do
+  env <- ST.get
+  env' <- push env
+  put env'
+  where
+    push []       = mapM f [empty]
+    push [te]     = mapM f [te]
+    push (_:rest) = push rest
+
 nullSubst :: Subst
 nullSubst = Map.empty
 
 data TypeError
-  = UnificationFail Type  Type
+  = UnificationFail Type Type
   | InfiniteType TVar Type
   | UnboundVariable String
   | UndefinedIdentifier Alias
   | UnexpectedType String
+  | SubtypeFailure Type Type
+
+  deriving (Show, Eq)
 
 
 fresh :: Infer Type
 fresh = do
+
   modify $ \s -> s{count = count s + 1}
   s <- get
   return $ TVar $ (letters !! count s)

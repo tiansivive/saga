@@ -8,6 +8,7 @@ import qualified Saga.AST.TypeSystem.HindleyMilner.Types as HM
 import           Data.ByteString.Lazy.Char8              (ByteString)
 import qualified Data.ByteString.Lazy.Char8              as BS
 
+import           Data.Char                               (isLower)
 import           Data.List                               (nub)
 import           Data.Maybe                              (Maybe (..), fromJust)
 import           Data.Monoid                             (First (..))
@@ -30,6 +31,10 @@ pRange (Parsed _ r _) = r
 
 
 data ParsedData a = Parsed { value:: a, range:: L.Range, tokens:: [L.RangedToken] }
+    deriving (Eq)
+
+instance Show a => Show (ParsedData a) where
+    show (Parsed val _ _ ) = show val
 
 instance Functor ParsedData where
     fmap f (Parsed expr range toks) = Parsed (f expr) range toks
@@ -107,22 +112,70 @@ parseError tok = do
 
 
 lambda :: [ParsedData HM.Expr] -> ParsedData HM.Expr -> RangedToken -> ParsedData HM.Expr
-lambda params body rt = let params' = sequence params in do
-    body' <- body
-    params'' <- params'
-    let ps = map (\(HM.Identifier s) -> s) params''
-    let e = HM.Lambda ps body'
-    Parsed e (L.rtRange rt <-> range body) (nub $ [rt] ++ tokens params' ++ tokens body )
+lambda params (Parsed body' bRange bToks) rt =
+    let
+        extract (Parsed (HM.Identifier s) _ _) = s
+        expr = HM.Lambda (fmap extract params) body'
+        toks = foldl (\toks' param -> toks' ++ tokens param) (rt:bToks) params
+    in Parsed expr (L.rtRange rt <-> bRange) (nub toks)
 
 
 fnApplication :: ParsedData HM.Expr -> [ParsedData HM.Expr] -> RangedToken -> ParsedData HM.Expr
-fnApplication fn args rt = let args' = sequence args in do
-    fn' <- fn
-    args'' <- args'
-    let e = HM.FnApp fn' args''
-    Parsed e (range fn <-> L.rtRange rt) (nub $ tokens fn ++ tokens args' ++ [rt])
+fnApplication fn args rt =
+    let
+        extract (Parsed val _ _) = val
+        expr = HM.FnApp (extract fn) $ fmap extract args
+        toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
+    in Parsed expr (range fn <-> L.rtRange rt) (nub toks)
 
 
+
+tyExpr :: ParsedData HM.Type -> ParsedData HM.TypeExpr
+tyExpr = fmap HM.Type
+
+tyParenthesised :: ParsedData HM.TypeExpr -> RangedToken -> RangedToken -> ParsedData HM.TypeExpr
+tyParenthesised expr@(Parsed val range _) start end = expr
+    { value = HM.TParens val
+    , range = L.rtRange start <-> L.rtRange end
+    }
+
+
+typeArrow :: ParsedData HM.TypeExpr -> ParsedData HM.TypeExpr ->  ParsedData HM.TypeExpr
+typeArrow input output =
+    let
+        extract (Parsed val _ _) = val
+        ty = HM.TArrow (extract input) (extract output)
+        toks = tokens input ++ tokens output
+    in  tyExpr $ Parsed ty (range input <-> range output) (nub toks)
+
+typeLambda :: [ParsedData HM.Expr] -> ParsedData HM.TypeExpr -> RangedToken -> ParsedData HM.TypeExpr
+typeLambda params (Parsed body' bRange bToks) rt =
+    let
+        extract (Parsed (HM.Identifier s) _ _) = s
+        ty = HM.TLambda (fmap extract params) body'
+        toks = foldl (\toks' param -> toks' ++ tokens param) (rt:bToks) params
+    in Parsed ty (L.rtRange rt <-> bRange) (nub toks)
+
+typeFnApplication :: ParsedData HM.TypeExpr -> [ParsedData HM.TypeExpr] -> RangedToken -> ParsedData HM.TypeExpr
+typeFnApplication fn args rt =
+    let
+        extract (Parsed val _ _) = val
+        ty = HM.TFnApp (extract fn) $ fmap extract args
+        toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
+    in Parsed ty (range fn <-> L.rtRange rt) (nub toks)
+
+
+
+tyIdentifier :: ParsedData HM.Expr -> ParsedData HM.TypeExpr
+tyIdentifier = fmap $ \(HM.Identifier id) -> resolveIdType id
+
+resolveIdType :: String -> HM.TypeExpr
+resolveIdType "Int"     = HM.Type $ HM.TPrimitive HM.TInt
+resolveIdType "Bool"    = HM.Type $ HM.TPrimitive HM.TBool
+resolveIdType "String"  = HM.Type $ HM.TPrimitive HM.TString
+resolveIdType ty
+    | isLower $ head ty = HM.Type $ HM.TVar ty
+    | otherwise         = HM.TIdentifier ty
 
 
 
