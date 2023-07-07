@@ -15,7 +15,7 @@ type Alias = String
 data Scheme = Scheme [TVar] Type deriving (Show, Eq)
 
 data TypeEnv = Env { typeVars :: Map.Map TVar Scheme, typeAliases :: Map.Map Alias TypeExpr, count :: Int }
-
+  deriving (Show)
 
 
 type Infer = StateT [TypeEnv] (Except TypeError)

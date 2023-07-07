@@ -26,7 +26,10 @@ import           Data.Bifunctor                              (first)
 import           Saga.AST.TypeSystem.Check                   (check, check_kind)
 import           Saga.AST.TypeSystem.Inference               (kindOf)
 import qualified Saga.AST.TypeSystem.Types                   as T
-import           System.Console.Haskeline
+import           System.Console.Haskeline                    (defaultSettings,
+                                                              getInputLine,
+                                                              outputStrLn,
+                                                              runInputT)
 import           System.IO                                   (IOMode (ReadMode, ReadWriteMode, WriteMode),
                                                               hClose,
                                                               hGetContents,

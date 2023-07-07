@@ -108,6 +108,8 @@ instance (Monad f, Substitutable f a) => Substitutable f [a] where
 
 
 instance Substitutable Infer Type where
+  apply s t | trace ("Applying type sub: " ++ show s ++ " to " ++ show t) False = undefined
+
   apply s t@(TVar id)     = return $ Map.findWithDefault t id s
   apply s (inExpr `TArrow` outExpr) = do
     inTy <- refine inExpr
@@ -126,6 +128,7 @@ instance Substitutable Infer Type where
   ftv _         = return Set.empty
 
 instance Substitutable Infer Scheme where
+  apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
   apply s (Scheme as t) =
     let
       s' = foldr Map.delete s as
@@ -141,6 +144,7 @@ instance Substitutable Infer Scheme where
 
 
 instance Substitutable Infer TypeEnv where
+  apply s t | trace ("Applying type env sub: " ++ show s ++ " to " ++ show (typeVars t)) False = undefined
   apply s e@(Env vars aliases count) = do
     typeVars' <- sequence $ Map.map (apply s) vars
     return $ e{ typeVars = typeVars' }
@@ -197,6 +201,7 @@ unify sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
 unify t t' = throwError $ UnificationFail t t'
 
 bind ::  TVar -> Type -> Infer Subst
+bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
 bind a t
   | t == TVar a     = return nullSubst
   | otherwise       = do
@@ -212,6 +217,7 @@ occursCheck a t = do
 
 
 generalize :: Type -> Infer Scheme
+generalize t | trace ("Generalizing: " ++ show t) False = undefined
 generalize t = do
     t' <- ftv t
     env <- get
@@ -336,6 +342,7 @@ inferExpr = runInfer . infer
 --   Right ty -> inferTop (extend env (name, ty)) xs
 
 normalize :: Scheme -> Infer Scheme
+normalize sc | trace ("Normalizing: " ++ show sc) False = undefined
 normalize (Scheme ts body) = do
   body' <- fv body
   let ord = zip (nub body') letters
@@ -370,7 +377,7 @@ normalize (Scheme ts body) = do
 
 
 refine :: TypeExpr -> Infer Type
-refine a | trace ("refine: " ++ show a) False = undefined
+refine a | trace ("refining: " ++ show a) False = undefined
 refine (Type ty)                      = return ty
 refine (TParens tyExp)                = refine tyExp
 refine (TClause _ tyExp)              = refine tyExp
