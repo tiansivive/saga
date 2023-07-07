@@ -116,6 +116,7 @@ instance Substitutable Infer Type where
     outTy <- refine outExpr
     in'  <- apply s inTy
     out' <- apply s outTy
+    traceM $ "Result: " ++ show (Type in' `TArrow` Type out')
     return $ Type in' `TArrow` Type out'
 
   apply _ ty       = return ty
@@ -134,6 +135,7 @@ instance Substitutable Infer Scheme where
       s' = foldr Map.delete s as
     in do
       ty <- apply s' t
+      traceM $ "Result: " ++ show (Scheme as ty)
       return $ Scheme as ty
 
 
@@ -147,6 +149,8 @@ instance Substitutable Infer TypeEnv where
   apply s t | trace ("Applying type env sub: " ++ show s ++ " to " ++ show (typeVars t)) False = undefined
   apply s e@(Env vars aliases count) = do
     typeVars' <- sequence $ Map.map (apply s) vars
+
+    traceM $ "Result: " ++ show typeVars'
     return $ e{ typeVars = typeVars' }
   ftv (Env vars aliases count) = ftv $ Map.elems vars
 

@@ -5,6 +5,8 @@ Applying type sub: fromList [] to TVar "b"
 Applying type env sub: fromList [] to fromList [("f",Scheme [] (TVar "b"))]
 Applying scheme sub: fromList [] to Scheme [] (TVar "b")
 Applying type sub: fromList [] to TVar "b"
+Result: Scheme [] (TVar "b")
+Result: fromList [("f",Scheme [] (TVar "b"))]
 Inferring: Term (LInt 1)
 Applying type sub: fromList [] to TVar "b"
 Unifying: TVar "b" with TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c"))
@@ -21,7 +23,9 @@ refining: Type (TLiteral (LInt 1))
 refining: Type (TVar "c")
 Applying type sub: fromList [("b",TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))] to TLiteral (LInt 1)
 Applying type sub: fromList [("b",TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))] to TVar "c"
+Result: TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c"))
 Applying type sub: fromList [("b",TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))] to TVar "c"
+Result: TArrow (Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))) (Type (TVar "c"))
 Generalizing: TArrow (Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))) (Type (TVar "c"))
 refining: Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))
 refining: Type (TLiteral (LInt 1))
