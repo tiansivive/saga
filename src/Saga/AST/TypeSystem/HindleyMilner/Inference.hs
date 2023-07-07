@@ -159,6 +159,8 @@ s `compose` s' = do
   return $ s'' `Map.union` s
 
 unify ::  Type -> Type -> Infer Subst
+unify t1 t2 | trace ("Unifying: " ++ show t1 ++ " with " ++ show t2) False = undefined
+
 unify (inL `TArrow` outL) (inR `TArrow` outR) = do
   il <- refine inL
   ir <- refine inR

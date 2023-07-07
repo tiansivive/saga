@@ -1,22 +1,65 @@
-Env
-    { expressions = fromList
-        [
-            ( "hof"
-            , TArrow
+Inferring: Lambda ["f"] (FnApp (Identifier "f") [Term (LInt 1)])
+Inferring: FnApp (Identifier "f") [Term (LInt 1)]
+Inferring: Identifier "f"
+Applying type sub: fromList [] to TVar "b"
+Applying type env sub: fromList [] to fromList [("f",Scheme [] (TVar "b"))]
+Applying scheme sub: fromList [] to Scheme [] (TVar "b")
+Applying type sub: fromList [] to TVar "b"
+Inferring: Term (LInt 1)
+Applying type sub: fromList [] to TVar "b"
+Unifying: TVar "b" with TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c"))
+Binding: "b" to TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c"))
+refining: Type (TLiteral (LInt 1))
+refining: Type (TVar "c")
+Applying type sub: fromList [("b",TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))] to TVar "c"
+Applying type sub: fromList [("b",TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))] to TVar "b"
+Applying type sub: fromList [("b",TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))] to TArrow (Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))) (Type (TVar "c"))
+refining: Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))
+refining: Type (TVar "c")
+Applying type sub: fromList [("b",TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))] to TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c"))
+refining: Type (TLiteral (LInt 1))
+refining: Type (TVar "c")
+Applying type sub: fromList [("b",TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))] to TLiteral (LInt 1)
+Applying type sub: fromList [("b",TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))] to TVar "c"
+Applying type sub: fromList [("b",TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))] to TVar "c"
+Generalizing: TArrow (Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))) (Type (TVar "c"))
+refining: Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))
+refining: Type (TLiteral (LInt 1))
+refining: Type (TVar "c")
+refining: Type (TVar "c")
+Normalizing: Scheme ["c"] (TArrow (Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))) (Type (TVar "c")))
+refining: Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))
+refining: Type (TVar "c")
+refining: Type (TLiteral (LInt 1))
+refining: Type (TVar "c")
+refining: Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "c")))
+refining: Type (TVar "c")
+refining: Type (TLiteral (LInt 1))
+refining: Type (TVar "c")
+Normalizing: Scheme ["a"] (TArrow (Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "a")))) (Type (TVar "a")))
+refining: Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "a")))
+refining: Type (TVar "a")
+refining: Type (TLiteral (LInt 1))
+refining: Type (TVar "a")
+refining: Type (TArrow (Type (TLiteral (LInt 1))) (Type (TVar "a")))
+refining: Type (TVar "a")
+refining: Type (TLiteral (LInt 1))
+refining: Type (TVar "a")
+Scheme [ "a" ]
+    ( TArrow
+        ( Type
+            ( TArrow
                 ( Type
-                    ( TVar
-                        ( Name  "ta" )
+                    ( TLiteral
+                        ( LInt 1 )
                     )
                 )
                 ( Type
-                    ( TVar
-                        ( Name  "tb" )
-                    )
+                    ( TVar "a" )
                 )
             )
-        ]
-    , typeVars = fromList []
-    , typeKinds = fromList []
-    , tcount = 0
-    , kcount = 0
-    }
+        )
+        ( Type
+            ( TVar "a" )
+        )
+    )
