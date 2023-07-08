@@ -149,8 +149,6 @@ instance Substitutable Infer TypeEnv where
   apply s t | trace ("Applying type env sub: " ++ show s ++ " to " ++ show (typeVars t)) False = undefined
   apply s e@(Env vars aliases count) = do
     typeVars' <- sequence $ Map.map (apply s) vars
-
-    traceM $ "Result: " ++ show typeVars'
     return $ e{ typeVars = typeVars' }
   ftv (Env vars aliases count) = ftv $ Map.elems vars
 
@@ -180,11 +178,6 @@ unify (inL `TArrow` outL) (inR `TArrow` outR) = do
 
 unify (TVar a) t = bind a t
 unify t (TVar a) = bind a t
--- unify (TParametric args cons) t = do
---   (TParametric params body) <- refine cons
---   args' <- mapM refine args
---   tVars <- mapM ftv params
---   return $ nullSubst
 
 unify (TPrimitive a) (TPrimitive b) | a == b = return nullSubst
 unify (TLiteral a) (TLiteral b) | a == b = return nullSubst
@@ -195,13 +188,15 @@ unify (TTuple as) (TTuple bs) = do
   foldM compose nullSubst ss
 
 unify sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
-  -- as' <- mapM refine' as
-  -- bs' <- mapM refine' bs
-  -- return nullSubst
-  -- where
-  --   refine' (str, tyExpr) = do
-  --     ty <- refine tyExpr
-  --     return (str, ty)
+
+unify (TConstrained _ tyExpr) ty = do
+  t' <- refine tyExpr
+  unify t' ty
+unify ty (TConstrained _ tyExpr) = do
+  t' <- refine tyExpr
+  unify t' ty
+
+
 
 
 unify t t' = throwError $ UnificationFail t t'
@@ -267,26 +262,28 @@ infer ex = case ex of
     t' <- apply s tvar
     return (s, Type t' `TArrow` Type t) -- TO
 
-
-  FnApp fn args -> do
+  FnApp fn [arg] -> do
     tv <- fresh
-    (s, t) <- infer fn
-    modifyM $ apply s
-    (s', t') <- infer $ case args of
-      [body] -> body
-      a:as   -> FnApp a as
-
-    ty <- apply s' t
-    s3       <- unify ty (Type t' `TArrow` Type tv)
-    sub <- s3 `compose` s'
-    sub' <- sub `compose` s
-    ty' <- apply s3 tv
+    (fnSub, fnTy) <- infer fn
+    (argSub, argTy) <- infer arg
+    ty <- apply argSub fnTy
+    unifier <- unify ty (Type argTy `TArrow` Type tv)
+    sub <- unifier `compose` argSub
+    sub' <- sub `compose` fnSub
+    ty' <- apply unifier tv
     return (sub, ty')
+
+  FnApp fn (a:as) -> infer curried
+    where
+      partial = FnApp fn [a]
+      curried = foldl (\f a -> FnApp f [a]) partial as
+
+
+
 
 
   Assign x e -> do
     (s, t) <- infer e
-    modifyM $ apply s
     t'   <- generalize t
     modify $ \env -> env `extend` (x, t')
     return (s, t)
@@ -333,7 +330,7 @@ inferPrim l t = do
   return (sub, t'')
     where
       inferStep (s, tf) exp = do
-        modifyM $ apply s
+        -- modifyM $ apply s
         (s', t) <- infer exp
         sub <- s' `compose` s
         return (sub, tf . TArrow (Type t) . Type)
@@ -357,7 +354,6 @@ normalize (Scheme ts body) = do
 
   where
 
-
     fv (TVar a)   = return [a]
     fv (TArrow a b) = do
       a' <- refine a
@@ -378,12 +374,12 @@ normalize (Scheme ts body) = do
       case lookup a ord of
         Just x  -> TVar x
         Nothing -> error "type variable not in signature"
-    normtype ty _  = return $ ty
+    normtype ty _  = return ty
 
 
 
 refine :: TypeExpr -> Infer Type
-refine a | trace ("refining: " ++ show a) False = undefined
+-- refine a | trace ("refining: " ++ show a) False = undefined
 refine (Type ty)                      = return ty
 refine (TParens tyExp)                = refine tyExp
 refine (TClause _ tyExp)              = refine tyExp
@@ -399,14 +395,8 @@ refine (TFnApp fnExpr argExprs)    = do
 
     traceM $ "Fn Expression: " <> show constructor
     traceM $ "Fn Args: " <> show args
-
-
     case (constructor, argExprs) of
         (TVar t, []) -> snd <$> lookupEnv t
-        -- (TVar t, [last]) -> return $ TParametric t last
-        -- (TVar id, tyExpr:tail) -> do
-        --     out <- evalScoped $ refine $ TFnApp info tyExpr tail
-        --     return $ TParametric t (Type out)
 
         (TParametric _ body, []) -> refine body
         (TParametric [param] body, [tyExpr]) -> do

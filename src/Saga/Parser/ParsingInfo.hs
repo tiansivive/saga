@@ -152,6 +152,17 @@ fnApplication fn args rt =
     in Parsed expr (range fn <-> L.rtRange rt) (nub toks)
 
 
+binaryOp :: ParsedData HM.Expr -> L.RangedToken -> ParsedData HM.Expr -> ParsedData HM.Expr
+binaryOp exprL op exprR = Parsed fn (range exprL <-> range exprR) toks
+    where
+        fn = HM.FnApp (HM.Identifier "+") [value exprL, value exprR]
+
+        toks = nub $ op : tokens exprL ++ tokens exprR
+
+
+
+
+-- | TYPES
 
 tyExpr :: ParsedData HM.Type -> ParsedData HM.TypeExpr
 tyExpr = fmap HM.Type

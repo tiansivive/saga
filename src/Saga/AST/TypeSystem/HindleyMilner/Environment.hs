@@ -23,7 +23,16 @@ type Subst = Map.Map TVar Type
 
 
 empty :: TypeEnv
-empty = Env { typeVars = Map.empty, typeAliases = Map.empty, count = 0 }
+empty = Env { typeVars = Map.empty, typeAliases = builtInFns, count = 0 }
+
+
+builtInFns :: Map.Map Alias TypeExpr
+builtInFns = Map.fromList
+  [ ("+", Type $ TConstrained [Type (TVar "a") `Implements` TIdentifier "Num"] (Type (Type (Type (TVar "a") `TArrow` Type (TVar "a")) `TArrow` Type (TVar "a")) ))
+  , ("-", Type $ TConstrained [Type (TVar "a") `Implements` TIdentifier "Num"] (Type (Type (Type (TVar "a") `TArrow` Type (TVar "a")) `TArrow` Type (TVar "a")) ))
+  , ("*", Type $ TConstrained [Type (TVar "a") `Implements` TIdentifier "Num"] (Type (Type (Type (TVar "a") `TArrow` Type (TVar "a")) `TArrow` Type (TVar "a")) ))
+  , ("/", Type $ TConstrained [Type (TVar "a") `Implements` TIdentifier "Num"] (Type (Type (Type (TVar "a") `TArrow` Type (TVar "a")) `TArrow` Type (TVar "a")) ))
+  ]
 
 union :: TypeEnv -> TypeEnv -> TypeEnv
 (Env vars aliases count) `union` (Env vars' aliases' count') = Env

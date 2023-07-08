@@ -232,6 +232,10 @@ expr
   -- | with assignments in expr { Syntax.Clause (L.rtRange $1 <-> info $4) $2 $4 }
   | atom %shift             { $1 }
   -- | identifier '=' expr     { Syntax.Assign $1 $3 }  
+  | expr '+' expr           { P.binaryOp $1 $2 $3 }
+  | expr '-' expr           { P.binaryOp $1 $2 $3 }
+  | expr '*' expr           { P.binaryOp $1 $2 $3 }
+  | expr '/' expr           { P.binaryOp $1 $2 $3 }
 
 
 
@@ -298,8 +302,6 @@ typeAnnotation
 
 
 
--- binaryOp :: HM.Expr -> L.RangedToken -> HM.Expr -> HM.Expr
--- binaryOp expr1 op expr2 = HM.FnApp (info expr1 <-> info expr2) (unTok op (\range (T.Operator char) -> HM.Identifier (HM.Name range (BS.unpack char)))) [expr1, expr2]
 
 
 
