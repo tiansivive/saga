@@ -84,19 +84,19 @@ keyValPair k v = Parsed (id, value v) range' toks
         range' = range k <-> range v
         toks = tokens k ++ tokens v
 
-record :: [ParsedData (String, HM.Expr)] -> RangedToken -> RangedToken -> ParsedData HM.Term
+record :: [ParsedData (String, HM.Expr)] -> RangedToken -> RangedToken -> ParsedData HM.Expr
 record pairs start end = Parsed rec' range' toks
     where
-        rec' = HM.LRecord $ map value pairs
+        rec' = HM.Record $ map value pairs
         range' = L.rtRange start <-> L.rtRange end
         toks = foldl (\toks' parsed -> tokens parsed ++ toks') [start, end] pairs
 
 
 
-tuple :: [ParsedData HM.Expr] -> RangedToken -> RangedToken -> ParsedData HM.Term
+tuple :: [ParsedData HM.Expr] -> RangedToken -> RangedToken -> ParsedData HM.Expr
 tuple elems start end =  Parsed tuple' range' toks
     where
-        tuple' = HM.LTuple $ map value elems
+        tuple' = HM.Tuple $ map value elems
         range' = L.rtRange start <-> L.rtRange end
         toks = foldl (\toks' parsed -> tokens parsed ++ toks') [start, end] elems
 
@@ -164,20 +164,20 @@ binaryOp exprL op exprR = Parsed fn (range exprL <-> range exprR) toks
 
 -- | TYPES
 
-tyExpr :: ParsedData HM.Type -> ParsedData HM.TypeExpr
-tyExpr = fmap HM.Type
+-- tyExpr :: ParsedData HM.Type -> ParsedData HM.TypeExpr
+-- tyExpr = fmap HM.Type
 
-tyRecord :: [ParsedData (String, HM.TypeExpr)] -> RangedToken -> RangedToken -> ParsedData HM.Type
+tyRecord :: [ParsedData (String, HM.TypeExpr)] -> RangedToken -> RangedToken -> ParsedData HM.TypeExpr
 tyRecord pairs start end = Parsed rec' range' toks
     where
-        rec' = HM.TRecord $ map value pairs
+        rec' = HM.TERecord $ map value pairs
         range' = L.rtRange start <-> L.rtRange end
         toks = foldl (\toks' parsed -> tokens parsed ++ toks') [start, end] pairs
 
-tyTuple :: [ParsedData HM.TypeExpr] -> RangedToken -> RangedToken -> ParsedData HM.Type
+tyTuple :: [ParsedData HM.TypeExpr] -> RangedToken -> RangedToken -> ParsedData HM.TypeExpr
 tyTuple elems start end =  Parsed tuple' range' toks
     where
-        tuple' = HM.TTuple $ map value elems
+        tuple' = HM.TETuple $ map value elems
         range' = L.rtRange start <-> L.rtRange end
         toks = foldl (\toks' parsed -> tokens parsed ++ toks') [start, end] elems
 
@@ -194,9 +194,9 @@ typeArrow :: ParsedData HM.TypeExpr -> ParsedData HM.TypeExpr ->  ParsedData HM.
 typeArrow input output =
     let
         extract (Parsed val _ _) = val
-        ty = HM.TArrow (extract input) (extract output)
+        ty = HM.TEArrow (extract input) (extract output)
         toks = tokens input ++ tokens output
-    in  tyExpr $ Parsed ty (range input <-> range output) (nub toks)
+    in Parsed ty (range input <-> range output) (nub toks)
 
 typeLambda :: [ParsedData HM.Expr] -> ParsedData HM.TypeExpr -> RangedToken -> ParsedData HM.TypeExpr
 typeLambda params (Parsed body' bRange bToks) rt =
@@ -217,15 +217,15 @@ typeFnApplication fn args rt =
 
 
 tyIdentifier :: ParsedData HM.Expr -> ParsedData HM.TypeExpr
-tyIdentifier = fmap $ \(HM.Identifier id) -> resolveIdType id
+tyIdentifier = fmap $ \(HM.Identifier id) -> HM.TIdentifier id
 
-resolveIdType :: String -> HM.TypeExpr
-resolveIdType "Int"     = HM.Type $ HM.TPrimitive HM.TInt
-resolveIdType "Bool"    = HM.Type $ HM.TPrimitive HM.TBool
-resolveIdType "String"  = HM.Type $ HM.TPrimitive HM.TString
-resolveIdType ty
-    | isLower $ head ty = HM.Type $ HM.TVar ty
-    | otherwise         = HM.TIdentifier ty
+-- resolveIdType :: String -> HM.TypeExpr
+-- resolveIdType "Int"     = HM.Type $ HM.TPrimitive HM.TInt
+-- resolveIdType "Bool"    = HM.Type $ HM.TPrimitive HM.TBool
+-- resolveIdType "String"  = HM.Type $ HM.TPrimitive HM.TString
+-- resolveIdType ty
+--     | isLower $ head ty = HM.Type $ HM.TVar ty
+--     | otherwise         = HM.TIdentifier ty
 
 
 

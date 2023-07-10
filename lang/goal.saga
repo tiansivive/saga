@@ -160,4 +160,15 @@ type Foo = \f -> f Int!
 
 type Bar = Foo List!
 
+let fn
+    : forall f. \f -> f Int! -> String // 
+    = \container -> "yo"
+
+let fnSet
+    : (typeof fn) Set!
+    = \set -> "yo"
+
+let s = fn @List [1,2,3]  
+    
+
 import P

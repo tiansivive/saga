@@ -14,24 +14,28 @@ type TVar = String
 type Alias = String
 data Scheme = Scheme [TVar] Type deriving (Show, Eq)
 
-data TypeEnv = Env { typeVars :: Map.Map TVar Scheme, typeAliases :: Map.Map Alias TypeExpr, count :: Int }
+data TypeEnv = Env { typeVars :: Map.Map TVar Scheme, typeAliases :: Map.Map Alias Type, count :: Int }
   deriving (Show)
 
 
 type Infer = StateT [TypeEnv] (Except TypeError)
 type Subst = Map.Map TVar Type
 
+newtype Protocol a b = Protocol [(String, a -> b)]
 
 empty :: TypeEnv
 empty = Env { typeVars = Map.empty, typeAliases = builtInFns, count = 0 }
 
 
-builtInFns :: Map.Map Alias TypeExpr
+numProtocol :: Type
+numProtocol = TRecord [("+", TVar "a" `TArrow` TVar "a" `TArrow` TVar "a")]
+
+builtInFns :: Map.Map Alias Type
 builtInFns = Map.fromList
-  [ ("+", Type $ TConstrained [Type (TVar "a") `Implements` TIdentifier "Num"] (Type (Type (Type (TVar "a") `TArrow` Type (TVar "a")) `TArrow` Type (TVar "a")) ))
-  , ("-", Type $ TConstrained [Type (TVar "a") `Implements` TIdentifier "Num"] (Type (Type (Type (TVar "a") `TArrow` Type (TVar "a")) `TArrow` Type (TVar "a")) ))
-  , ("*", Type $ TConstrained [Type (TVar "a") `Implements` TIdentifier "Num"] (Type (Type (Type (TVar "a") `TArrow` Type (TVar "a")) `TArrow` Type (TVar "a")) ))
-  , ("/", Type $ TConstrained [Type (TVar "a") `Implements` TIdentifier "Num"] (Type (Type (Type (TVar "a") `TArrow` Type (TVar "a")) `TArrow` Type (TVar "a")) ))
+  [ ("+", TConstrained  [ TVar "a" `Implements` numProtocol] ( TVar "a" `TArrow` TVar "a" `TArrow` TVar "a"))
+  , ("-",  TConstrained [ TVar "a" `Implements` numProtocol] ( TVar "a" `TArrow` TVar "a" `TArrow` TVar "a"))
+  , ("*", TConstrained  [ TVar "a" `Implements` numProtocol] ( TVar "a" `TArrow` TVar "a" `TArrow` TVar "a"))
+  , ("/", TConstrained  [ TVar "a" `Implements` numProtocol] ( TVar "a" `TArrow` TVar "a" `TArrow` TVar "a"))
   ]
 
 union :: TypeEnv -> TypeEnv -> TypeEnv

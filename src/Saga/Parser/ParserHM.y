@@ -208,14 +208,17 @@ term
   : number     { P.number HM.LInt $1 }
   | boolean    { P.boolean HM.LBool $1 }
   | string     { P.string HM.LString $1 }
-  | tuple      { $1 }
---   | list       { $1 }
-  | record     { $1 }
+--   | tuple      { $1 }
+-- --   | list       { $1 }
+--   | record     { $1 }
   
 atom
   : identifier              { $1 }
   -- | atom '.' path           { HM.FieldAccess (info $1 <-> (info $ last $3)) $1 $3 }
   | term                    { P.term $1 }
+  | tuple      { $1 }
+--   | list       { $1 }
+  | record     { $1 }
   -- | '{' block '}'           { HM.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
   | '(' expr ')'            { P.parenthesised $2 $1 $3 }
 
@@ -257,9 +260,9 @@ ttuple
 
 
 type 
-  : number     { P.number (HM.TLiteral . HM.LInt) $1 }
-  | boolean    { P.boolean (HM.TLiteral . HM.LBool) $1 }
-  | string     { P.string (HM.TLiteral . HM.LString) $1 }
+  : number     { P.number (HM.TTerm . HM.LInt) $1 }
+  | boolean    { P.boolean (HM.TTerm . HM.LBool) $1 }
+  | string     { P.string (HM.TTerm . HM.LString) $1 }
   | ttuple     { $1 }
   | trecord    { $1 }
   
@@ -267,7 +270,7 @@ type
 
 
 typeAtom
-  : type  { P.tyExpr $1 } 
+  : type  { $1 } 
   | identifier %shift  { P.tyIdentifier $1 }
   | '(' typeExpr ')' { P.tyParenthesised $2 $1 $3 }
 
