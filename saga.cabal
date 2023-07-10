@@ -21,6 +21,7 @@ library
       Saga.AST.Syntax
       Saga.AST.TypeSystem.BuiltIns
       Saga.AST.TypeSystem.Check
+      Saga.AST.TypeSystem.HindleyMilner.Constraints
       Saga.AST.TypeSystem.HindleyMilner.Environment
       Saga.AST.TypeSystem.HindleyMilner.Inference
       Saga.AST.TypeSystem.HindleyMilner.Refinement
