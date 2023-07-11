@@ -171,4 +171,20 @@ let fnSet
 let s = fn @List [1,2,3]  
     
 
+
+type Obj = { value: String }
+let objDisplay 
+    : impl Show: Obj = 
+    { show: o -> o.value }
+
+
+let display
+    : forall a. a implements Show => a -> a -> String
+    = \s1 s2 -> show s1! ++ show s2!
+
+
+let str = display { value: "hello "}!
+
+
+
 import P

@@ -60,13 +60,26 @@ lookupVar v = do
       return (nullSubst, t)
 
 instantiate :: Scheme -> Infer Type
+instantiate sc | trace ("Instantiating: " ++ show sc) False = undefined
 instantiate (Scheme as t) = do
   as' <- mapM (const fresh) as
   let s = Map.fromList $ zip as as'
+  traceM $ "Zipped: " ++ show s
+
+  case t of
+    (TConstrained constraints _) -> mapM_ (emit . protocol) constraints
+    _                            -> return ()
   return $ apply s t
 
+  where
+    protocol (ty `Implements` p) = Protocol p [ty]
+
 generalize :: TypeEnv -> Type -> Scheme
-generalize env t | trace ("Generalizing: " ++ show t) False = undefined
+generalize env t
+  | trace ("Generalizing: " ++ show t
+  ++ "\n\tEnv: " ++ show env
+  ++ "\n\n\tFTV ty: " ++ show (ftv t)
+  ++ "\n\tFTV env: " ++ show (ftv env)) False = undefined
 generalize env t = Scheme as t
   where as = Set.toList $ ftv t `Set.difference` ftv env
 

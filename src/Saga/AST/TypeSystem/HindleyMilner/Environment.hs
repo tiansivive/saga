@@ -25,9 +25,6 @@ newtype InferenceState = IST { count :: Int }
 type Infer = RWST TypeEnv [IConstraint] InferenceState (Except InferenceError)
 
 
-
-
-
 data IConstraint
   = Empty
   | Equals Type Type
@@ -35,6 +32,7 @@ data IConstraint
   | Conjunction IConstraint IConstraint
   | Implication [UnificationVar] IConstraint IConstraint
   -- | Subtype Type Type -- Is this at all needed? probably not
+  deriving (Show, Eq)
 
 data InferenceError
   = UnboundVariable String
@@ -53,7 +51,7 @@ emit = tell . pure
 
 
 empty :: TypeEnv
-empty = Env { unifier = Map.empty, aliases = builtInFns }
+empty = Env { unifier = builtInFns, aliases = Map.empty }
 
 initState :: InferenceState
 initState = IST { count = 0 }
@@ -61,12 +59,12 @@ initState = IST { count = 0 }
 numProtocol :: Type
 numProtocol = TRecord [("+", TVar "a" `TArrow` TVar "a" `TArrow` TVar "a")]
 
-builtInFns :: Map.Map Alias Type
+builtInFns :: Map.Map UnificationVar Scheme
 builtInFns = Map.fromList
-  [ ("+", TConstrained  [ TVar "a" `Implements` numProtocol] ( TVar "a" `TArrow` TVar "a" `TArrow` TVar "a"))
-  , ("-",  TConstrained [ TVar "a" `Implements` numProtocol] ( TVar "a" `TArrow` TVar "a" `TArrow` TVar "a"))
-  , ("*", TConstrained  [ TVar "a" `Implements` numProtocol] ( TVar "a" `TArrow` TVar "a" `TArrow` TVar "a"))
-  , ("/", TConstrained  [ TVar "a" `Implements` numProtocol] ( TVar "a" `TArrow` TVar "a" `TArrow` TVar "a"))
+  [ ("+", Scheme ["a"] (TConstrained [ TVar "a" `Implements` "Num"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))))
+  , ("-", Scheme ["a"] (TConstrained [ TVar "a" `Implements` "Num"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))))
+  , ("*", Scheme ["a"] (TConstrained [ TVar "a" `Implements` "Num"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))))
+  , ("/", Scheme ["a"] (TConstrained [ TVar "a" `Implements` "Num"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))))
   ]
 
 union :: TypeEnv -> TypeEnv -> TypeEnv
@@ -95,6 +93,5 @@ fresh = do
 
 letters :: [String]
 letters = [1..] >>= flip replicateM ['α'..'ω']
-
 
 

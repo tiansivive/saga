@@ -1,9 +1,9 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs              #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 module Saga.AST.TypeSystem.HindleyMilner.Types where
 
-import GHC.Base ()
+import           GHC.Base ()
 
 data TypeExpr where
   TTerm :: Term -> TypeExpr
@@ -61,8 +61,8 @@ instance Eq PolymorphicVar where
   (TPolyVar _ _ id) == (TPolyVar _ _ id') = id == id'
 
 data Constraint
-  = Implements Type Type
-  | Extends Type Type
+  = Type `Implements` String
+  -- | Extends Type Type
   deriving (Show, Eq)
 
 data Quantifier = Forall | Exists
