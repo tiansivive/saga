@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE ImportQualifiedPost   #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 module Saga.AST.TypeSystem.HindleyMilner.Inference where
@@ -20,7 +21,8 @@ import           Control.Monad.Trans.Except                    (ExceptT,
                                                                 runExceptT)
 import           Data.Bifunctor                                (Bifunctor (first))
 import           Data.Functor                                  ((<&>))
-import           Data.List                                     (nub)
+import           Data.List                                     (nub, partition,
+                                                                (\\))
 import qualified Data.Map                                      as Map
 import qualified Data.Set                                      as Set
 import           Debug.Trace                                   (trace, traceM)
@@ -61,18 +63,12 @@ lookupVar v = do
 
 instantiate :: Scheme -> Infer Type
 instantiate sc | trace ("Instantiating: " ++ show sc) False = undefined
-instantiate (Scheme as t) = do
+instantiate (Scheme as ( _ :=> t)) = do
   as' <- mapM (const fresh) as
   let s = Map.fromList $ zip as as'
   traceM $ "Zipped: " ++ show s
-
-  case t of
-    (TConstrained constraints _) -> mapM_ (emit . protocol) constraints
-    _                            -> return ()
   return $ apply s t
 
-  where
-    protocol (ty `Implements` p) = Protocol p [ty]
 
 generalize :: TypeEnv -> Type -> Scheme
 generalize env t
@@ -80,7 +76,7 @@ generalize env t
   ++ "\n\tEnv: " ++ show env
   ++ "\n\n\tFTV ty: " ++ show (ftv t)
   ++ "\n\tFTV env: " ++ show (ftv env)) False = undefined
-generalize env t = Scheme as t
+generalize env t = Scheme as ( [] :=> t)
   where as = Set.toList $ ftv t `Set.difference` ftv env
 
 
@@ -101,7 +97,7 @@ infer ex = case ex of
   Identifier x -> lookupEnv x
   Lambda (param : rest) body -> do
     tVar <- fresh
-    out' <- infer out `scoped` (param, Scheme [] tVar)
+    out' <- infer out `scoped` (param, Scheme [] ( [] :=> tVar))
     return $ tVar `TArrow` out'
     where
       out = case rest of
@@ -155,7 +151,7 @@ infer ex = case ex of
 
 normalize :: Scheme ->  Scheme
 normalize sc | trace ("Normalizing: " ++ show sc) False = undefined
-normalize (Scheme _ body) = Scheme (fmap snd ord) ty
+normalize (Scheme _ ( _ :=> body)) = Scheme (fmap snd ord) ([] :=> ty)
   where
     ty = normtype body
     ord = zip (nub $ fv body) letters
@@ -169,4 +165,7 @@ normalize (Scheme _ body) = Scheme (fmap snd ord) ty
         Just x  -> TVar x
         Nothing -> error "type variable not in signature"
     normtype ty = ty
+
+
+
 

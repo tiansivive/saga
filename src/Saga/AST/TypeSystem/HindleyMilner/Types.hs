@@ -3,7 +3,8 @@
 
 module Saga.AST.TypeSystem.HindleyMilner.Types where
 
-import           GHC.Base ()
+import           GHC.Base          ()
+import           Saga.Lexer.Tokens (Token (Qualified))
 
 data TypeExpr where
   TTerm :: Term -> TypeExpr
@@ -30,18 +31,18 @@ data Type where
   TArrow :: Type -> Type -> Type
   TParametric :: String -> TypeExpr -> Type
   TVar :: String -> Type
-  TConstrained :: [Constraint] -> Type -> Type
+  -- TConstrained :: [Constraint] -> Type -> Type
   -- TProtocol         :: TypeExpr -> Type
   -- TImplementation   :: TypeExpr -> [RequiredImplId] -> Type
 
   TUnit :: Type
 
+infixr 0 :=>
+data Qualified t = (:=>) { constraints :: [Constraint], ty:: t } --, mode :: Mode, multiplicity :: Multiplicity }
+  deriving (Show, Eq)
 deriving instance Show TypeExpr
-
 deriving instance Eq TypeExpr
-
 deriving instance Show Type
-
 deriving instance Eq Type
 
 type ProtocolId = String
@@ -54,9 +55,7 @@ data BuiltInType
 
 data PolymorphicVar where
   TPolyVar :: Quantifier -> Multiplicity -> String -> PolymorphicVar
-
 deriving instance Show PolymorphicVar
-
 instance Eq PolymorphicVar where
   (TPolyVar _ _ id) == (TPolyVar _ _ id') = id == id'
 
@@ -64,6 +63,11 @@ data Constraint
   = Type `Implements` String
   -- | Extends Type Type
   deriving (Show, Eq)
+
+implementationTy :: Constraint -> Type
+implementationTy (ty `Implements` p) = ty
+implementationP :: Constraint -> String
+implementationP (ty `Implements` p) = p
 
 data Quantifier = Forall | Exists
   deriving (Eq, Show)
@@ -78,6 +82,8 @@ data Multiplicity
 
 data Mode = Strict | Lazy
 
+
+-- | Term expressions
 data Expr where
   Term :: Term -> Expr
   Identifier :: String -> Expr
@@ -100,9 +106,12 @@ data Term where
   LString :: String -> Term
 
 deriving instance Show Expr
-
 deriving instance Eq Expr
-
 deriving instance Show Term
-
 deriving instance Eq Term
+
+
+
+
+builtInTypes :: [Type]
+builtInTypes = [TPrimitive TInt, TPrimitive TBool, TPrimitive TString]

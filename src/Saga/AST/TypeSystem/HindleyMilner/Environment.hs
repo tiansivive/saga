@@ -8,16 +8,51 @@ import qualified Control.Monad.State.Lazy                as ST
 import           Control.Monad.Trans.RWS                 (RWST, get, local,
                                                           modify, tell)
 import qualified Data.Map                                as Map
-import           Saga.AST.TypeSystem.HindleyMilner.Types
+import qualified Saga.AST.TypeSystem.HindleyMilner.Types as T
+import           Saga.AST.TypeSystem.HindleyMilner.Types hiding (Implements,
+                                                          ProtocolId)
+import           Saga.Lexer.Tokens                       (Token (Qualified))
 
 
 
 type UnificationVar = String
+type TyVar = String
 type Alias = String
 type Name = String
-data Scheme = Scheme [UnificationVar] Type deriving (Show, Eq)
+type BaseProtocol = String
+type ProtocolId = String
+data Scheme = Scheme [UnificationVar] (Qualified Type) deriving (Show, Eq)
 
-data TypeEnv = Env { unifier :: Map.Map UnificationVar Scheme, aliases :: Map.Map Alias Type }
+data Protocol = Protocol { id:: ProtocolId, spec:: [Method], supers:: [BaseProtocol], implementations:: [Implementation] }
+  deriving (Show)
+
+type Implementation = Qualified Constraint
+type Method =  (Name, Type)
+
+
+builtInProtocols :: Map.Map ProtocolId Protocol
+builtInProtocols = Map.fromList [("Num", numProtocol)]
+
+numProtocol :: Protocol
+numProtocol = Protocol "Num" [("+", TVar "a" `TArrow` TVar "a" `TArrow` TVar "a")] []
+    [ [] :=> (TPrimitive TInt `T.Implements` "Num")
+
+    ]
+
+
+
+numProtocols :: [ProtocolId]
+numProtocols  = ["Num", "Integral", "Floating", "Fractional",
+               "Real", "RealFloat", "RealFrac"]
+
+stdProtocols :: [ProtocolId]
+stdProtocols  = ["Eq", "Ord", "Show", "Read", "Bounded", "Enum", "Ix",
+               "Functor", "Monad", "MonadPlus"] ++ numProtocols
+
+data TypeEnv = Env
+  { unificationVars :: Map.Map UnificationVar Scheme
+  , aliases         :: Map.Map Alias Type
+  }
   deriving (Show)
 
 newtype InferenceState = IST { count :: Int }
@@ -28,7 +63,7 @@ type Infer = RWST TypeEnv [IConstraint] InferenceState (Except InferenceError)
 data IConstraint
   = Empty
   | Equals Type Type
-  | Protocol Name [Type]
+  | Impl ProtocolId [Type]
   | Conjunction IConstraint IConstraint
   | Implication [UnificationVar] IConstraint IConstraint
   -- | Subtype Type Type -- Is this at all needed? probably not
@@ -51,30 +86,27 @@ emit = tell . pure
 
 
 empty :: TypeEnv
-empty = Env { unifier = builtInFns, aliases = Map.empty }
+empty = Env builtInFns Map.empty
 
 initState :: InferenceState
 initState = IST { count = 0 }
 
-numProtocol :: Type
-numProtocol = TRecord [("+", TVar "a" `TArrow` TVar "a" `TArrow` TVar "a")]
-
 builtInFns :: Map.Map UnificationVar Scheme
 builtInFns = Map.fromList
-  [ ("+", Scheme ["a"] (TConstrained [ TVar "a" `Implements` "Num"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))))
-  , ("-", Scheme ["a"] (TConstrained [ TVar "a" `Implements` "Num"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))))
-  , ("*", Scheme ["a"] (TConstrained [ TVar "a" `Implements` "Num"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))))
-  , ("/", Scheme ["a"] (TConstrained [ TVar "a" `Implements` "Num"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))))
+  [ ("+", Scheme ["a"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a")))
+  , ("-", Scheme ["a"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a")))
+  , ("*", Scheme ["a"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a")))
+  , ("/", Scheme ["a"] (TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a")))
   ]
 
 union :: TypeEnv -> TypeEnv -> TypeEnv
 (Env unifier aliases) `union` (Env unifier' aliases' ) = Env
-  { unifier = Map.union unifier unifier'
+  { unificationVars = Map.union unifier unifier'
   , aliases = Map.union aliases aliases'
 }
 
 extend :: TypeEnv -> (UnificationVar, Scheme) -> TypeEnv
-extend e@(Env unifier aliases) (var, scheme) = e{ unifier = Map.insert var scheme unifier }
+extend e@(Env unifier aliases) (var, scheme) = e{ unificationVars = Map.insert var scheme unifier }
 
 
 scoped :: Infer a -> (UnificationVar, Scheme) -> Infer a

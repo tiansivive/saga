@@ -32,6 +32,7 @@ data RefinementError
     | UnboundIdentifier String
 
 
+
 lookup :: String -> Refined Type
 lookup id = do
     aliases <- ask
