@@ -128,7 +128,7 @@ solver constraints = do
 
 unification :: Subst -> [Equality] -> Solve Subst
 unification s cs | trace ("\nUnification:" ++ "\n\tUnifier: " ++ show s ++ "\n\tConstraints: " ++ show cs) False = undefined
-unification s [] = return nullSubst
+unification s [] = return s
 unification s (e:es) | t1 `EQ` t2 <- e = do
   sub <- unify t1 t2
   let sub' = compose sub s
@@ -197,7 +197,7 @@ reduce cs = mapM toHNF cs >>= simplify . concat
 
 toHNF :: ImplProtocol -> Solve [ImplProtocol]
 toHNF ip | inHNF ip   = return [ip]
-          | otherwise =  do
+         | otherwise =  do
             ipConstraints <- byImplementation ip
             ipConstraints' <- mapM toHNF ipConstraints
             return $ concat ipConstraints'
@@ -210,23 +210,28 @@ inHNF (ty `IP` p) = hnf ty
 byImplementation :: ImplProtocol -> Solve [ImplProtocol]
 byImplementation implConstraint@(ty `IP` p)    = do
   env <- ask
-  return $ fromMaybe [] $ msum [ tryInst impl | impl <- impls env p ]
+  concat <$> sequence [ tryInst impl | impl <- impls env p ]
+
+
   where
     mkIP (ty `Implements` p) = ty `IP` p
     impls env id = maybe [] implementations $ Map.lookup id env
     tryInst (cs :=> implConstraint') = do
       sub <- unifyImpl implConstraint' implConstraint
-      Just $ map (apply sub) (fmap mkIP cs)
+      return $ fmap (apply sub . mkIP) cs
 
-unifyImpl :: ImplProtocol -> ImplProtocol -> Maybe Subst
+unifyImpl :: ImplProtocol -> ImplProtocol -> Solve Subst
+unifyImpl p1 p2 | trace ("\n-------\nUnifying Implementations\n-------\n" ++ show p1 ++ "\n" ++ show p2 ++ "\n") False = undefined
 unifyImpl (ty `IP` p) (ty' `IP` p')
   | p == p'   = ty `match` ty'
-  | otherwise = fail "protocols differ"
+  | otherwise = throwError $ Fail "protocols differ"
 
   where
+    match :: Type -> Type -> Solve Subst
     match (TVar v)   ty     = return $ Map.fromList [(v, ty)]
+    match ty    (TVar v)    = return $ Map.fromList [(v, ty)]
     match t1 t2 | t1 == t2  = return nullSubst
-    match t1 t2             = fail "types do not match"
+    match t1 t2             = throwError $ Fail "types do not match"
 
 
 
@@ -267,6 +272,9 @@ byBase impl@(ty `IP` p) = do
     return $ impl : concat impls
     where
       sups env id = maybe [] supers $ Map.lookup id env
+
+
+
 
 
 

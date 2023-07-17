@@ -71,7 +71,7 @@ instantiate (Scheme _ qualified@(cs :=> t)) = do
   tVars <- mapM (const fresh) vars
   let sub = Map.fromList $ zip vars tVars
   traceM $ "Zipped: " ++ show sub
-  tell $ fmap mkIConstraint cs
+  tell $ mkIConstraint <$> apply sub cs
   return $ apply sub t
     where
       vars = Set.toList $ ftv cs
@@ -165,7 +165,7 @@ infer ex = case ex of
 
 normalize :: Scheme -> Scheme
 normalize sc | trace ("Normalizing: " ++ show sc) False = undefined
-normalize (Scheme _ (cs :=> ty)) = Scheme (fmap snd ord) (cs' :=> ty)
+normalize (Scheme _ (cs :=> ty)) = Scheme (fmap snd ord) (cs' :=> ty')
   where
     ty' = normType ty
     cs' = normConstraint <$> cs
