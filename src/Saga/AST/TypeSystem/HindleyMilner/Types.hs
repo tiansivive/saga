@@ -37,6 +37,7 @@ data Type where
 
   TUnit :: Type
 
+infixr 5 `TArrow`
 infixr 0 :=>
 data Qualified t = (:=>) { constraints :: [Constraint], ty:: t } --, mode :: Mode, multiplicity :: Multiplicity }
   deriving (Show, Eq)
@@ -53,11 +54,12 @@ data BuiltInType
   | TString
   deriving (Show, Eq)
 
-data PolymorphicVar where
-  TPolyVar :: Quantifier -> Multiplicity -> String -> PolymorphicVar
-deriving instance Show PolymorphicVar
-instance Eq PolymorphicVar where
-  (TPolyVar _ _ id) == (TPolyVar _ _ id') = id == id'
+-- data PolymorphicVar where
+--   TPolyVar :: Quantifier -> Multiplicity -> String -> PolymorphicVar
+-- deriving instance Show PolymorphicVar
+-- instance Eq PolymorphicVar where
+--   (==) :: PolymorphicVar -> PolymorphicVar -> Bool
+--   (TPolyVar _ _ id) == (TPolyVar _ _ id') = id == id'
 
 data Constraint
   = Type `Implements` String

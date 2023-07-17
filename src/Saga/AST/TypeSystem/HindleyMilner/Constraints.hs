@@ -1,30 +1,38 @@
 {-# LANGUAGE LambdaCase #-}
 
-
 module Saga.AST.TypeSystem.HindleyMilner.Constraints where
 
 import           Control.Monad.Except
+import           Control.Monad.Reader                          (MonadReader (local),
+                                                                ReaderT (runReaderT))
+import           Control.Monad.RWS                             (MonadReader (ask),
+                                                                RWST)
 import           Control.Monad.State                           (StateT (runStateT),
                                                                 evalStateT, get,
                                                                 modify, put)
-import           Saga.AST.TypeSystem.HindleyMilner.Environment
-
 import           Data.Bifunctor                                (bimap)
 import           Data.List                                     (delete,
                                                                 partition, (\\))
 import qualified Data.Map                                      as Map
+import           Data.Maybe                                    (fromJust,
+                                                                fromMaybe)
 import qualified Data.Set                                      as Set
 import           Debug.Trace
+import           Prelude                                       hiding (EQ)
+import           Saga.AST.TypeSystem.HindleyMilner.Environment hiding
+                                                               (Implements)
 import           Saga.AST.TypeSystem.HindleyMilner.Types       hiding
-                                                               (ProtocolId)
+                                                               (ProtocolID,
+                                                                implementationTy)
 import           Text.Pretty.Simple                            (pShow)
 
+-- type Solve = StateT SolveState (Except InferenceError)
 
-type Solve = StateT SolveState (Except InferenceError)
-
+type Solve = ReaderT ProtocolEnv (Except InferenceError)
+type ProtocolEnv = Map.Map ProtocolID Protocol
 type Subst = Map.Map UnificationVar Type
 
-data SolveState = SST { unifier :: (Subst, [IConstraint]), protocols :: Map.Map ProtocolId Protocol }
+data SolveState = SST { unifier :: (Subst, [IConstraint]), protocols :: Map.Map ProtocolID Protocol}
 
 
 class Substitutable a where
@@ -32,7 +40,7 @@ class Substitutable a where
   ftv :: a -> Set.Set UnificationVar
 
 instance (Substitutable a) => Substitutable [a] where
-  apply = map . apply
+  apply = fmap . apply
 
   ftv = foldl union Set.empty
     where
@@ -45,67 +53,88 @@ instance Substitutable Type where
     where
       in' = apply s inTy
       out' = apply s outTy
---   apply s (TConstrained cs ty) = apply s ty
+  --   apply s (TConstrained cs ty) = apply s ty
   apply _ ty = ty
 
-  ftv (TVar id) = Set.singleton id
-  ftv (t `TArrow` t') = set `Set.union` set'
-    where
-      set = ftv t
-      set' = ftv t'
-  ftv _ = Set.empty
+  ftv (TVar id)       = Set.singleton id
+  ftv (t `TArrow` t') = ftv t `Set.union` ftv t'
+  ftv _               = Set.empty
 
 instance Substitutable Scheme where
   apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
-  apply s (Scheme as ( _ :=> t)) = Scheme as ([] :=> ty)
+  apply s (Scheme as (_ :=> t)) = Scheme as ([] :=> ty)
     where
       s' = foldr Map.delete s as
       ty = apply s' t
 
-  ftv (Scheme as ( _ :=> t)) = set `Set.difference` Set.fromList as
+  ftv (Scheme as (_ :=> t)) = set `Set.difference` Set.fromList as
     where
       set = ftv t
 
 instance Substitutable TypeEnv where
-  apply s t | trace ("Applying type env sub\n\t" ++ show s ) False = undefined
+  apply s t | trace ("Applying type env sub\n\t" ++ show s) False = undefined
   apply s e@(Env vars aliases) = e {unificationVars = Map.map (apply s) vars}
-  ftv (Env vars aliases ) = ftv $ Map.elems vars
+  ftv (Env vars aliases) = ftv $ Map.elems vars
 
 instance Substitutable IConstraint where
-   apply s (t1 `Equals` t2) = apply s t1 `Equals` apply s t2
-   apply s c                = c
-   ftv (t1 `Equals` t2) = ftv t1 `Set.union` ftv t2
+   apply s (EqCons eq)   = EqCons $ apply s eq
+   apply s (ImplCons ip) = ImplCons $ apply s ip
+   apply s c             = c
+   ftv (EqCons eq)   = ftv eq
+   ftv (ImplCons ip) = ftv ip
+
+instance Substitutable ImplProtocol where
+  apply s ip | trace ("Applying IP constraint sub\n\t" ++ show s ++ "\n\t" ++ show ip) False = undefined
+  apply s  (t `IP` p) =  trace ("\tResult: " ++ show res) res
+    where res = apply s t `IP` p
+
+  ftv (t `IP` p) = ftv  t
+instance Substitutable Equality where
+  apply s e | trace ("Applying EQ constraint sub\n\t" ++ show s ++ "\n\t" ++ show e) False = undefined
+  apply s  (t1 `EQ` t2) = apply s t1 `EQ` apply s t2
+  ftv (t1 `EQ` t2) = ftv t1 `Set.union` ftv t2
 
 instance Substitutable Constraint where
-   apply s (t `Implements` p) = apply s t `Implements` p
+  apply s (t `Implements` p) = apply s t `Implements` p
 
-   ftv (t `Implements` p) = ftv t
-
-
-runSolve :: [IConstraint] -> Either InferenceError Subst
-runSolve cs | trace ("Solving: " ++ show cs ) False = undefined
-runSolve cs = runExcept $ evalStateT solver st
-  where st = SST (nullSubst, cs) builtInProtocols
-
-solver :: Solve Subst
-solver = do
-  SST (sub, constraints) _ <- get
-  traceM $ "-------------------\nSolve state" ++ "\n\tsubs: " ++ show sub ++ "\n\tConstraints: " ++ show constraints ++ "\n"
-  case constraints of
-    [] -> return sub
-    (c: cs) -> case c of
-        Equals t1 t2 -> do
-            sub'  <- unify t1 t2
-            modify $ \st -> st{ unifier = bimap (compose sub') (apply sub' . delete c) $ unifier st }
-            solver
-        _ -> do -- throwError $ Fail "Not implemented yet"
-            modify $ \st -> st{  unifier = delete c <$> unifier st }
-            solver
+  ftv (t `Implements` p) = ftv t
 
 compose :: Subst -> Subst -> Subst
 s1 `compose` s2 = s `Map.union` s1
   where
     s = Map.map (apply s1) s2
+
+
+
+runSolve :: [IConstraint] -> Either InferenceError (Subst, [ImplProtocol])
+runSolve cs | trace ("Solving: " ++ show cs) False = undefined
+runSolve cs = runExcept $ runReaderT (solver cs) builtInProtocols
+
+
+solver :: [IConstraint] -> Solve (Subst, [ImplProtocol])
+solver constraints = do
+  let eqs' = eqs constraints
+  traceM $ "EQs: " ++ show eqs'
+  sub <- unification nullSubst eqs'
+  traceM $ "\nMGU:\n\t" ++ show sub
+  is <- reduce $ apply sub $ impls constraints
+  return (sub, is)
+
+  where
+    impls cs =  [ ip | ImplCons ip <- cs ]
+    eqs   cs =  [ eq | EqCons   eq <- cs ]
+
+
+
+unification :: Subst -> [Equality] -> Solve Subst
+unification s cs | trace ("\nUnification:" ++ "\n\tUnifier: " ++ show s ++ "\n\tConstraints: " ++ show cs) False = undefined
+unification s [] = return nullSubst
+unification s (e:es) | t1 `EQ` t2 <- e = do
+  sub <- unify t1 t2
+  let sub' = compose sub s
+  unification sub' $ apply sub' es
+
+
 
 unify :: Type -> Type -> Solve Subst
 unify t1 t2 | trace ("Unifying:\n\t" ++ show t1 ++ "\n\t" ++ show t2) False = undefined
@@ -121,18 +150,7 @@ unify (TTuple as) (TTuple bs) = do
   ss <- zipWithM unify as bs
   return $ foldl compose nullSubst ss
 unify sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
--- unify (TConstrained constraints ty) ty' = do
---     modify $ \(sub, cs) -> (sub, cs ++ fmap protocol constraints)
---     unify ty ty'
---     where
---         protocol (t `Implements` protocol) = Protocol protocol [t]
--- unify ty (TConstrained constraints ty') = do
---     modify $ \(sub, cs) -> (sub, cs ++ fmap protocol constraints)
---     unify ty ty'
---     where
---         protocol (t `Implements` protocol) = Protocol protocol [t]
 unify t t' = throwError $ UnificationFail t t'
-
 
 bind :: UnificationVar -> Type -> Solve Subst
 bind a t | trace ("Binding: " ++ a ++ " to " ++ show t) False = undefined
@@ -140,8 +158,8 @@ bind a t
   | t == TVar a = return nullSubst
   | occursCheck a t = throwError $ InfiniteType a t
   | TLiteral l <- t = return . Map.singleton a $
-    case l of
-        LInt _    ->  TPrimitive TInt
+      case l of
+        LInt _    -> TPrimitive TInt
         LString _ -> TPrimitive TString
         LBool _   -> TPrimitive TBool
   | otherwise = return $ Map.singleton a t
@@ -150,12 +168,6 @@ occursCheck :: Substitutable a => UnificationVar -> a -> Bool
 occursCheck a t = a `Set.member` set
   where
     set = ftv t
-
-
-nullSubst :: Subst
-nullSubst = Map.empty
-
-
 
 isSubtype :: Type -> Type -> Solve Subst
 -- isSubtype  a b | trace ("subtype " ++ show a ++ " <: " ++ show b ++ "\n  ") False = undefined
@@ -172,137 +184,130 @@ sub@(TRecord pairs1) `isSubtype` parent@(TRecord pairs2) = do
   return $ foldl compose nullSubst subs
 sub `isSubtype` parent = throwError $ SubtypeFailure sub parent
 
+nullSubst :: Subst
+nullSubst = Map.empty
 
 
+-- | Implementation Constraints solving
 
-entail :: [Constraint] -> Constraint -> Solve Bool
-entail cs c = do
-  SST { protocols } <- get
-  cs' <- mapM bySuper cs
+reduce :: [ImplProtocol] -> Solve [ImplProtocol]
+reduce cs | trace ("\nReducing\n\tImplementation constraint:" ++ show cs) False = undefined
+reduce cs = mapM toHNF cs >>= simplify . concat
 
-  if any (c `elem`) cs'
-    then return True
-    else do
-      maybeImpls <- byImplementation c
-      case maybeImpls of
-        Nothing -> return False
-        Just qs -> and <$> mapM (entail cs) qs
+toHNF :: ImplProtocol -> Solve [ImplProtocol]
+toHNF ip | inHNF ip   = return [ip]
+          | otherwise =  do
+            ipConstraints <- byImplementation ip
+            ipConstraints' <- mapM toHNF ipConstraints
+            return $ concat ipConstraints'
 
-bySuper :: Constraint -> Solve [Constraint]
-bySuper c@(ty `Implements` p) = do
-    env <- get
-    cs <- sequence [ bySuper (ty `Implements` p') | p' <- sups env p ]
-    return $ c : concat cs
-    where
-      sups env id = maybe [] supers $ Map.lookup id $ protocols env
-
-
-
-byImplementation :: Constraint -> Solve (Maybe [Constraint])
-byImplementation c@(ty `Implements` p)    = do
-  env <- get
-  return $ msum [ tryInst p' | p' <- impls env p ]
-  where
-    impls env id = maybe [] implementations $ Map.lookup id $ protocols env
-    tryInst (cs :=> ty') = do
-      u <- matchConstraint ty' c
-      Just (map (apply u) cs)
-
-
-matchConstraint :: Constraint -> Constraint -> Maybe Subst
-matchConstraint  = liftC match
-
-liftC :: MonadFail m => (Type -> Type -> m a) -> Constraint -> Constraint -> m a
-liftC m (ty `Implements` p) (ty' `Implements` p')
-         | p == p'   = m ty ty'
-         | otherwise = fail "classes differ"
-
-match :: MonadFail m => Type -> Type -> m Subst
-match (l `TArrow` r) ( l' `TArrow` r')              = do
-    sl <- match l l'
-    sr <- match r r'
-    merge sl sr
-match (TVar u)   t     = return $ Map.fromList [(u, t)]
-match t1 t2 | t1 == t2  = return nullSubst
-match t1 t2             = fail "types do not match"
-
-merge      :: MonadFail m => Subst -> Subst -> m Subst
-merge s1 s2 = if agree then return (s1 `compose` s2) else fail "merge fails"
-  where
-    agree = all (\v -> apply s1 (TVar v) == apply s2 (TVar v)) uni
-    uni = Map.keys $ Map.intersection s1 s2
-
-
-
-inHNF :: Constraint -> Bool
-inHNF (ty `Implements` p) = hnf ty
+inHNF :: ImplProtocol -> Bool
+inHNF (ty `IP` p) = hnf ty
  where hnf (TVar v) = True
        hnf _        = False
 
-toHNF :: Constraint -> Solve [Constraint]
-toHNF c | inHNF c   = return [c]
-        | otherwise = byImplementation c >>= \case
-            Nothing -> throwError $ Fail "context reduction"
-            Just cs -> do
-              cs' <- mapM toHNF cs
-              return $ concat cs'
+byImplementation :: ImplProtocol -> Solve [ImplProtocol]
+byImplementation implConstraint@(ty `IP` p)    = do
+  env <- ask
+  return $ fromMaybe [] $ msum [ tryInst impl | impl <- impls env p ]
+  where
+    mkIP (ty `Implements` p) = ty `IP` p
+    impls env id = maybe [] implementations $ Map.lookup id env
+    tryInst (cs :=> implConstraint') = do
+      sub <- unifyImpl implConstraint' implConstraint
+      Just $ map (apply sub) (fmap mkIP cs)
 
-reduce :: [Constraint] -> Solve [Constraint]
-reduce cs = mapM toHNF cs >>= simplify . concat
+unifyImpl :: ImplProtocol -> ImplProtocol -> Maybe Subst
+unifyImpl (ty `IP` p) (ty' `IP` p')
+  | p == p'   = ty `match` ty'
+  | otherwise = fail "protocols differ"
+
+  where
+    match (TVar v)   ty     = return $ Map.fromList [(v, ty)]
+    match t1 t2 | t1 == t2  = return nullSubst
+    match t1 t2             = fail "types do not match"
 
 
-simplify   :: [Constraint] -> Solve [Constraint]
-simplify = loop []
+
+simplify   :: [ImplProtocol] -> Solve [ImplProtocol]
+simplify cs | trace ("\nSimplifying\n\tImplementation constraint:" ++ show cs) False = undefined
+simplify cs = loop [] cs
  where
   loop checked []     = return checked
-  loop checked (c:cs) = do
-    yes <- entail (checked ++ cs) c
-    if yes
-      then loop checked cs
-      else loop (c: checked) cs
+  loop checked (ipc:ipcs) = do
+    entailed <- entail (checked ++ ipcs) ipc
+    if entailed
+      then loop checked ipcs
+      else loop (ipc: checked) ipcs
 
+entail :: [ImplProtocol] -> ImplProtocol -> Solve Bool
+entail ipcs current | trace ("\nEntailing\n\tCurrent: " ++ show current ++ "\n\tOthers:" ++ show ipcs) False = undefined
+entail ipcs ipConstraint = do
+  protocols <- ask
+  baseConstraints <- mapM byBase ipcs
+  traceM $ "Checking by base constraints:\n\t" ++ show baseConstraints
+  if any (ipConstraint `elem`) baseConstraints
+    then return True
+    else checkImpls
 
-type Ambiguity = (TyVar, [Constraint])
-
-ambiguities :: [TyVar] -> [Constraint] -> [Ambiguity]
-ambiguities vars cs = do
-  v <- Set.toList (ftv cs) \\ vars
-  return (v, filter (elem v . ftv) cs)
-
-
-candidates :: Ambiguity -> Solve [Type]
-candidates (var, cs) = do
-  cs' <- filterM (entail []) cs
-  return $ implementationTy <$> cs'
   where
-    ps =  [ p  | ty `Implements` p <- cs ]
-    tys = [ ty | ty `Implements` p <- cs ]
-    cs =  [ t' `Implements` p | all (TVar var ==) tys,
-                                any (`elem` numProtocols) ps,
-                                all (`elem` stdProtocols) ps,
-                                p <- ps,
-                                t' <- builtInTypes
-          ]
+    checkImpls = do
+      constraints <- byImplementation ipConstraint
+      traceM $ "Checking by implementations:\n\t" ++ show constraints
+      entailments <- mapM (entail ipcs) constraints
+      traceM $ "Entailments:\n\t" ++ show entailments
+      return (not (null entailments) && and entailments)
 
--- | Find the defaults for a combo of type vars and constraints
-withDefaults :: ([Ambiguity] -> [Type] -> a) -> [TyVar] -> [Constraint] -> Solve a
-withDefaults f vars cs = do
-    tys' <- mapM candidates as
-    if any null tys'
-      then throwError $ Fail "cannot resolve ambiguity"
-      else return $ f as $ map head tys'
 
+byBase :: ImplProtocol -> Solve [ImplProtocol]
+byBase impl@(ty `IP` p) = do
+    protocols <- ask
+    impls <- sequence [ byBase (ty `IP` base) | base <- sups protocols p ]
+    return $ impl : concat impls
     where
-      as = ambiguities vars cs
+      sups env id = maybe [] supers $ Map.lookup id env
 
 
-defaultedConstraints:: [TyVar] -> [Constraint] -> Solve [Constraint]
-defaultedConstraints = withDefaults (\as _ -> concatMap snd as)
 
-split :: [TyVar] -> [TyVar] -> [Constraint] -> Solve ([Constraint], [Constraint])
-split vars vars' cs = do
-  cs' <- reduce cs
-  let (deferred, retained) = partition (all (`elem` vars) . ftv) cs'
-  retained' <- defaultedConstraints (vars ++ vars') retained
-  return (deferred, retained \\ retained')
 
+-- type Ambiguity = (TyVar, [IConstraint])
+
+-- ambiguities :: [TyVar] -> [IConstraint] -> [Ambiguity]
+-- ambiguities vars cs = do
+--   v <- Set.toList (ftv cs) \\ vars
+--   return (v, filter (elem v . ftv) cs)
+
+-- candidates :: Ambiguity -> Solve [Type]
+-- candidates (var, cs) = do
+--   cs' <- filterM (entail []) cs
+--   return $ implementationTy <$> cs'
+--   where
+--     ps =  [ p  | ty `Implements` p <- cs ]
+--     tys = [ ty | ty `Implements` p <- cs ]
+--     cs =  [ t' `Implements` p | all (TVar var ==) tys,
+--                                 any (`elem` numProtocols) ps,
+--                                 all (`elem` stdProtocols) ps,
+--                                 p <- ps,
+--                                 t' <- builtInTypes
+--           ]
+
+-- -- | Find the defaults for a combo of type vars and constraints
+-- withDefaults :: ([Ambiguity] -> [Type] -> a) -> [TyVar] -> [IConstraint] -> Solve a
+-- withDefaults f vars cs = do
+--     tys' <- mapM candidates as
+--     if any null tys'
+--       then throwError $ Fail "cannot resolve ambiguity"
+--       else return $ f as $ map head tys'
+
+--     where
+--       as = ambiguities vars cs
+
+-- defaultedConstraints:: [TyVar] -> [IConstraint] -> Solve [IConstraint]
+-- defaultedConstraints = withDefaults (\as _ -> concatMap snd as)
+
+-- split :: [TyVar] -> [TyVar] -> [IConstraint] -> Solve ([IConstraint], [IConstraint])
+-- split vars vars' cs = do
+--   cs' <- reduce cs
+--   let (deferred, retained) = partition (all (`elem` vars) . ftv) cs'
+--   retained' <- defaultedConstraints (vars ++ vars') retained
+--   return (deferred, retained \\ retained')
