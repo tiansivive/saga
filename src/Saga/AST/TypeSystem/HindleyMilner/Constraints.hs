@@ -132,7 +132,8 @@ unification s [] = return nullSubst
 unification s (e:es) | t1 `EQ` t2 <- e = do
   sub <- unify t1 t2
   let sub' = compose sub s
-  unification sub' $ apply sub' es
+  sub'' <- unification sub' $ apply sub' es
+  return $ sub'' `compose` sub'
 
 
 

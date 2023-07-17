@@ -64,17 +64,19 @@ instance Instantiate t => Instantiate (Qualified t) where
 instance Instantiate Constraint where
   inst ts (t `T.Implements` p) = inst ts t `T.Implements` p
 
+
 instantiate :: Scheme -> Infer Type
 instantiate sc | trace ("Instantiating: " ++ show sc) False = undefined
 instantiate (Scheme _ qualified@(cs :=> t)) = do
-  -- let ftvs = concat $ ftv cs
-  -- tVars' <- mapM (\v -> do {
-  --   tv <- const fresh v
-  --   emit $ Equals v tv
-  -- }) ftvs
-  -- let cs :=> t = inst tVars' qualified
+  tVars <- mapM (const fresh) vars
+  let sub = Map.fromList $ zip vars tVars
+  traceM $ "Zipped: " ++ show sub
   tell $ fmap mkIConstraint cs
-  return t
+  return $ apply sub t
+    where
+      vars = Set.toList $ ftv cs
+
+
 
 generalize :: TypeEnv -> [ImplProtocol] -> Type -> Scheme
 generalize env impls t
