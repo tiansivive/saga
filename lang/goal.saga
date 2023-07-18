@@ -196,4 +196,18 @@ let str = display { value: "hello "}!
 
 
 
+let complex
+    :type \a -> a -> List a! 
+    :kind Type -> Type
+    :qualify forall a
+    :quantify Linear -> Linear
+    :mode Lazy
+    :constraint Show a
+    :constraint a extends {} 
+     
+
+    = \elem -> [elem]
+
+
+
 import P
