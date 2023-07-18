@@ -54,22 +54,25 @@ data BuiltInType
   | TString
   deriving (Show, Eq)
 
--- data PolymorphicVar where
---   TPolyVar :: Quantifier -> Multiplicity -> String -> PolymorphicVar
--- deriving instance Show PolymorphicVar
--- instance Eq PolymorphicVar where
---   (==) :: PolymorphicVar -> PolymorphicVar -> Bool
---   (TPolyVar _ _ id) == (TPolyVar _ _ id') = id == id'
 
 data Constraint
   = Type `Implements` String
   -- | Extends Type Type
   deriving (Show, Eq)
 
-implementationTy :: Constraint -> Type
-implementationTy (ty `Implements` p) = ty
-implementationP :: Constraint -> String
-implementationP (ty `Implements` p) = p
+
+
+
+
+data Kind
+  = KType
+  | KConstructor Kind Kind
+  | KConstraint
+  | KProtocol
+  | KVar String
+    deriving (Show, Eq)
+
+
 
 data Quantifier = Forall | Exists
   deriving (Eq, Show)
@@ -83,6 +86,7 @@ data Multiplicity
   deriving (Eq, Show)
 
 data Mode = Strict | Lazy
+
 
 
 -- | Term expressions

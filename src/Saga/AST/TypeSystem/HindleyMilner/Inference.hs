@@ -96,6 +96,7 @@ generalize env impls t
       undefined
 generalize env impls t = Scheme as (fmap mkConstraint impls :=> t)
   where
+
     mkConstraint (ty `IP` p) = ty `T.Implements` p
     as = Set.toList $ ftv t `Set.difference` ftv env
 
