@@ -26,7 +26,7 @@ type BaseProtocol = String
 
 type ProtocolID = String
 
-data Scheme = Scheme [UnificationVar] (Qualified Type) deriving (Show, Eq)
+data Scheme = Scheme Kind (Qualified Type) deriving (Show, Eq)
 
 data Protocol = Protocol {id :: ProtocolID, spec :: [Method], supers :: [BaseProtocol], implementations :: [Implementation]}
   deriving (Show)
@@ -122,10 +122,10 @@ initState = IST {count = 0}
 builtInFns :: Map.Map UnificationVar Scheme
 builtInFns =
   Map.fromList
-    [ ("+", Scheme ["a"] ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))),
-      ("-", Scheme ["a"] ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))),
-      ("*", Scheme ["a"] ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))),
-      ("/", Scheme ["a"] ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a")))
+    [ ("+", Scheme KType ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))),
+      ("-", Scheme KType ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))),
+      ("*", Scheme KType ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))),
+      ("/", Scheme KType ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a")))
     ]
 
 union :: TypeEnv -> TypeEnv -> TypeEnv

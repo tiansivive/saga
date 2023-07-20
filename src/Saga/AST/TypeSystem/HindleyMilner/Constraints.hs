@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Saga.AST.TypeSystem.HindleyMilner.Constraints where
 
 import           Control.Monad.Except
@@ -62,14 +60,15 @@ instance Substitutable Type where
 
 instance Substitutable Scheme where
   apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
-  apply s (Scheme as (_ :=> t)) = Scheme as ([] :=> ty)
+  apply s (Scheme k (cs :=> ty)) = Scheme k (cs' :=> ty')
     where
-      s' = foldr Map.delete s as
-      ty = apply s' t
+      ty' = apply s ty
+      cs' = apply s <$> cs
 
-  ftv (Scheme as (_ :=> t)) = set `Set.difference` Set.fromList as
+  ftv (Scheme k (cs :=> ty)) = cs' `Set.difference` ty'
     where
-      set = ftv t
+      cs' = ftv cs
+      ty' = ftv ty
 
 instance Substitutable TypeEnv where
   apply s t | trace ("Applying type env sub\n\t" ++ show s) False = undefined

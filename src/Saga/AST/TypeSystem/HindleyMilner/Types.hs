@@ -29,6 +29,7 @@ data Type where
   TTuple :: [Type] -> Type
   TRecord :: [(String, Type)] -> Type
   TArrow :: Type -> Type -> Type
+  TConstructor :: String -> Type
   TParametric :: String -> TypeExpr -> Type
   TVar :: String -> Type
   -- TConstrained :: [Constraint] -> Type -> Type

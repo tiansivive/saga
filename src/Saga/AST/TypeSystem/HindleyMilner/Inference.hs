@@ -94,11 +94,10 @@ generalize env impls t
       )
       False =
       undefined
-generalize env impls t = Scheme as (fmap mkConstraint impls :=> t)
+generalize env impls t = Scheme KType (fmap mkConstraint impls :=> t)
   where
-
     mkConstraint (ty `IP` p) = ty `T.Implements` p
-    as = Set.toList $ ftv t `Set.difference` ftv env
+
 
 lookupEnv :: UnificationVar -> Infer Type
 lookupEnv x = do
@@ -115,7 +114,7 @@ infer ex = case ex of
   Identifier x -> lookupEnv x
   Lambda (param : rest) body -> do
     tVar <- fresh
-    out' <- infer out `scoped` (param, Scheme [] ([] :=> tVar))
+    out' <- infer out `scoped` (param, Scheme KType ([] :=> tVar))
     return $ tVar `TArrow` out'
     where
       out = case rest of
@@ -166,7 +165,7 @@ infer ex = case ex of
 
 normalize :: Scheme -> Scheme
 normalize sc | trace ("Normalizing: " ++ show sc) False = undefined
-normalize (Scheme _ (cs :=> ty)) = Scheme (fmap snd ord) (cs' :=> ty')
+normalize (Scheme k (cs :=> ty)) = Scheme k (cs' :=> ty')
   where
     ty' = normType ty
     cs' = normConstraint <$> cs
