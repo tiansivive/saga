@@ -54,10 +54,10 @@ let foo
 
 
 data Custom
-    :: (Type -> Type) 
-    = Simple: Custom <Int>   
-    | Product: String -> Custom <Int>
-    | Forall: forall a. Custom <a> 
+    :: (Type => Type) 
+    = Simple: Custom Int!   
+    | Product: String -> Custom Int!
+    | Forall: \forall a => Custom a! 
     | Constrained: forall a. Show a => Custom <a> 
     | Parameterized: forall a. a -> Custom <a>
     | Existential: exists a. a -> Custom <Int>
@@ -112,7 +112,7 @@ data Maybe
      | Right: a -- possibly leveraging union types?
 */ 
 data Either 
-    : Type -> Type -> Type
+    : Type => Type => Type
     = Left: forall a. e -> Either e a!
     | Right: forall e. a -> Either e a!
 
@@ -127,13 +127,13 @@ type Show
 
 type Functor 
     :: (Type -> Type) -> Protocol
-    = \f -> 
+    = \f => 
         { map: forall a b. (a -> b) -> f a -> f b
         }
 
 type Ord
     :: Type -> Protocol
-    = forall a. Eq a => \a -> 
+    = \forall a. Eq a => 
         { compare: a -> a -> Ordering
         , ((<), (<=), (>=), (>)) : a -> a -> Bool
         , (max, min)             v: a -> a -> a
@@ -154,9 +154,9 @@ let strEitherImp =  functorEitherImpl<String>
 
 let functorListImpl
     : impl Functor: List =
-    { map = \f fa -> case fab of
-        []           -> []
-        (head, tail) -> (f head! : map f tail!)
+    { map = \match 
+        | _ []           -> []
+        | f (head, tail) -> (f head! : map f tail!)
     } 
 
 let ordImpl
@@ -165,7 +165,7 @@ let ordImpl
 
 
 
-type Foo = \f -> f Int!
+type Foo = \f => f Int!
 
 type Bar = Foo List!
 
@@ -196,6 +196,7 @@ let str = display { value: "hello "}!
 
 
 
+<<<<<<< Updated upstream
 let complex
     :type \a -> a -> List a! 
     :kind Type -> Type
@@ -209,5 +210,53 @@ let complex
     = \elem -> [elem]
 
 
+=======
+
+
+let complex
+    :type 
+        Int         :refine \x -> x > 0
+        ->                                     :resource Linear
+        String      :refine \x -> x > 0
+        ->                                     :resource Linear
+        a           :kind Type :qualify forall :resource Affine 
+                    :implements Show :extends { status: String }
+                    :refine \x -> x.tag != "status"
+        -> 
+        b           :kind Type :qualify forall :resource Affine 
+        -> 
+        Maybe a 
+       
+       
+    :mode Strict    
+    = \n s a b -> Just a!
+
+
+type Nat
+    :kind Type
+    :refined \x => x >= 0
+    = Int
+
+
+let otherIdeas
+    : \a b c => nat -> status -> b -> fn -> Maybe c
+    = \nat status b fn -> Just b.tag
+
+    :describe type
+        :constraints a impl Show, b extends { tag: c }
+        :quantify forall a b, exists c
+        :kind Type -> Type -> Type -> Type
+        :where 
+            status = String
+            fn  = a -> c
+            nat :kind Refined
+                :resource Linear 
+                :refine \x => x >= 0
+                = Int 
+
+let natural
+    : Nat
+    = 1
+>>>>>>> Stashed changes
 
 import P
