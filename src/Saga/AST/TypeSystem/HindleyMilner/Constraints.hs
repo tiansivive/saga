@@ -158,6 +158,7 @@ bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
 bind a t
   | t == TVar a = return nullSubst
   | occursCheck a t = throwError $ InfiniteType a t
+  | kind a /= kind t = throwError $ Fail "kinds do not match"
   | TLiteral l <- t = return . Map.singleton a $
       case l of
         LInt _    -> TPrimitive TInt
@@ -320,3 +321,20 @@ byBase impl@(ty `IP` p) = do
 --   let (deferred, retained) = partition (all (`elem` vars) . ftv) cs'
 --   retained' <- defaultedConstraints (vars ++ vars') retained
 --   return (deferred, retained \\ retained')
+
+
+
+class HasKind t where
+  kind :: t -> Kind
+
+instance HasKind Tyvar where
+  kind (Tyvar _ k) = k
+
+instance HasKind Tycon where
+  kind (Tycon _ k) = k
+
+instance HasKind Type where
+  kind (TConstructor tc) = kind tc
+  kind (TVar u)  = kind u
+  kind (TParametric t _) = case kind t of
+    (KConstructor _ k) -> k

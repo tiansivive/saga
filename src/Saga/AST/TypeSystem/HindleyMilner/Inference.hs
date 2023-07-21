@@ -189,18 +189,3 @@ normalize (Scheme k (cs :=> ty)) = Scheme k (cs' :=> ty')
     normType t = t
 
 
-
-class HasKind t where
-  kind :: t -> Kind
-
-instance HasKind Tyvar where
-  kind (Tyvar _ k) = k
-
-instance HasKind Tycon where
-  kind (Tycon _ k) = k
-
-instance HasKind Type where
-  kind (TConstructor tc) = kind tc
-  kind (TVar u)  = kind u
-  kind (TParametric t _) = case kind t of
-    (KConstructor _ k) -> k
