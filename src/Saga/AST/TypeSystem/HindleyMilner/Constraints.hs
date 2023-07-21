@@ -28,6 +28,7 @@ import           Text.Pretty.Simple                            (pShow)
 
 type Solve = ReaderT ProtocolEnv (Except InferenceError)
 type ProtocolEnv = Map.Map ProtocolID Protocol
+
 type Subst = Map.Map UnificationVar Type
 
 data SolveState = SST { unifier :: (Subst, [IConstraint]), protocols :: Map.Map ProtocolID Protocol}
@@ -152,8 +153,8 @@ unify (TTuple as) (TTuple bs) = do
 unify sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
 unify t t' = throwError $ UnificationFail t t'
 
-bind :: UnificationVar -> Type -> Solve Subst
-bind a t | trace ("Binding: " ++ a ++ " to " ++ show t) False = undefined
+bind :: Tyvar -> Type -> Solve Subst
+bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
 bind a t
   | t == TVar a = return nullSubst
   | occursCheck a t = throwError $ InfiniteType a t
@@ -164,7 +165,7 @@ bind a t
         LBool _   -> TPrimitive TBool
   | otherwise = return $ Map.singleton a t
 
-occursCheck :: Substitutable a => UnificationVar -> a -> Bool
+occursCheck :: Substitutable a => Tyvar -> a -> Bool
 occursCheck a t = a `Set.member` set
   where
     set = ftv t

@@ -5,6 +5,7 @@
 
 module Saga.AST.TypeSystem.HindleyMilner.Inference where
 
+import           Control.Applicative                           ((<|>))
 import           Control.Monad.Except
 import           Control.Monad.RWS                             (MonadReader (ask, local),
                                                                 MonadWriter (tell),
@@ -22,6 +23,7 @@ import           Data.Functor                                  ((<&>))
 import           Data.List                                     (nub, partition,
                                                                 (\\))
 import qualified Data.Map                                      as Map
+import           Data.Maybe                                    (fromMaybe)
 import qualified Data.Set                                      as Set
 import           Debug.Trace                                   (trace, traceM)
 import           Prelude                                       hiding (EQ)
@@ -67,13 +69,14 @@ instance Instantiate Constraint where
 
 instantiate :: Scheme -> Infer Type
 instantiate sc | trace ("Instantiating: " ++ show sc) False = undefined
-instantiate (Scheme _ qualified@(cs :=> t)) = do
-  tVars <- mapM (const fresh) vars
+instantiate (Scheme tvars qualified@(cs :=> t)) = do
+  tVars <- mapM (fresh . getKind) vars
   let sub = Map.fromList $ zip vars tVars
   traceM $ "Zipped: " ++ show sub
   tell $ mkIConstraint <$> apply sub cs
   return $ apply sub t
     where
+      getKind (Tyvar v k) = k
       vars = Set.toList $ ftv cs
 
 
@@ -94,34 +97,36 @@ generalize env impls t
       )
       False =
       undefined
-generalize env impls t = Scheme KType (fmap mkConstraint impls :=> t)
+generalize env impls t = Scheme [] (fmap mkConstraint impls :=> t)
   where
+
     mkConstraint (ty `IP` p) = ty `T.Implements` p
 
 
 lookupEnv :: UnificationVar -> Infer Type
-lookupEnv x = do
+lookupEnv x@(Tyvar v k) = do
   (Env vars aliases) <- ask
-  case Map.lookup x aliases of
-    Just ty -> return ty
-    Nothing -> case Map.lookup x vars of
-      Nothing -> throwError $ UnboundVariable (show x)
-      Just sc -> instantiate sc
+  case Map.lookup v aliases <|> Map.lookup x vars of
+    Just sc -> instantiate sc
+    Nothing -> throwError $ UnboundVariable (show x)
+
 
 infer :: Expr -> Infer Type
 infer ex | trace ("Inferring: " ++ show ex) False = undefined
 infer ex = case ex of
-  Identifier x -> lookupEnv x
+  Identifier x -> lookupEnv (Tyvar x KType)
+
   Lambda (param : rest) body -> do
-    tVar <- fresh
-    out' <- infer out `scoped` (param, Scheme KType ([] :=> tVar))
+    tVar <- fresh KType
+    out' <- infer out `scoped` (Tyvar param KType, Scheme (tvars tVar) ([] :=> tVar))
     return $ tVar `TArrow` out'
     where
+      tvars (TVar v) = [v]
       out = case rest of
         [] -> body
         _  -> Lambda rest body
   FnApp fn [arg] -> do
-    out <- fresh
+    out <- fresh KType
     fnTy <- infer fn
     argTy <- infer arg
     let inferred = argTy `TArrow` out
@@ -156,7 +161,7 @@ infer ex = case ex of
     where
       infer' = mapM infer
   Term (LInt i) -> do
-    tVar <- fresh
+    tVar <- fresh KType
     emit $ EqCons $ tVar `EQ` TPrimitive TInt
     emit $ ImplCons $ tVar `IP` "Num"
     return tVar
@@ -178,7 +183,24 @@ normalize (Scheme k (cs :=> ty)) = Scheme k (cs' :=> ty')
     normConstraint (t `T.Implements` p) = normType t `T.Implements` p
 
     normType (a `TArrow` b) = normType a `TArrow` normType b
-    normType (TVar a) = case lookup a ord of
-      Just x  -> TVar x
+    normType (TVar v) = case lookup v ord of
+      Just x  -> TVar $ Tyvar x $ kind v
       Nothing -> error "type variable not in signature"
     normType t = t
+
+
+
+class HasKind t where
+  kind :: t -> Kind
+
+instance HasKind Tyvar where
+  kind (Tyvar _ k) = k
+
+instance HasKind Tycon where
+  kind (Tycon _ k) = k
+
+instance HasKind Type where
+  kind (TConstructor tc) = kind tc
+  kind (TVar u)  = kind u
+  kind (TParametric t _) = case kind t of
+    (KConstructor _ k) -> k

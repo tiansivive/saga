@@ -29,26 +29,18 @@ data Type where
   TTuple :: [Type] -> Type
   TRecord :: [(String, Type)] -> Type
   TArrow :: Type -> Type -> Type
-  TConstructor :: String -> Type
-  TParametric :: String -> TypeExpr -> Type
-  TVar :: String -> Type
+  TConstructor :: Tycon -> Type
+  TParametric :: Type -> TypeExpr -> Type
+  TVar :: Tyvar -> Type
   -- TConstrained :: [Constraint] -> Type -> Type
   -- TProtocol         :: TypeExpr -> Type
   -- TImplementation   :: TypeExpr -> [RequiredImplId] -> Type
 
   TUnit :: Type
 
-infixr 5 `TArrow`
-infixr 0 :=>
-data Qualified t = (:=>) { constraints :: [Constraint], ty:: t } --, mode :: Mode, multiplicity :: Multiplicity }
-  deriving (Show, Eq)
-deriving instance Show TypeExpr
-deriving instance Eq TypeExpr
-deriving instance Show Type
-deriving instance Eq Type
-
 type ProtocolId = String
-
+data Tycon = Tycon String Kind deriving (Show, Eq)
+data Tyvar = Tyvar String Kind deriving (Show, Eq, Ord)
 data BuiltInType
   = TBool
   | TInt
@@ -56,12 +48,22 @@ data BuiltInType
   deriving (Show, Eq)
 
 
+deriving instance Show TypeExpr
+deriving instance Eq TypeExpr
+deriving instance Show Type
+deriving instance Eq Type
+
+
+
+infixr 5 `TArrow`
+infixr 0 :=>
+data Qualified t = (:=>) { constraints :: [Constraint], ty:: t } --, mode :: Mode, multiplicity :: Multiplicity }
+  deriving (Show, Eq)
+
 data Constraint
   = Type `Implements` String
   -- | Extends Type Type
   deriving (Show, Eq)
-
-
 
 
 
@@ -71,7 +73,7 @@ data Kind
   | KConstraint
   | KProtocol
   | KVar String
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
 
 
 

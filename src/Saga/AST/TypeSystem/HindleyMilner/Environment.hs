@@ -14,10 +14,9 @@ import           Saga.AST.TypeSystem.HindleyMilner.Types hiding (Implements,
                                                           ProtocolID)
 import           Saga.Lexer.Tokens                       (Token (Qualified))
 
-type UnificationVar = String
+type UnificationVar = Tyvar
 
-type TyVar = String
-
+type TypeVar = String
 type Alias = String
 
 type Name = String
@@ -26,7 +25,7 @@ type BaseProtocol = String
 
 type ProtocolID = String
 
-data Scheme = Scheme Kind (Qualified Type) deriving (Show, Eq)
+data Scheme = Scheme [Tyvar] (Qualified Type) deriving (Show, Eq)
 
 data Protocol = Protocol {id :: ProtocolID, spec :: [Method], supers :: [BaseProtocol], implementations :: [Implementation]}
   deriving (Show)
@@ -42,10 +41,11 @@ numProtocol :: Protocol
 numProtocol =
   Protocol
     "Num"
-    [("+", TVar "a" `TArrow` TVar "a" `TArrow` TVar "a")]
+    [("+", tyvar`TArrow` tyvar `TArrow` tyvar)]
     []
     [ [] :=> (TPrimitive TInt `IP` "Num")
     ]
+    where tyvar = TVar $ Tyvar "a" KType
 
 numProtocols :: [ProtocolID]
 numProtocols =
@@ -75,7 +75,7 @@ stdProtocols =
 
 data TypeEnv = Env
   { unificationVars :: Map.Map UnificationVar Scheme,
-    aliases         :: Map.Map Alias Type
+    aliases         :: Map.Map Alias Scheme
   }
   deriving (Show)
 
@@ -114,19 +114,24 @@ emit :: IConstraint -> Infer ()
 emit = tell . pure
 
 empty :: TypeEnv
-empty = Env builtInFns Map.empty
+empty = Env Map.empty builtInFns
 
 initState :: InferenceState
 initState = IST {count = 0}
 
-builtInFns :: Map.Map UnificationVar Scheme
+
+builtInFns :: Map.Map Alias Scheme
 builtInFns =
   Map.fromList
-    [ ("+", Scheme KType ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))),
-      ("-", Scheme KType ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))),
-      ("*", Scheme KType ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a"))),
-      ("/", Scheme KType ([TVar "a" `T.Implements` "Num"] :=> TVar "a" `TArrow` (TVar "a" `TArrow` TVar "a")))
+    [ ("+", Scheme [var] ([tvar `T.Implements` "Num"] :=> tvar `TArrow` (tvar `TArrow` tvar))),
+      ("-", Scheme [var] ([tvar `T.Implements` "Num"] :=> tvar `TArrow` (tvar `TArrow` tvar))),
+      ("*", Scheme [var] ([tvar `T.Implements` "Num"] :=> tvar `TArrow` (tvar `TArrow` tvar))),
+      ("/", Scheme [var] ([tvar `T.Implements` "Num"] :=> tvar `TArrow` (tvar `TArrow` tvar)))
     ]
+    where
+      var = Tyvar "a" KType
+      tvar = TVar var
+
 
 union :: TypeEnv -> TypeEnv -> TypeEnv
 (Env unifier aliases) `union` (Env unifier' aliases') =
@@ -143,11 +148,12 @@ scoped m (var, scheme) = do
   let scoped' = local $ \env -> env `extend` (var, scheme)
   scoped' m
 
-fresh :: Infer Type
-fresh = do
+fresh :: Kind -> Infer Type
+fresh k = do
   modify $ \s -> s {count = count s + 1}
   s <- get
-  return $ TVar $ "t" ++ show ([1 ..] !! count s)
+  let v = "t" ++ show ([1 ..] !! count s)
+  return $ TVar $ Tyvar v k
 
 letters :: [String]
 letters = [1 ..] >>= flip replicateM ['α' .. 'ω']

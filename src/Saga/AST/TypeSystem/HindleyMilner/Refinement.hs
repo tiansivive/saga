@@ -64,7 +64,7 @@ refine (TFnApp fnExpr argExprs) = do
   traceM $ "Fn Args: " <> show args
   case (constructor, argExprs) of
     (TParametric param body, args) -> refine' param body args
-    (TVar t, args) -> do
+    (TVar (Tyvar t _), args) -> do
         ty <- lookup t
         case ty of
             TParametric param body -> refine' param body args
@@ -72,12 +72,18 @@ refine (TFnApp fnExpr argExprs) = do
     _ -> throwError $ UnexpectedType "Cannot apply this type expression"
 
     where
-        refine' param body (arg:as) = do
-            ty <- refine arg
-            let scoped = local $ Map.insert param ty
-            scoped $ refine $ case as of
-                [] -> body
-                _  -> TFnApp body as
 
-refine (TLambda [param] body) = return $ TParametric param body
-refine (TLambda (p : ps) body) = return $ TParametric p $ TLambda ps body
+        refine' param body args = case param of
+            TConstructor (Tycon c k) -> fn c args body
+            TVar (Tyvar v k) -> fn v args body
+            _ -> throwError $ UnexpectedType "Cannot use this expression as a type constructor"
+
+        fn v (arg:as) body = do
+            ty <- refine arg
+            let scoped = local $ Map.insert v ty
+            scoped $ refine $ case as of
+                    [] -> body
+                    _  -> TFnApp body as
+
+refine (TLambda [param] body) = return $ TParametric (TConstructor $ Tycon param $ KConstructor KType KType) body
+refine (TLambda (p : ps) body) = return $ TParametric (TConstructor $ Tycon p $ KConstructor KType KType ) $ TLambda ps body
