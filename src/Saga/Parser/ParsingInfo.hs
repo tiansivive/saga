@@ -219,13 +219,28 @@ typeFnApplication fn args rt =
 tyIdentifier :: ParsedData HM.Expr -> ParsedData HM.TypeExpr
 tyIdentifier = fmap $ \(HM.Identifier id) -> HM.TIdentifier id
 
--- resolveIdType :: String -> HM.TypeExpr
--- resolveIdType "Int"     = HM.Type $ HM.TPrimitive HM.TInt
--- resolveIdType "Bool"    = HM.Type $ HM.TPrimitive HM.TBool
--- resolveIdType "String"  = HM.Type $ HM.TPrimitive HM.TString
--- resolveIdType ty
---     | isLower $ head ty = HM.Type $ HM.TVar ty
---     | otherwise         = HM.TIdentifier ty
+
+data BindingType = Id | Impl | Subtype | Refinement
+tyBinding:: BindingType -> ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData HM.Binding
+tyBinding bindType id expr = case bindType of
+    Id         -> Parsed (HM.Bind id' expr') range' toks
+    Impl       -> Parsed (HM.ImplBind id' [expr']) range' toks
+    Subtype    -> Parsed (HM.SubtypeBind id' expr') range' toks
+    Refinement -> Parsed (HM.RefineBind id' expr') range' toks
+    where
+        extract (Parsed val _ _) = val
+        expr' = extract expr
+        (HM.Identifier id') = extract id
+        toks = tokens id ++ tokens expr
+        range' = range id <-> range expr
+
+typeClause:: ParsedData HM.TypeExpr -> [ParsedData HM.Binding] -> ParsedData HM.TypeExpr
+typeClause (Parsed expr' rt ts) bindings =
+    let
+        extract (Parsed val _ _) = val
+        bindings' = fmap extract bindings
+        toks = foldl (\toks' binding -> toks' ++ tokens binding) ts bindings
+    in Parsed (HM.TClause expr' bindings') (rt <-> range (last bindings)) (nub toks)
 
 
 

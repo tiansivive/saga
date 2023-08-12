@@ -51,9 +51,9 @@ tokens :-
 
     <0> type                 { tok Type }
     <0> forall               { tok Forall }
-    -- <0> $forall              { tok Forall }
+
     <0> exists               { tok Exists }
-    -- <0> $exists               { tok Exists }
+
     <0> alias                { tok Alias }
     <0> protocol             { tok Protocol }
     <0> implements           { tok Implements }

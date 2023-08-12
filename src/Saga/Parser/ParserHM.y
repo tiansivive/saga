@@ -131,12 +131,16 @@ import qualified Saga.AST.Scripts as Scripts
 
 
 %right else in
+%right '|'
 %right '->'
 %right '.'
+%right RIGHT
 %left '||'
 %left '&&'
+%left where
+%left LEFT
 
-%nonassoc '='
+%nonassoc ',' '='
 %nonassoc "==" "!=" '<' '>' '<=' '>='
 %left '+' '-'
 %left '*' '/'
@@ -278,12 +282,26 @@ typeArgs
   :                     { [] }
   | typeArgs typeAtom   { $1 ++ [$2] }
 
+
+tbinding
+  : identifier '=' typeExpr         %prec RIGHT { P.tyBinding P.Id $1 $3 }
+  | identifier implements typeExpr  %prec RIGHT { P.tyBinding P.Impl $1 $3 }
+  | identifier '|->' typeExpr       %prec RIGHT { P.tyBinding P.Subtype $1 $3 }
+  | identifier '|' typeExpr         %prec RIGHT { P.tyBinding P.Refinement $1 $3 }
+
+tbindings
+  : tbinding   {[$1]}
+  | tbindings ',' tbinding {$1 ++ [$3]}
+
 typeExpr 
+  : typeExpr '->' typeExpr    %prec RIGHT { P.typeArrow $1 $3 }
+  | '\\' params '=>' typeExpr %prec RIGHT { P.typeLambda $2 $4 $1 }
+  | typeAtom typeArgs '!'                 { P.typeFnApplication $1 $2 $3 }
+  | typeAtom                              { $1 }
+  | typeExpr where tbindings  %prec LEFT  { P.typeClause $1 $3 } 
+
+  
   -- : if typeExpr then typeExpr else typeExpr { Types.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
-  : typeExpr '->' typeExpr  { P.typeArrow $1 $3 }
-  | '\\' params '->' typeExpr { P.typeLambda $2 $4 $1 }
-  | typeAtom typeArgs '!' { P.typeFnApplication $1 $2 $3 }
-  | typeAtom     { $1 }
   -- | qualifiers '.' typeExpr                          { Types.Type $ Types.TConstrained $1 [] $3 }
   -- | qualifiers '.' constraints '=>' typeExpr %shift  { Types.Type $ Types.TConstrained $1 $3 $5 }
   -- | implements identifier ':' typeExpr %shift { Types.Type (Types.TImplementation $2 $4 []) }

@@ -14,7 +14,7 @@ data TypeExpr where
   TEArrow :: TypeExpr -> TypeExpr -> TypeExpr
   TParens :: TypeExpr -> TypeExpr
   TConditional :: TypeExpr -> TypeExpr -> TypeExpr -> TypeExpr
-  -- TClause         :: [TypeExpr] -> TypeExpr -> TypeExpr
+  TClause      :: TypeExpr -> [Binding] -> TypeExpr
   -- TBlock          :: [TypeExpr] -> TypeExpr
   -- TReturn         :: TypeExpr -> TypeExpr
   TLambda :: [String] -> TypeExpr -> TypeExpr
@@ -22,6 +22,16 @@ data TypeExpr where
   TImplementation :: ProtocolId -> TypeExpr -> TypeExpr
   TQuantified :: Quantifier -> TypeExpr -> TypeExpr
   TConstraint :: [Constraint] -> TypeExpr -> TypeExpr
+
+
+data Binding
+  = Bind String TypeExpr
+  | ImplBind String [TypeExpr]
+  | SubtypeBind String TypeExpr
+  | RefineBind String TypeExpr
+  deriving (Show, Eq)
+
+
 
 data Type where
   TLiteral :: Term -> Type
@@ -89,6 +99,9 @@ data Multiplicity
   deriving (Eq, Show)
 
 data Mode = Strict | Lazy
+
+
+
 
 
 
