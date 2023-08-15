@@ -229,6 +229,13 @@ atom
 assignment 
   : identifier '=' expr     { P.assignment $1 $3 }  
 
+binding
+  : identifier '=' expr  %prec RIGHT { P.binding $1 $3 }
+
+bindings
+  : binding   {[$1]}
+  | bindings ',' binding {$1 ++ [$3]}
+
 expr
   
   : controlFlow             { $1 }    
@@ -236,6 +243,7 @@ expr
   | '\\' params '->' expr   { P.lambda $2 $4 $1 }
   | atom %shift             { $1 }
   | '.' atom                { P.dotLambda $2 }
+  | expr where bindings       %prec LEFT  { P.clause $1 $3 } 
   -- | identifier '=' expr     { Syntax.Assign $1 $3 }  
   | expr '.' identifier     { P.binaryOp $1 $2 $3 }
   | expr '+' expr           { P.binaryOp $1 $2 $3 }
@@ -311,7 +319,7 @@ typeAnnotation
   | ':' typeExpr { Just $2 }
 
 
--- Kinds
+
 
 kindExpr
   : kindExpr '->' kindExpr  %prec RIGHT { P.kindArrow $1 $3 }

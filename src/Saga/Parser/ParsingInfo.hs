@@ -62,7 +62,7 @@ instance Monad ParsedData where
 
 idStr :: HM.Expr -> String
 idStr (HM.Identifier id) = id
-idStr e = error $ "Not identifier expression:\n" ++ show e 
+idStr e                  = error $ "Not identifier expression:\n" ++ show e
 
 
 -- | EXPRESSIONS
@@ -131,6 +131,7 @@ assignment id expr = do
     expr' <- expr
     Parsed (HM.Assign id' expr') (range id <-> range expr) (nub $ tokens id ++ tokens expr)
 
+
 parenthesised :: ParsedData HM.Expr -> RangedToken -> RangedToken -> ParsedData HM.Expr
 parenthesised expr@(Parsed val range _) start end = expr
     { value = HM.Parens val
@@ -159,7 +160,7 @@ lambda params (Parsed body' bRange bToks) rt =
 fnApplication :: ParsedData HM.Expr -> [ParsedData HM.Expr] -> RangedToken -> ParsedData HM.Expr
 fnApplication fn args rt =
     let
-       
+
         expr = HM.FnApp (value fn) $ fmap value args
         toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
     in Parsed expr (range fn <-> L.rtRange rt) (nub toks)
@@ -167,23 +168,43 @@ fnApplication fn args rt =
 
 binaryOp :: ParsedData HM.Expr -> L.RangedToken -> ParsedData HM.Expr -> ParsedData HM.Expr
 --binaryOp l o r | trace ("\nbinaryOp: " ++ show o) False = undefined
-binaryOp exprL rtok exprR = 
+binaryOp exprL rtok exprR =
     case L.rtToken rtok of
         T.Operator op -> Parsed (binaryFn $ BS.unpack op) rng toks
-        T.Dot         -> Parsed (binaryFn $ ".") rng toks
+        T.Dot         -> Parsed (binaryFn ".") rng toks
         tok           -> error $ "Unrecognised operator token " ++ show tok
     where
         binaryFn fn = HM.FnApp (HM.Identifier fn) [value exprL, value exprR]
         rng = range exprL <-> range exprR
         toks = nub $ rtok : tokens exprL ++ tokens exprR
 
-dotLambda :: ParsedData HM.Expr -> ParsedData HM.Expr  
+dotLambda :: ParsedData HM.Expr -> ParsedData HM.Expr
 dotLambda expr = fmap (const fn) expr
-    where 
+    where
         obj = "_"
         body = HM.FnApp (HM.Identifier ".") [HM.Identifier obj, value expr]
         -- body = HM.FieldAccess (HM.Identifier obj) (idStr $ value expr)
         fn = HM.Lambda [obj] body
+
+
+
+binding:: ParsedData HM.Expr -> ParsedData HM.Expr -> ParsedData (HM.Binding HM.Expr)
+binding id expr = Parsed (HM.Bind id' expr') range' toks
+    where
+        extract (Parsed val _ _) = val
+        expr' = extract expr
+        (HM.Identifier id') = extract id
+        toks = tokens id ++ tokens expr
+        range' = range id <-> range expr
+
+clause:: ParsedData HM.Expr -> [ParsedData (HM.Binding HM.Expr)] -> ParsedData HM.Expr
+clause (Parsed expr' rt ts) bindings =
+    let
+        extract (Parsed val _ _) = val
+        bindings' = fmap extract bindings
+        toks = foldl (\toks' binding -> toks' ++ tokens binding) ts bindings
+    in Parsed (HM.Clause expr' bindings') (rt <-> range (last bindings)) (nub toks)
+
 
 -- | TYPES
 
@@ -239,7 +260,7 @@ tyIdentifier = fmap $ HM.TIdentifier . idStr
 
 
 data BindingType = Id | Impl | Subtype | Refinement
-tyBinding:: BindingType -> ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData HM.Binding
+tyBinding:: BindingType -> ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData (HM.Binding HM.TypeExpr)
 tyBinding bindType id expr = case bindType of
     Id         -> Parsed (HM.Bind id' expr') range' toks
     Impl       -> Parsed (HM.ImplBind id' [expr']) range' toks
@@ -251,7 +272,7 @@ tyBinding bindType id expr = case bindType of
         toks = tokens id ++ tokens expr
         range' = range id <-> range expr
 
-typeClause:: ParsedData HM.TypeExpr -> [ParsedData HM.Binding] -> ParsedData HM.TypeExpr
+typeClause:: ParsedData HM.TypeExpr -> [ParsedData (HM.Binding HM.TypeExpr)] -> ParsedData HM.TypeExpr
 typeClause (Parsed expr' rt ts) bindings =
     let
         bindings' = fmap value bindings
@@ -274,8 +295,8 @@ kindId :: ParsedData HM.Expr -> ParsedData HM.Kind
 kindId (Parsed e rng toks)
     | idStr e == "Type" = Parsed HM.KType rng toks
     | otherwise =  error $ "Unrecognised Kind: " ++ show e
- 
-  
+
+
 
 
 -- | DATA TYPE
@@ -288,7 +309,7 @@ dataExpr expr tyExpr = Parsed (id, value tyExpr) range' (nub toks)
         id = idStr $ value expr
         toks = tokens expr ++ tokens tyExpr
         range' = range expr <-> range tyExpr
-        
+
 
 -- | DECLARATIONS
 
@@ -306,7 +327,7 @@ letdec idExpr tyExpr kind expr = Parsed dec (range expr) (tokens expr)
 
 dataType :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> [ParsedData DataExpr] -> ParsedData Declaration
 dataType (Parsed expr rt ts) kind dtExprs = Parsed d range' (nub dataToks)
-    where 
+    where
         id = idStr expr
         dataToks = foldl (\toks' d -> toks' ++ tokens d) ts dtExprs
         -- toks = maybe tokens [] kind  ++ dataToks
@@ -322,7 +343,7 @@ typeDef expr kind tyExpr = Parsed tyDef (range expr) (tokens expr)
 
 -- | SCRIPTS
 
-data Script = Script [Declaration] 
+data Script = Script [Declaration]
     deriving (Show, Eq)
 
 script :: [ParsedData Declaration] -> ParsedData Script

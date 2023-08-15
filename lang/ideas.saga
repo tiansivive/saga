@@ -73,3 +73,37 @@ let fn
 
             quantify forall a  
     = \n tag -> { value: n, tag } 
+
+
+let gt10
+    : Nat -> Nat -> GT10
+        where
+            @tag X Y Z
+            Nat = Int | \x -> x > 0
+            GT10 = Nat | \_ -> X + Y > 10
+
+    = \x y -> x + y 
+
+let under10 = gt10 1 1! // fail typechecking
+let over10 = gt10 1 10! // pass typechecking
+
+let mul2 // Infer: x > 0, x + x > 10
+    = \x -> gt10 x x! 
+
+let defY // Infer: x > 0, x + (x + 1) > 10
+    = \x -> {
+        let y = x + 1
+        return gt10 x y! 
+    }
+
+let compute 
+    # Infer: external: Num -> T1 
+            where 
+                Num = Int | \x -> x > 0
+                T1 = Int | \x -> Num + x > 10
+    = \x -> {
+        let y = external x! // x > 0, (external x!) + x > 0, 
+        return gt10 x y! 
+    } 
+
+

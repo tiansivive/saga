@@ -14,7 +14,7 @@ data TypeExpr where
   TEArrow :: TypeExpr -> TypeExpr -> TypeExpr
   TParens :: TypeExpr -> TypeExpr
   TConditional :: TypeExpr -> TypeExpr -> TypeExpr -> TypeExpr
-  TClause      :: TypeExpr -> [Binding] -> TypeExpr
+  TClause      :: TypeExpr -> [Binding TypeExpr] -> TypeExpr
   -- TBlock          :: [TypeExpr] -> TypeExpr
   -- TReturn         :: TypeExpr -> TypeExpr
   TLambda :: [String] -> TypeExpr -> TypeExpr
@@ -24,11 +24,11 @@ data TypeExpr where
   TConstraint :: [Constraint] -> TypeExpr -> TypeExpr
 
 
-data Binding
-  = Bind String TypeExpr
-  | ImplBind String [TypeExpr]
-  | SubtypeBind String TypeExpr
-  | RefineBind String TypeExpr
+data Binding a
+  = Bind String a
+  | ImplBind String [a]
+  | SubtypeBind String a
+  | RefineBind String a
   deriving (Show, Eq)
 
 
@@ -116,7 +116,8 @@ data Expr where
   IfElse :: Expr -> Expr -> Expr -> Expr
   Lambda :: [String] -> Expr -> Expr
   FnApp :: Expr -> [Expr] -> Expr
-  Clause :: [Expr] -> Expr -> Expr
+  Clause :: Expr -> [Binding Expr] -> Expr
+
   Block :: [Expr] -> Expr
   Return :: Expr -> Expr
   Parens :: Expr -> Expr
