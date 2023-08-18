@@ -314,9 +314,40 @@ typeAnnotation
 
 -- Kinds
 
+kindExpr
+  : kindExpr '->' kindExpr  %prec RIGHT { P.kindArrow $1 $3 }
+  | identifier                          { P.kindId $1 }
 
 
 
+kindAnnotation
+  : { Nothing }
+  | '::' kindExpr { Just $2 }
+
+-- Data
+
+dataExpr
+  : identifier ':' typeExpr { P.dataExpr $1 $3 }
+
+dataExprs
+    : dataExpr { [$1] }
+    | dataExprs '|' dataExpr { $1 ++ [$3] }
+
+
+-- Decs
+
+dec 
+  : let identifier typeAnnotation kindAnnotation '=' expr { P.letdec $2 $3 $4 $6 }
+  | data identifier kindAnnotation '=' dataExprs          { P.dataType $2 $3 $5 }
+  | ty identifier kindAnnotation '=' typeExpr             { P.typeDef $2 $3 $5 }
+ 
+
+declarations
+  : dec              { [$1] }
+  | declarations dec { $1 ++ [$2] }
+
+script
+  : declarations { P.script $1 }
 
 
 {

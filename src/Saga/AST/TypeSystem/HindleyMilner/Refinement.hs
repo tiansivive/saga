@@ -85,5 +85,5 @@ refine (TFnApp fnExpr argExprs) = do
                     [] -> body
                     _  -> TFnApp body as
 
-refine (TLambda [param] body) = return $ TParametric (TConstructor $ Tycon param $ KConstructor KType KType) body
-refine (TLambda (p : ps) body) = return $ TParametric (TConstructor $ Tycon p $ KConstructor KType KType ) $ TLambda ps body
+refine (TLambda [param] body) = return $ TParametric (TConstructor $ Tycon param $ KArrow KType KType) body
+refine (TLambda (p : ps) body) = return $ TParametric (TConstructor $ Tycon p $ KArrow KType KType ) $ TLambda ps body

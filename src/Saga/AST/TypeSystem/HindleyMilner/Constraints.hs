@@ -337,4 +337,4 @@ instance HasKind Type where
   kind (TConstructor tc) = kind tc
   kind (TVar u)  = kind u
   kind (TParametric t _) = case kind t of
-    (KConstructor _ k) -> k
+    (KArrow _ k) -> k

@@ -146,7 +146,7 @@ lambda params (Parsed body' bRange bToks) rt =
 fnApplication :: ParsedData HM.Expr -> [ParsedData HM.Expr] -> RangedToken -> ParsedData HM.Expr
 fnApplication fn args rt =
     let
-        extract (Parsed val _ _) = val
+       
         expr = HM.FnApp (extract fn) $ fmap extract args
         toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
     in Parsed expr (range fn <-> L.rtRange rt) (nub toks)
@@ -164,8 +164,6 @@ binaryOp exprL op exprR = Parsed fn (range exprL <-> range exprR) toks
 
 -- | TYPES
 
--- tyExpr :: ParsedData HM.Type -> ParsedData HM.TypeExpr
--- tyExpr = fmap HM.Type
 
 tyRecord :: [ParsedData (String, HM.TypeExpr)] -> RangedToken -> RangedToken -> ParsedData HM.TypeExpr
 tyRecord pairs start end = Parsed rec' range' toks
@@ -193,7 +191,6 @@ tyParenthesised expr@(Parsed val range _) start end = expr
 typeArrow :: ParsedData HM.TypeExpr -> ParsedData HM.TypeExpr ->  ParsedData HM.TypeExpr
 typeArrow input output =
     let
-        extract (Parsed val _ _) = val
         ty = HM.TEArrow (extract input) (extract output)
         toks = tokens input ++ tokens output
     in Parsed ty (range input <-> range output) (nub toks)
@@ -209,7 +206,6 @@ typeLambda params (Parsed body' bRange bToks) rt =
 typeFnApplication :: ParsedData HM.TypeExpr -> [ParsedData HM.TypeExpr] -> RangedToken -> ParsedData HM.TypeExpr
 typeFnApplication fn args rt =
     let
-        extract (Parsed val _ _) = val
         ty = HM.TFnApp (extract fn) $ fmap extract args
         toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
     in Parsed ty (range fn <-> L.rtRange rt) (nub toks)
@@ -228,7 +224,6 @@ tyBinding bindType id expr = case bindType of
     Subtype    -> Parsed (HM.SubtypeBind id' expr') range' toks
     Refinement -> Parsed (HM.RefineBind id' expr') range' toks
     where
-        extract (Parsed val _ _) = val
         expr' = extract expr
         (HM.Identifier id') = extract id
         toks = tokens id ++ tokens expr
@@ -237,12 +232,82 @@ tyBinding bindType id expr = case bindType of
 typeClause:: ParsedData HM.TypeExpr -> [ParsedData HM.Binding] -> ParsedData HM.TypeExpr
 typeClause (Parsed expr' rt ts) bindings =
     let
-        extract (Parsed val _ _) = val
         bindings' = fmap extract bindings
         toks = foldl (\toks' binding -> toks' ++ tokens binding) ts bindings
     in Parsed (HM.TClause expr' bindings') (rt <-> range (last bindings)) (nub toks)
 
 
+
+
+-- | KINDS
+kindArrow :: ParsedData HM.Kind -> ParsedData HM.Kind ->  ParsedData HM.Kind
+kindArrow input output =
+    let
+        kind = HM.KArrow (extract input) (extract output)
+        toks = tokens input ++ tokens output
+    in Parsed kind (range input <-> range output) (nub toks)
+
+
+kindId :: ParsedData HM.Expr -> ParsedData HM.Kind
+kindId p
+    | Parsed e _ _ <- p
+    , HM.Identifier id <- e
+    , id == "Type" = fmap (\(HM.Identifier id) -> HM.KType) p
+
+    | otherwise = error "Unrecognised Kind"
+
+
+-- | DATA TYPE
+
+type DataExpr = (String, HM.TypeExpr)
+
+dataExpr :: ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData DataExpr
+dataExpr expr tyExpr = Parsed (id, extract tyExpr) range' (nub toks)
+    where
+        HM.Identifier id = extract expr
+        toks = tokens expr ++ tokens tyExpr
+        range' = range expr <-> range tyExpr
+        
+
+-- | DECLARATIONS
+
+data Declaration
+    = Let String (Maybe HM.TypeExpr) (Maybe HM.Kind) HM.Expr
+    | Type String (Maybe HM.Kind) HM.TypeExpr
+    | Data String (Maybe HM.Kind) [DataExpr]
+
+letdec :: ParsedData HM.Expr -> Maybe (ParsedData HM.TypeExpr) -> Maybe (ParsedData HM.Kind) -> ParsedData HM.Expr -> ParsedData Declaration
+letdec idExpr tyExpr kind expr = Parsed dec (range expr)(tokens expr)
+    where
+        HM.Identifier id = extract expr
+        dec = Let id (fmap extract tyExpr) (fmap extract kind) (extract expr)
+
+dataType :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> [ParsedData DataExpr] -> ParsedData Declaration
+dataType (Parsed expr rt ts) kind dtExprs = Parsed d range' (nub dataToks)
+    where 
+        HM.Identifier id = expr
+        dataToks = foldl (\toks' d -> toks' ++ tokens d) ts dtExprs
+        -- toks = maybe tokens [] kind  ++ dataToks
+        range' = (rt <-> range (last dtExprs))
+        d = Data id (fmap extract kind) (fmap extract dtExprs)
+
+typeDef :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> ParsedData HM.TypeExpr -> ParsedData Declaration
+typeDef expr kind tyExpr = Parsed tyDef (range expr) (tokens expr)
+    where
+        HM.Identifier id = extract expr
+        tyDef = Type id (fmap extract kind) (extract tyExpr)
+
+
+-- | SCRIPTS
+
+data Script = Script [Declaration]
+
+script :: [ParsedData Declaration] -> ParsedData Script
+script decs = Parsed script' rng toks
+    where
+        script' = Script $ fmap extract decs
+        rng = range $ last decs
+        toks = tokens $ last decs
 
 lexer :: (L.RangedToken -> L.Alex a) -> L.Alex a
 lexer = (=<< L.alexMonadScan)
@@ -250,4 +315,7 @@ lexer = (=<< L.alexMonadScan)
 run :: String -> L.Alex a -> Either String a
 run =  L.runAlex . BS.pack
 
+
+extract :: ParsedData a -> a
+extract (Parsed val _ _) = val
 

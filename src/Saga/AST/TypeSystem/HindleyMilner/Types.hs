@@ -79,7 +79,7 @@ data Constraint
 
 data Kind
   = KType
-  | KConstructor Kind Kind
+  | KArrow Kind Kind
   | KConstraint
   | KProtocol
   | KVar String
