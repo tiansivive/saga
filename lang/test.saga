@@ -1,25 +1,38 @@
-module test where
-
 
 
 let hof = \f -> f 1!
 
-/* type GenericType = \f -> f Int!
+type GenericType = \f => f Int!
 
 let i
     : Int -> Bool -> String 
     = \a b -> "hello"
 
 let obj
-    : { fn: Int -> Int }
-    = { fn: \x -> x + 1 }
-
-let result = obj.fn 1!
+    : { method: Int -> Int
+      , foo: 
+        { bar: Int 
+        } 
+      }
+    = { method: \x -> x + 1 
+      , foo: { bar: 0 }
+      }
 
 
 let fn
     : a -> Int
-    = \x -> x
+    = \x -> x 
+
+let result = get ob! .method 1!
+
+/*
+let path
+    = .foo.bar
+
+let next
+    = update (.foo.bar) (\n -> n + 1) obj!
+let modified
+    = modify (.foo.bar) (\n -> n + 1) obj!
+
 */
 
-import P

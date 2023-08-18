@@ -1,14 +1,14 @@
 {
 module Saga.Parser.ParserHM
     ( runSagaExpr
-    -- , runSagaScript
+    , runSagaScript
     , runSagaType
-    -- , runSagaKind
-    -- , runSagaDec
+    , runSagaKind
+    , runSagaDec
     , parseSagaExpr
     , parseSagaType
-    -- , parseSagaKind
-    -- , parseSagaDec
+    , parseSagaKind
+    , parseSagaDec
     ) where
 
 import Data.Char (isLower)
@@ -32,11 +32,11 @@ import qualified Saga.AST.Scripts as Scripts
 
 }
 
--- %name parseSagaScript script
+%name parseSagaScript script
 %name parseSagaExpr expr
 %name parseSagaType typeExpr
--- %name parseSagaKind kindExpr
--- %name parseSagaDec dec
+%name parseSagaKind kindExpr
+%name parseSagaDec dec
 %tokentype { L.RangedToken }
 %error { P.parseError }
 %monad { L.Alex } { >>= } { pure }
@@ -219,6 +219,7 @@ term
 atom
   : identifier              { $1 }
   -- | atom '.' path           { HM.FieldAccess (info $1 <-> (info $ last $3)) $1 $3 }
+  | expr '.' atom           { P.binaryOp $1 $2 $3 }
   | term                    { P.term $1 }
   | tuple      { $1 }
 --   | list       { $1 }
@@ -294,7 +295,7 @@ tbindings
   | tbindings ',' tbinding {$1 ++ [$3]}
 
 typeExpr 
-  : typeExpr '->' typeExpr    %prec RIGHT { P.typeArrow $1 $3 }
+  : typeAtom '->' typeExpr    %prec RIGHT { P.typeArrow $1 $3 }
   | '\\' params '=>' typeExpr %prec RIGHT { P.typeLambda $2 $4 $1 }
   | typeAtom typeArgs '!'                 { P.typeFnApplication $1 $2 $3 }
   | typeAtom                              { $1 }
@@ -353,14 +354,8 @@ script
 {
 
 
-
-
-
-
-
-
--- runSagaScript :: String -> Either String HM.Script
--- runSagaScript input = input `run` parseSagaScript
+runSagaScript :: String -> Either String (P.ParsedData P.Script)
+runSagaScript input = input `P.run` parseSagaScript
 
 runSagaExpr :: String -> Either String (P.ParsedData HM.Expr)
 runSagaExpr input = input `P.run` parseSagaExpr
@@ -368,10 +363,10 @@ runSagaExpr input = input `P.run` parseSagaExpr
 runSagaType :: String -> Either String (P.ParsedData HM.TypeExpr)
 runSagaType input = input `P.run` parseSagaType
 
--- runSagaKind :: String -> Either String (Kinds.Kind L.Range)
--- runSagaKind input = input `run` parseSagaKind
+runSagaKind :: String -> Either String (P.ParsedData HM.Kind)
+runSagaKind input = input `P.run` parseSagaKind
 
--- runSagaDec :: String -> Either String HM.Declaration 
--- runSagaDec input = input `run` parseSagaDec
+runSagaDec :: String -> Either String (P.ParsedData P.Declaration)
+runSagaDec input = input `P.run` parseSagaDec
 
 }

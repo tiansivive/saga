@@ -297,7 +297,7 @@ typeFnArgs
 typeExpr 
   : if typeExpr then typeExpr else typeExpr { Types.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
   | typeExpr '->' typeExpr  { Types.Type $ Types.TArrow (info $1 <-> info $3) $1 $3 }
-  | '\\' args '->' typeExpr { Types.TLambda (L.rtRange $1 <-> info $4) $2 $4 }
+  | '\\' args '=>' typeExpr { Types.TLambda (L.rtRange $1 <-> info $4) $2 $4 }
   | typeAtom typeFnArgs '!' { Types.TFnApp (info $1 <-> L.rtRange $3) $1 $2 }
   | typeAtom     { $1 }
   | qualifiers '.' typeExpr                          { Types.Type $ Types.TConstrained $1 [] $3 }

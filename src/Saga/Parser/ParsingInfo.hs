@@ -16,6 +16,9 @@ import           Saga.AST.Syntax                         (Expr (FnApp),
                                                           Term (LRecord))
 import           Saga.Lexer.Lexer                        (RangedToken (rtToken))
 
+import           Debug.Trace                             (trace)
+
+
 data ParseError = ParseError { col:: Int, line:: Int }
 
 
@@ -55,6 +58,16 @@ instance Monad ParsedData where
             unique = nub $ toks ++ toks'
 
 
+
+
+idStr :: HM.Expr -> String
+idStr (HM.Identifier id) = id
+idStr e = error $ "Not identifier expression:\n" ++ show e 
+
+
+-- | EXPRESSIONS
+
+
 identifier :: L.RangedToken -> (String -> a) -> ParsedData a
 identifier rt constructor = Parsed expr (L.rtRange rt) [rt]
   where
@@ -80,7 +93,7 @@ boolean = literal $ \(T.Boolean b) -> b
 keyValPair :: ParsedData HM.Expr -> ParsedData a -> ParsedData (String, a)
 keyValPair k v = Parsed (id, value v) range' toks
     where
-        HM.Identifier id = value k
+        id = idStr $ value k
         range' = range k <-> range v
         toks = tokens k ++ tokens v
 
@@ -137,8 +150,8 @@ parseError tok = do
 lambda :: [ParsedData HM.Expr] -> ParsedData HM.Expr -> RangedToken -> ParsedData HM.Expr
 lambda params (Parsed body' bRange bToks) rt =
     let
-        extract (Parsed (HM.Identifier s) _ _) = s
-        expr = HM.Lambda (fmap extract params) body'
+
+        expr = HM.Lambda (fmap (idStr . value) params) body'
         toks = foldl (\toks' param -> toks' ++ tokens param) (rt:bToks) params
     in Parsed expr (L.rtRange rt <-> bRange) (nub toks)
 
@@ -147,20 +160,23 @@ fnApplication :: ParsedData HM.Expr -> [ParsedData HM.Expr] -> RangedToken -> Pa
 fnApplication fn args rt =
     let
        
-        expr = HM.FnApp (extract fn) $ fmap extract args
+        expr = HM.FnApp (value fn) $ fmap value args
         toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
     in Parsed expr (range fn <-> L.rtRange rt) (nub toks)
 
 
 binaryOp :: ParsedData HM.Expr -> L.RangedToken -> ParsedData HM.Expr -> ParsedData HM.Expr
-binaryOp exprL op exprR = Parsed fn (range exprL <-> range exprR) toks
+--binaryOp l o r | trace ("\nbinaryOp: " ++ show o) False = undefined
+binaryOp exprL rtok exprR = 
+    case L.rtToken rtok of
+        T.Operator op -> Parsed (binaryFn $ BS.unpack op) rng toks
+        T.Dot         -> Parsed (binaryFn $ ".") rng toks
+        tok           -> error $ "Unrecognised operator token " ++ show tok
     where
-        fn = HM.FnApp (HM.Identifier "+") [value exprL, value exprR]
-
-        toks = nub $ op : tokens exprL ++ tokens exprR
-
-
-
+        binaryFn fn = HM.FnApp (HM.Identifier fn) [value exprL, value exprR]
+        rng = range exprL <-> range exprR
+        toks = nub $ rtok : tokens exprL ++ tokens exprR
+    
 
 -- | TYPES
 
@@ -191,29 +207,28 @@ tyParenthesised expr@(Parsed val range _) start end = expr
 typeArrow :: ParsedData HM.TypeExpr -> ParsedData HM.TypeExpr ->  ParsedData HM.TypeExpr
 typeArrow input output =
     let
-        ty = HM.TEArrow (extract input) (extract output)
+        ty = HM.TEArrow (value input) (value output)
         toks = tokens input ++ tokens output
     in Parsed ty (range input <-> range output) (nub toks)
 
 typeLambda :: [ParsedData HM.Expr] -> ParsedData HM.TypeExpr -> RangedToken -> ParsedData HM.TypeExpr
 typeLambda params (Parsed body' bRange bToks) rt =
     let
-        extract (Parsed (HM.Identifier s) _ _) = s
-        ty = HM.TLambda (fmap extract params) body'
+        ty = HM.TLambda (fmap (idStr . value) params) body'
         toks = foldl (\toks' param -> toks' ++ tokens param) (rt:bToks) params
     in Parsed ty (L.rtRange rt <-> bRange) (nub toks)
 
 typeFnApplication :: ParsedData HM.TypeExpr -> [ParsedData HM.TypeExpr] -> RangedToken -> ParsedData HM.TypeExpr
 typeFnApplication fn args rt =
     let
-        ty = HM.TFnApp (extract fn) $ fmap extract args
+        ty = HM.TFnApp (value fn) $ fmap value args
         toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
     in Parsed ty (range fn <-> L.rtRange rt) (nub toks)
 
 
 
 tyIdentifier :: ParsedData HM.Expr -> ParsedData HM.TypeExpr
-tyIdentifier = fmap $ \(HM.Identifier id) -> HM.TIdentifier id
+tyIdentifier = fmap $ HM.TIdentifier . idStr
 
 
 data BindingType = Id | Impl | Subtype | Refinement
@@ -224,15 +239,15 @@ tyBinding bindType id expr = case bindType of
     Subtype    -> Parsed (HM.SubtypeBind id' expr') range' toks
     Refinement -> Parsed (HM.RefineBind id' expr') range' toks
     where
-        expr' = extract expr
-        (HM.Identifier id') = extract id
+        expr' = value expr
+        id' = idStr $ value id
         toks = tokens id ++ tokens expr
         range' = range id <-> range expr
 
 typeClause:: ParsedData HM.TypeExpr -> [ParsedData HM.Binding] -> ParsedData HM.TypeExpr
 typeClause (Parsed expr' rt ts) bindings =
     let
-        bindings' = fmap extract bindings
+        bindings' = fmap value bindings
         toks = foldl (\toks' binding -> toks' ++ tokens binding) ts bindings
     in Parsed (HM.TClause expr' bindings') (rt <-> range (last bindings)) (nub toks)
 
@@ -243,18 +258,17 @@ typeClause (Parsed expr' rt ts) bindings =
 kindArrow :: ParsedData HM.Kind -> ParsedData HM.Kind ->  ParsedData HM.Kind
 kindArrow input output =
     let
-        kind = HM.KArrow (extract input) (extract output)
+        kind = HM.KArrow (value input) (value output)
         toks = tokens input ++ tokens output
     in Parsed kind (range input <-> range output) (nub toks)
 
 
 kindId :: ParsedData HM.Expr -> ParsedData HM.Kind
-kindId p
-    | Parsed e _ _ <- p
-    , HM.Identifier id <- e
-    , id == "Type" = fmap (\(HM.Identifier id) -> HM.KType) p
-
-    | otherwise = error "Unrecognised Kind"
+kindId (Parsed e rng toks)
+    | idStr e == "Type" = Parsed HM.KType rng toks
+    | otherwise =  error $ "Unrecognised Kind: " ++ show e
+ 
+  
 
 
 -- | DATA TYPE
@@ -262,9 +276,9 @@ kindId p
 type DataExpr = (String, HM.TypeExpr)
 
 dataExpr :: ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData DataExpr
-dataExpr expr tyExpr = Parsed (id, extract tyExpr) range' (nub toks)
+dataExpr expr tyExpr = Parsed (id, value tyExpr) range' (nub toks)
     where
-        HM.Identifier id = extract expr
+        id = idStr $ value expr
         toks = tokens expr ++ tokens tyExpr
         range' = range expr <-> range tyExpr
         
@@ -275,47 +289,52 @@ data Declaration
     = Let String (Maybe HM.TypeExpr) (Maybe HM.Kind) HM.Expr
     | Type String (Maybe HM.Kind) HM.TypeExpr
     | Data String (Maybe HM.Kind) [DataExpr]
+    deriving (Show, Eq)
 
 letdec :: ParsedData HM.Expr -> Maybe (ParsedData HM.TypeExpr) -> Maybe (ParsedData HM.Kind) -> ParsedData HM.Expr -> ParsedData Declaration
-letdec idExpr tyExpr kind expr = Parsed dec (range expr)(tokens expr)
+letdec idExpr tyExpr kind expr = Parsed dec (range expr) (tokens expr)
     where
-        HM.Identifier id = extract expr
-        dec = Let id (fmap extract tyExpr) (fmap extract kind) (extract expr)
+        id = idStr $ value idExpr
+        dec = Let id (fmap value tyExpr) (fmap value kind) (value expr)
 
 dataType :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> [ParsedData DataExpr] -> ParsedData Declaration
 dataType (Parsed expr rt ts) kind dtExprs = Parsed d range' (nub dataToks)
     where 
-        HM.Identifier id = expr
+        id = idStr expr
         dataToks = foldl (\toks' d -> toks' ++ tokens d) ts dtExprs
         -- toks = maybe tokens [] kind  ++ dataToks
         range' = (rt <-> range (last dtExprs))
-        d = Data id (fmap extract kind) (fmap extract dtExprs)
+        d = Data id (fmap value kind) (fmap value dtExprs)
 
 typeDef :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> ParsedData HM.TypeExpr -> ParsedData Declaration
 typeDef expr kind tyExpr = Parsed tyDef (range expr) (tokens expr)
     where
-        HM.Identifier id = extract expr
-        tyDef = Type id (fmap extract kind) (extract tyExpr)
+        id = idStr $ value expr
+        tyDef = Type id (fmap value kind) (value tyExpr)
 
 
 -- | SCRIPTS
 
-data Script = Script [Declaration]
+data Script = Script [Declaration] 
+    deriving (Show, Eq)
 
 script :: [ParsedData Declaration] -> ParsedData Script
 script decs = Parsed script' rng toks
     where
-        script' = Script $ fmap extract decs
+        script' = Script $ fmap value decs
         rng = range $ last decs
         toks = tokens $ last decs
 
+
+-- | Utils
+
 lexer :: (L.RangedToken -> L.Alex a) -> L.Alex a
 lexer = (=<< L.alexMonadScan)
+
 
 run :: String -> L.Alex a -> Either String a
 run =  L.runAlex . BS.pack
 
 
-extract :: ParsedData a -> a
-extract (Parsed val _ _) = val
+
 

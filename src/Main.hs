@@ -17,6 +17,7 @@ import qualified Saga.AST.Evaluation                         as E
 import qualified Saga.AST.TypeSystem.HindleyMilner.Inference as HMI
 import qualified Saga.AST.TypeSystem.Inference               as Infer
 import qualified Saga.Parser.ParserHM                        as HMP
+import qualified Saga.Parser.ParsingInfo                     as HMPI
 
 import           Control.Monad.State.Lazy
 import           Data.Maybe                                  (fromJust)
@@ -118,7 +119,7 @@ repl = runInputT defaultSettings $ repl' Map.empty
                 repl' env
 
             parseKind input = do
-                case runSagaKind input of
+                case HMP.runSagaKind input of
                     (Left e)   -> pPrint e
                     (Right ty) -> pPrint ty
                 repl' env
@@ -252,11 +253,13 @@ script fp =
         putStrLn "Bye!"
 
 
-parseScript :: FilePath -> IO (Either String (Scripts.Script L.Range))
+parseScript :: FilePath -> IO ()
 parseScript fp = do
     handle <- openFile fp ReadMode
     contents <- hGetContents handle
-    return $ runSagaScript contents
+
+    pPrint $ HMP.runSagaScript contents
+    putStrLn "Bye!"
 
 
 lexScript :: FilePath -> IO ()
