@@ -120,7 +120,7 @@ data Expr where
   Block :: [Expr] -> Expr
   Return :: Expr -> Expr
   Parens :: Expr -> Expr
-  FieldAccess :: Expr -> [String] -> Expr
+  FieldAccess :: Expr -> String -> Expr
 
 data Term where
   LInt :: Int -> Term

@@ -23,16 +23,16 @@ let fn
     : a -> Int
     = \x -> x 
 
-let result = get ob! .method 1!
+let field = obj.foo.bar
+let path = .foo.bar
 
-/*
-let path
-    = .foo.bar
+let result = (get ob!.method) 1!
 
 let next
     = update (.foo.bar) (\n -> n + 1) obj!
+
 let modified
     = modify (.foo.bar) (\n -> n + 1) obj!
 
-*/
+
 

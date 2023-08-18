@@ -176,7 +176,14 @@ binaryOp exprL rtok exprR =
         binaryFn fn = HM.FnApp (HM.Identifier fn) [value exprL, value exprR]
         rng = range exprL <-> range exprR
         toks = nub $ rtok : tokens exprL ++ tokens exprR
-    
+
+dotLambda :: ParsedData HM.Expr -> ParsedData HM.Expr  
+dotLambda expr = fmap (const fn) expr
+    where 
+        obj = "_"
+        body = HM.FnApp (HM.Identifier ".") [HM.Identifier obj, value expr]
+        -- body = HM.FieldAccess (HM.Identifier obj) (idStr $ value expr)
+        fn = HM.Lambda [obj] body
 
 -- | TYPES
 

@@ -212,18 +212,15 @@ term
   : number     { P.number HM.LInt $1 }
   | boolean    { P.boolean HM.LBool $1 }
   | string     { P.string HM.LString $1 }
---   | tuple      { $1 }
--- --   | list       { $1 }
---   | record     { $1 }
+
   
 atom
   : identifier              { $1 }
-  -- | atom '.' path           { HM.FieldAccess (info $1 <-> (info $ last $3)) $1 $3 }
-  | expr '.' atom           { P.binaryOp $1 $2 $3 }
+ 
   | term                    { P.term $1 }
-  | tuple      { $1 }
---   | list       { $1 }
-  | record     { $1 }
+  | tuple                   { $1 }
+--   | list                    { $1 }
+  | record                  { $1 }
   -- | '{' block '}'           { HM.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
   | '(' expr ')'            { P.parenthesised $2 $1 $3 }
 
@@ -235,11 +232,12 @@ assignment
 expr
   
   : controlFlow             { $1 }    
-  | fnApplication           { $1 }--{ Syntax.FnApp (info $ head $1 <-> info $ last $1) (head $1) (tail $1) }
+  | fnApplication           { $1 }
   | '\\' params '->' expr   { P.lambda $2 $4 $1 }
-  -- | with assignments in expr { Syntax.Clause (L.rtRange $1 <-> info $4) $2 $4 }
   | atom %shift             { $1 }
+  | '.' atom                { P.dotLambda $2 }
   -- | identifier '=' expr     { Syntax.Assign $1 $3 }  
+  | expr '.' identifier     { P.binaryOp $1 $2 $3 }
   | expr '+' expr           { P.binaryOp $1 $2 $3 }
   | expr '-' expr           { P.binaryOp $1 $2 $3 }
   | expr '*' expr           { P.binaryOp $1 $2 $3 }
