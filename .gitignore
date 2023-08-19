@@ -7,5 +7,7 @@ src/Main
 
 **/Parser.hs
 **/Parser.info
+**/ParserHM.hs
+**/ParserHM.info
 
 logs
