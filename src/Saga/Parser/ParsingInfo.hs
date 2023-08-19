@@ -259,6 +259,13 @@ tyIdentifier :: ParsedData HM.Expr -> ParsedData HM.TypeExpr
 tyIdentifier = fmap $ HM.TIdentifier . idStr
 
 
+typeUnion :: ParsedData HM.TypeExpr  -> ParsedData HM.TypeExpr  -> ParsedData HM.TypeExpr
+typeUnion left right = Parsed union rng toks
+    where
+        union = HM.TUnion (value left) (value right)
+        rng = range left <-> range right
+        toks = nub $ tokens left ++ tokens right
+
 tagged :: ParsedData HM.Expr -> ParsedData HM.TypeExpr  -> ParsedData HM.TypeExpr
 tagged expr tyExpr = Parsed tag rng toks
     where

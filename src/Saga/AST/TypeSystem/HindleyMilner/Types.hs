@@ -17,6 +17,7 @@ data TypeExpr where
   TClause      :: TypeExpr -> [Binding TypeExpr] -> TypeExpr
   -- TBlock          :: [TypeExpr] -> TypeExpr
   -- TReturn         :: TypeExpr -> TypeExpr
+  TUnion        :: TypeExpr -> TypeExpr -> TypeExpr
   TTagged       :: String -> TypeExpr -> TypeExpr
   TLambda :: [String] -> TypeExpr -> TypeExpr
   TFnApp :: TypeExpr -> [TypeExpr] -> TypeExpr

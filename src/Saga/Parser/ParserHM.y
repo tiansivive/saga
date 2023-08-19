@@ -138,8 +138,8 @@ import qualified Saga.AST.Scripts as Scripts
 %right RIGHT
 %left '||'
 %left '&&'
-%nonassoc where
 %left LEFT
+
 
 %nonassoc ',' ';' '='
 %nonassoc "==" "!=" '<' '>' '<=' '>='
@@ -301,10 +301,11 @@ tbindings
   | tbindings ';' tbinding {$1 ++ [$3]}
 
 typeExpr 
-  : typeAtom '->' typeExpr    %prec RIGHT { P.typeArrow $1 $3 }
-  | '\\' params '=>' typeExpr %prec RIGHT { P.typeLambda $2 $4 $1 }
+  : typeAtom '->' typeExpr     { P.typeArrow $1 $3 }
+  | '\\' params '=>' typeExpr  { P.typeLambda $2 $4 $1 }
   | typeAtom typeArgs '!'                 { P.typeFnApplication $1 $2 $3 }
   | typeAtom                              { $1 }
+  -- | ' typeExpr '|' typeExpr             { P.typeUnion $2 $4 }
   | identifier ':' typeExpr               { P.tagged $1 $3 }
   
 

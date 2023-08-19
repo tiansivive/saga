@@ -40,8 +40,12 @@ let modified
     = modify (.foo.bar) (\n -> n + 1) obj!
 
 
-type Union
-  = \a => Foo: { stuff: a }
+/*
+type Union =
+  | \a => Foo: { stuff: a }
+  | Bar: String
+  | Baz 
+*/
   
 
 data MyType
