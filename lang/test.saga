@@ -56,5 +56,7 @@ data MyType
   where custom = String
 
 
+type TypeFn = \a => { val: a }
 
+type Foo = TypeFn Int!
 

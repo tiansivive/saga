@@ -3,22 +3,27 @@
 module Saga.AST.TypeSystem.HindleyMilner.Refinement where
 
 import           Control.Monad.Except
-import           Control.Monad.State.Lazy                (MonadState, State,
-                                                          evalState, evalStateT,
-                                                          replicateM)
-import           Control.Monad.Trans.Except              (ExceptT, runExceptT)
+import           Control.Monad.State.Lazy                      (MonadState,
+                                                                State,
+                                                                evalState,
+                                                                evalStateT,
+                                                                replicateM)
+import           Control.Monad.Trans.Except                    (ExceptT,
+                                                                runExceptT)
 
-import           Data.Functor                            ((<&>))
+import           Data.Functor                                  ((<&>))
 
-import qualified Data.Map                                as Map
-import qualified Data.Set                                as Set
-import           Debug.Trace                             (trace, traceM)
+import qualified Data.Map                                      as Map
+import qualified Data.Set                                      as Set
+import           Debug.Trace                                   (trace, traceM)
 
 import           Saga.AST.TypeSystem.HindleyMilner.Types
 
-import           Control.Monad.Trans.Reader              (ReaderT, ask, local)
-import           Control.Monad.Trans.State               (StateT)
-import           Prelude                                 hiding (lookup)
+import           Control.Monad.Trans.Reader                    (ReaderT, ask,
+                                                                local)
+import           Control.Monad.Trans.State                     (StateT)
+import           Prelude                                       hiding (lookup)
+import           Saga.AST.TypeSystem.HindleyMilner.Environment (scoped)
 import           Saga.Parser.ParsingInfo
 
 
@@ -30,6 +35,7 @@ type Refined = ReaderT RefinementEnv (Except RefinementError)
 data RefinementError
     = UnexpectedType String
     | UnboundIdentifier String
+    | TooManyArguments TypeExpr [TypeExpr]
 
 
 
@@ -47,6 +53,7 @@ refine :: TypeExpr -> Refined Type
 -- refine (TBlock [])                    = return TUnit
 -- refine (TBlock tyExps)                = refine $ last tyExps
 -- refine (TReturn tyExp)                = refine tyExp
+refine (TIdentifier id) = lookup id
 refine (TParens tyExp) = refine tyExp
 refine (TETuple tyExps) = mapM refine tyExps <&> TTuple
 refine (TERecord pairs) = mapM (mapM refine) pairs <&> TRecord
@@ -54,36 +61,46 @@ refine (TEArrow input output) = do
   in' <- refine input
   out' <- refine output
   return $ in' `TArrow` out'
-refine (TConditional cond true false) = refine true -- assumes same return type, will change with union types
-refine (TIdentifier id) = lookup id
-refine (TFnApp fnExpr argExprs) = do
-  args <- mapM refine argExprs
-  constructor <- refine fnExpr
+refine (TConditional cond true false) = refine $ TEUnion true false -- assumes same return type, will change with union types
+refine (TEUnion true false) = do
+    true' <- refine true
+    false' <- refine false
+    return $ true' `TUnion` false'
 
-  traceM $ "Fn Expression: " <> show constructor
-  traceM $ "Fn Args: " <> show args
-  case (constructor, argExprs) of
-    (TParametric param body, args) -> refine' param body args
+refine (TLambda params body) = ask <&> TClosure params body
+refine (TFnApp fnExpr argExprs) = do
+  fn <- refine fnExpr
+  args <- mapM refine argExprs
+
+--   traceM $ "Fn Expression: " <> show fn
+--   traceM $ "Fn Args: " <> show args
+  case (fn, args) of
+    (t@(TData tycon), args) -> return $ foldl TApplied t args
+    (TClosure params closure env, args) -> apply closure params args
+
     (TVar (Tyvar t _), args) -> do
         ty <- lookup t
         case ty of
-            TParametric param body -> refine' param body args
+            t@(TData tycon) -> return $ foldl TApplied t args
+            TClosure params closure env -> apply closure params args
             _ -> throwError $ UnexpectedType "Cannot apply this type expression"
     _ -> throwError $ UnexpectedType "Cannot apply this type expression"
 
     where
 
-        refine' param body args = case param of
-            TConstructor (Tycon c k) -> fn c args body
-            TVar (Tyvar v k) -> fn v args body
-            _ -> throwError $ UnexpectedType "Cannot use this expression as a type constructor"
+        apply :: TypeExpr -> [String] -> [Type] -> Refined Type
+        apply tyExpr [] [] = refine tyExpr
+        apply tyExpr params [] = ask <&> TClosure params tyExpr
+        apply tyExpr (p:params) (a: args) = do
+            let scoped = local $ Map.insert p a
+            scoped $ apply tyExpr params args
 
-        fn v (arg:as) body = do
-            ty <- refine arg
-            let scoped = local $ Map.insert v ty
-            scoped $ refine $ case as of
-                    [] -> body
-                    _  -> TFnApp body as
+        apply _ [] (a: args) = throwError $ TooManyArguments fnExpr argExprs
 
-refine (TLambda [param] body) = return $ TParametric (TConstructor $ Tycon param $ KArrow KType KType) body
-refine (TLambda (p : ps) body) = return $ TParametric (TConstructor $ Tycon p $ KArrow KType KType ) $ TLambda ps body
+
+
+
+
+
+
+

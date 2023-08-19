@@ -209,7 +209,7 @@ spec = do
 
 
     -- it "can parse parametric types" $ do
-    --     let HM.Type (HM.TParametric id args) = parseType "List a!"
+    --     let HM.Type (HM.TClosure id args) = parseType "List a!"
     --     let HM.Type (HM.TIdentifier (list)) = id
     --     list `shouldBe` "List"
     --     let  [HM.Type (HM.TVar (a))] = args

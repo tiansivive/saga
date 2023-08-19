@@ -46,7 +46,7 @@ type Hidden = exists f a. { of: a -> f <a> }
 type Pointed = forall f, exists a. \f -> { of: Show a => a -> f a! }
 
 let pointedVal = { of: n -> [n] } 
-    // infer? TParametric (TVar "a") (TRecord [("of", TVar "a" `TArrow` (TApp (TCons "List") (TVar "a")) )])
+    // infer? TClosure (TVar "a") (TRecord [("of", TVar "a" `TArrow` (TApp (TCons "List") (TVar "a")) )])
     // \a -> { of: a -> List a! }
 
 let foo
@@ -101,7 +101,7 @@ data Maybe
     : Type -> Type
     = \x 
         -> Just: x
-        |  Nothing
+        |  :Nothing
 
 
 /* Investigate also allowing more compact syntax like 

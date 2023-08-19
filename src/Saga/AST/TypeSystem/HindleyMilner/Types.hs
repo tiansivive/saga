@@ -3,6 +3,7 @@
 
 module Saga.AST.TypeSystem.HindleyMilner.Types where
 
+import           Data.Map          (Map)
 import           GHC.Base          ()
 import           Saga.Lexer.Tokens (Token (Qualified))
 
@@ -17,7 +18,7 @@ data TypeExpr where
   TClause      :: TypeExpr -> [Binding TypeExpr] -> TypeExpr
   -- TBlock          :: [TypeExpr] -> TypeExpr
   -- TReturn         :: TypeExpr -> TypeExpr
-  TUnion        :: TypeExpr -> TypeExpr -> TypeExpr
+  TEUnion        :: TypeExpr -> TypeExpr -> TypeExpr
   TTagged       :: String -> TypeExpr -> TypeExpr
   TLambda :: [String] -> TypeExpr -> TypeExpr
   TFnApp :: TypeExpr -> [TypeExpr] -> TypeExpr
@@ -40,9 +41,11 @@ data Type where
   TPrimitive :: BuiltInType -> Type
   TTuple :: [Type] -> Type
   TRecord :: [(String, Type)] -> Type
+  TUnion :: Type -> Type -> Type
   TArrow :: Type -> Type -> Type
-  TConstructor :: Tycon -> Type
-  TParametric :: Type -> TypeExpr -> Type
+  TData :: Tycon -> Type
+  TClosure :: [String] -> TypeExpr -> Map String Type -> Type
+  TApplied :: Type -> Type -> Type
   TVar :: Tyvar -> Type
   -- TConstrained :: [Constraint] -> Type -> Type
   -- TProtocol         :: TypeExpr -> Type

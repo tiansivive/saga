@@ -103,10 +103,10 @@ generalize env impls t = Scheme [] (fmap mkConstraint impls :=> t)
     mkConstraint (ty `IP` p) = ty `T.Implements` p
 
 
-lookupEnv :: UnificationVar -> Infer Type
-lookupEnv x@(Tyvar v k) = do
+lookupEnv :: String -> Infer Type
+lookupEnv x = do
   (Env vars aliases) <- ask
-  case Map.lookup v aliases <|> Map.lookup x vars of
+  case Map.lookup x aliases <|> Map.lookup (Tyvar x KType) vars of
     Just sc -> instantiate sc
     Nothing -> throwError $ UnboundVariable (show x)
 
@@ -114,7 +114,7 @@ lookupEnv x@(Tyvar v k) = do
 infer :: Expr -> Infer Type
 infer ex | trace ("Inferring: " ++ show ex) False = undefined
 infer ex = case ex of
-  Identifier x -> lookupEnv (Tyvar x KType)
+  Identifier x -> lookupEnv x
 
   Lambda (param : rest) body -> do
     tVar <- fresh KType
@@ -150,8 +150,8 @@ infer ex = case ex of
     no' <- infer no
     emit $ EqCons $ cond' `EQ` TPrimitive TBool
     -- \| TODO: this should change to a union type when those get implemented
-    emit $ EqCons $ yes' `EQ` no'
-    return yes'
+    return $ if yes' == no' then yes' else TUnion yes' no'
+
   Tuple elems -> do
     tElems <- mapM infer elems
     return $ TTuple tElems
@@ -160,13 +160,16 @@ infer ex = case ex of
     return $ TRecord tPairs
     where
       infer' = mapM infer
-  Term (LInt i) -> do
-    tVar <- fresh KType
-    emit $ EqCons $ tVar `EQ` TPrimitive TInt
-    emit $ ImplCons $ tVar `IP` "Num"
-    return tVar
-  Term (LBool b) -> return $ TLiteral (LBool b)
-  Term (LString s) -> return $ TLiteral (LString s)
+
+  Term literal -> case literal of
+      (LString s) -> return $ TLiteral (LString s)
+      (LBool b) -> return $ TLiteral (LBool b)
+      (LInt i) -> do
+        tVar <- fresh KType
+        emit $ EqCons $ tVar `EQ` TPrimitive TInt
+        emit $ ImplCons $ tVar `IP` "Num"
+        return tVar
+
 
 normalize :: Scheme -> Scheme
 normalize sc | trace ("Normalizing: " ++ show sc) False = undefined

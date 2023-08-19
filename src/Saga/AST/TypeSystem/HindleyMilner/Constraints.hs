@@ -143,6 +143,12 @@ unify (il `TArrow` ol) (ir `TArrow` or) = do
   sub <- unify il ir
   s <- apply sub ol `unify` apply sub or
   return $ s `compose` sub
+unify (TApplied f t) (TApplied f' t') = do
+  sub <- unify f f'
+  s <- apply sub t `unify` apply sub t'
+  return $ s `compose` sub
+
+unify (TData lCons) (TData rCons) | lCons == rCons = return nullSubst
 unify (TVar a) t = bind a t
 unify t (TVar a) = bind a t
 unify (TPrimitive a) (TPrimitive b) | a == b = return nullSubst
@@ -151,6 +157,9 @@ unify (TTuple as) (TTuple bs) = do
   ss <- zipWithM unify as bs
   return $ foldl compose nullSubst ss
 unify sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
+
+
+unify t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch"
 unify t t' = throwError $ UnificationFail t t'
 
 bind :: Tyvar -> Type -> Solve Subst
@@ -334,7 +343,11 @@ instance HasKind Tycon where
   kind (Tycon _ k) = k
 
 instance HasKind Type where
-  kind (TConstructor tc) = kind tc
-  kind (TVar u)  = kind u
-  kind (TParametric t _) = case kind t of
+  kind (TData cons) = kind cons
+  kind (TVar u)     = kind u
+  kind (TApplied f _) = case kind f of
     (KArrow _ k) -> k
+  kind (TClosure t _ _) = error "Trying to get kind of TClosure: Kind Inference not yet implemented"
+  kind _ = KType
+  --   (KArrow _ k) -> k
+

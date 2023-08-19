@@ -120,6 +120,7 @@ initState :: InferenceState
 initState = IST {count = 0}
 
 
+
 builtInFns :: Map.Map Alias Scheme
 builtInFns =
   Map.fromList
