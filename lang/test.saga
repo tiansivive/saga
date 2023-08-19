@@ -1,8 +1,13 @@
 
 
-let hof = \f -> f 1!
+
 
 type GenericType = \f => f Int!
+type TyBindings = foo -> Int
+  where foo = String
+
+
+let hof = \f -> f 1!
 
 let i
     : Int -> Bool -> String 
@@ -33,6 +38,19 @@ let next
 
 let modified
     = modify (.foo.bar) (\n -> n + 1) obj!
+
+
+type Union
+  = \a => Foo: { stuff: a }
+  
+
+data MyType
+  = Foo: Int
+  | Bar: String -> Bool
+  | Baz: \a => custom -> a
+  
+  where custom = String
+
 
 
 

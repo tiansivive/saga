@@ -259,6 +259,14 @@ tyIdentifier :: ParsedData HM.Expr -> ParsedData HM.TypeExpr
 tyIdentifier = fmap $ HM.TIdentifier . idStr
 
 
+tagged :: ParsedData HM.Expr -> ParsedData HM.TypeExpr  -> ParsedData HM.TypeExpr
+tagged expr tyExpr = Parsed tag rng toks
+    where
+        tag = HM.TTagged (idStr $ value expr) (value tyExpr)
+        rng = range expr <-> range tyExpr
+        toks = tokens expr ++ tokens tyExpr
+
+
 data BindingType = Id | Impl | Subtype | Refinement
 tyBinding:: BindingType -> ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData (HM.Binding HM.TypeExpr)
 tyBinding bindType id expr = case bindType of
@@ -316,7 +324,7 @@ dataExpr expr tyExpr = Parsed (id, value tyExpr) range' (nub toks)
 data Declaration
     = Let String (Maybe HM.TypeExpr) (Maybe HM.Kind) HM.Expr
     | Type String (Maybe HM.Kind) HM.TypeExpr
-    | Data String (Maybe HM.Kind) [DataExpr]
+    | Data String (Maybe HM.Kind) [DataExpr] [HM.Binding HM.TypeExpr]
     deriving (Show, Eq)
 
 letdec :: ParsedData HM.Expr -> Maybe (ParsedData HM.TypeExpr) -> Maybe (ParsedData HM.Kind) -> ParsedData HM.Expr -> ParsedData Declaration
@@ -325,14 +333,14 @@ letdec idExpr tyExpr kind expr = Parsed dec (range expr) (tokens expr)
         id = idStr $ value idExpr
         dec = Let id (fmap value tyExpr) (fmap value kind) (value expr)
 
-dataType :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> [ParsedData DataExpr] -> ParsedData Declaration
-dataType (Parsed expr rt ts) kind dtExprs = Parsed d range' (nub dataToks)
+dataType :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> [ParsedData DataExpr] -> [ParsedData (HM.Binding HM.TypeExpr)]  -> ParsedData Declaration
+dataType (Parsed expr rt ts) kind dtExprs bindings = Parsed d range' (nub dataToks)
     where
         id = idStr expr
         dataToks = foldl (\toks' d -> toks' ++ tokens d) ts dtExprs
         -- toks = maybe tokens [] kind  ++ dataToks
-        range' = (rt <-> range (last dtExprs))
-        d = Data id (fmap value kind) (fmap value dtExprs)
+        range' = rt <-> range (last dtExprs)
+        d = Data id (fmap value kind) (fmap value dtExprs) (fmap value bindings)
 
 typeDef :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> ParsedData HM.TypeExpr -> ParsedData Declaration
 typeDef expr kind tyExpr = Parsed tyDef (range expr) (tokens expr)

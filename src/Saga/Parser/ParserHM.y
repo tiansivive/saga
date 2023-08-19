@@ -112,6 +112,7 @@ import qualified Saga.AST.Scripts as Scripts
   '}'        { L.RangedToken T.RCurly _ }
 
   ':'        { L.RangedToken T.Colon _ }
+  ';'        { L.RangedToken T.SemiColon _ }
   ','        { L.RangedToken T.Comma _ }
   '->'       { L.RangedToken T.Arrow _ }
   '<-'       { L.RangedToken T.BackArrow _ }
@@ -137,10 +138,10 @@ import qualified Saga.AST.Scripts as Scripts
 %right RIGHT
 %left '||'
 %left '&&'
-%left where
+%nonassoc where
 %left LEFT
 
-%nonassoc ',' '='
+%nonassoc ',' ';' '='
 %nonassoc "==" "!=" '<' '>' '<=' '>='
 %left '+' '-'
 %left '*' '/'
@@ -243,7 +244,6 @@ expr
   | '\\' params '->' expr   { P.lambda $2 $4 $1 }
   | atom %shift             { $1 }
   | '.' atom                { P.dotLambda $2 }
-  | expr where bindings       %prec LEFT  { P.clause $1 $3 } 
   -- | identifier '=' expr     { Syntax.Assign $1 $3 }  
   | expr '.' identifier     { P.binaryOp $1 $2 $3 }
   | expr '+' expr           { P.binaryOp $1 $2 $3 }
@@ -298,14 +298,15 @@ tbinding
 
 tbindings
   : tbinding   {[$1]}
-  | tbindings ',' tbinding {$1 ++ [$3]}
+  | tbindings ';' tbinding {$1 ++ [$3]}
 
 typeExpr 
   : typeAtom '->' typeExpr    %prec RIGHT { P.typeArrow $1 $3 }
   | '\\' params '=>' typeExpr %prec RIGHT { P.typeLambda $2 $4 $1 }
   | typeAtom typeArgs '!'                 { P.typeFnApplication $1 $2 $3 }
   | typeAtom                              { $1 }
-  | typeExpr where tbindings  %prec LEFT  { P.typeClause $1 $3 } 
+  | identifier ':' typeExpr               { P.tagged $1 $3 }
+  
 
   
   -- : if typeExpr then typeExpr else typeExpr { Types.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
@@ -315,8 +316,9 @@ typeExpr
   -- | with args '=>' implements identifier ':' typeExpr %shift { Types.Type (Types.TImplementation $5 $7 $2) }
 
 typeAnnotation
-  : { Nothing }
-  | ':' typeExpr { Just $2 }
+  :                               { Nothing }
+  | ':' typeExpr                  { Just $2 }
+  | ':' typeExpr where tbindings  { Just $ P.typeClause $2 $4 } 
 
 
 
@@ -344,9 +346,12 @@ dataExprs
 -- Decs
 
 dec 
-  : let identifier typeAnnotation kindAnnotation '=' expr { P.letdec $2 $3 $4 $6 }
-  | data identifier kindAnnotation '=' dataExprs          { P.dataType $2 $3 $5 }
-  | ty identifier kindAnnotation '=' typeExpr             { P.typeDef $2 $3 $5 }
+  : let identifier typeAnnotation kindAnnotation '=' expr                 { P.letdec $2 $3 $4 $6 }
+  | let identifier typeAnnotation kindAnnotation '=' expr where bindings  { P.letdec $2 $3 $4 (P.clause $6 $8) }
+  | data identifier kindAnnotation '=' dataExprs                          { P.dataType $2 $3 $5 [] }
+  | data identifier kindAnnotation '=' dataExprs where tbindings          { P.dataType $2 $3 $5 $7 }
+  | ty identifier kindAnnotation '=' typeExpr                             { P.typeDef $2 $3 $5 }
+  | ty identifier kindAnnotation '=' typeExpr where tbindings             { P.typeDef $2 $3 (P.typeClause $5 $7) }
  
 
 declarations

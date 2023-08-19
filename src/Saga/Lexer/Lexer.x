@@ -76,6 +76,7 @@ tokens :-
     <0> "}"                 { tok RCurly }
 
     <0> ":"                 { tok Colon }
+    <0> ";"                 { tok SemiColon }
     <0> ","                 { tok Comma }
     <0> "->"                { tok Arrow }
     <0> "<-"                { tok BackArrow }

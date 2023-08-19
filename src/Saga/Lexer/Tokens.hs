@@ -52,6 +52,7 @@ data Token
   | FatArrow
   | PipeArrow
   | Colon
+  | SemiColon
   | Comma
   | Equals
   | Pipe
