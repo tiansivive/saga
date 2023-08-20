@@ -30,12 +30,12 @@ data Scheme = Scheme [Tyvar] (Qualified Type) deriving (Show, Eq)
 data Protocol = Protocol {id :: ProtocolID, spec :: [Method], supers :: [BaseProtocol], implementations :: [Implementation]}
   deriving (Show)
 
-type Implementation = Qualified ImplProtocol
+type Implementation = Qualified ImplConstraint
 
 type Method = (Name, Type)
 
 builtInProtocols :: Map.Map ProtocolID Protocol
-builtInProtocols = Map.fromList [("Num", numProtocol)]
+builtInProtocols = Map.fromList [("Num", numProtocol), ("IsString", isStringProtocol)]
 
 numProtocol :: Protocol
 numProtocol =
@@ -44,6 +44,16 @@ numProtocol =
     [("+", tyvar`TArrow` tyvar `TArrow` tyvar)]
     []
     [ [] :=> (TPrimitive TInt `IP` "Num")
+    ]
+    where tyvar = TVar $ Tyvar "a" KType
+
+isStringProtocol :: Protocol
+isStringProtocol =
+  Protocol
+    "IsString"
+    [("isString", tyvar`TArrow` TPrimitive TBool)]
+    []
+    [ [] :=> TPrimitive TString `IP` "IsString"
     ]
     where tyvar = TVar $ Tyvar "a" KType
 
@@ -73,7 +83,7 @@ stdProtocols =
   ]
     ++ numProtocols
 
-data TypeEnv = Env
+data InferenceEnv = Env
   { unificationVars :: Map.Map UnificationVar Scheme,
     aliases         :: Map.Map Alias Scheme
   }
@@ -81,23 +91,19 @@ data TypeEnv = Env
 
 newtype InferenceState = IST {count :: Int}
 
-type Infer = RWST TypeEnv [IConstraint] InferenceState (Except InferenceError)
+type Infer = RWST InferenceEnv [IConstraint] InferenceState (Except InferenceError)
 
 data IConstraint
   = Empty
   | EqCons Equality
-  | ImplCons ImplProtocol
-  deriving
-    ( -- \| Subtype Type Type -- Is this at all needed? probably not
-
+  | ImplCons ImplConstraint
+      -- \| Subtype Type Type -- Is this at all needed? probably not
       -- | Conjunction IConstraint IConstraint
       -- | Implication [UnificationVar] IConstraint IConstraint
-      Show,
-      Eq
-    )
+  deriving (Show, Eq)
 
 data Equality = EQ Type Type deriving (Show, Eq)
-data ImplProtocol = IP Type ProtocolID deriving (Show, Eq)
+data ImplConstraint = IP Type ProtocolID deriving (Show, Eq)
 
 data InferenceError
   = UnboundVariable String
@@ -113,7 +119,7 @@ data InferenceError
 emit :: IConstraint -> Infer ()
 emit = tell . pure
 
-empty :: TypeEnv
+empty :: InferenceEnv
 empty = Env Map.empty builtInFns
 
 initState :: InferenceState
@@ -134,14 +140,14 @@ builtInFns =
       tvar = TVar var
 
 
-union :: TypeEnv -> TypeEnv -> TypeEnv
+union :: InferenceEnv -> InferenceEnv -> InferenceEnv
 (Env unifier aliases) `union` (Env unifier' aliases') =
   Env
     { unificationVars = Map.union unifier unifier',
       aliases = Map.union aliases aliases'
     }
 
-extend :: TypeEnv -> (UnificationVar, Scheme) -> TypeEnv
+extend :: InferenceEnv -> (UnificationVar, Scheme) -> InferenceEnv
 extend e@(Env unifier aliases) (var, scheme) = e {unificationVars = Map.insert var scheme unifier}
 
 scoped :: Infer a -> (UnificationVar, Scheme) -> Infer a
@@ -163,11 +169,11 @@ mkIConstraint :: Constraint -> IConstraint
 mkIConstraint (ty `T.Implements` protocol) = ImplCons $ ty `IP` protocol
 
 
-implementationConstraints :: [IConstraint] -> [ImplProtocol]
+implementationConstraints :: [IConstraint] -> [ImplConstraint]
 implementationConstraints cs = [ ip | ImplCons ip <- cs ]
 
-implementationTy :: ImplProtocol -> Type
+implementationTy :: ImplConstraint -> Type
 implementationTy (ty `IP` p) = ty
 
-implementationP :: ImplProtocol -> String
+implementationP :: ImplConstraint -> String
 implementationP (ty `IP` p) = p

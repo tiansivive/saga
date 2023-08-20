@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 module Saga.AST.TypeSystem.HindleyMilner.Constraints where
 
 import           Control.Monad.Except
@@ -9,7 +10,9 @@ import           Control.Monad.State                           (StateT (runState
                                                                 evalStateT, get,
                                                                 modify, put)
 import           Data.Bifunctor                                (bimap)
-import           Data.List                                     (delete,
+import           Data.Functor                                  ((<&>))
+import           Data.List                                     (delete, groupBy,
+                                                                intersect,
                                                                 partition, (\\))
 import qualified Data.Map                                      as Map
 import           Data.Maybe                                    (fromJust,
@@ -46,7 +49,7 @@ instance (Substitutable a) => Substitutable [a] where
       union set x = Set.union (ftv x) set
 
 instance Substitutable Type where
-  apply s t | trace ("Applying type sub\n\t" ++ show s ++ "\n\t" ++ show t) False = undefined
+  --apply s t | trace ("Applying type sub\n\t" ++ show s ++ "\n\t" ++ show t) False = undefined
   apply s t@(TVar id) = Map.findWithDefault t id s
   apply s (inTy `TArrow` outTy) = in' `TArrow` out'
     where
@@ -60,7 +63,7 @@ instance Substitutable Type where
   ftv _               = Set.empty
 
 instance Substitutable Scheme where
-  apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
+  --apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
   apply s (Scheme k (cs :=> ty)) = Scheme k (cs' :=> ty')
     where
       ty' = apply s ty
@@ -71,8 +74,8 @@ instance Substitutable Scheme where
       cs' = ftv cs
       ty' = ftv ty
 
-instance Substitutable TypeEnv where
-  apply s t | trace ("Applying type env sub\n\t" ++ show s) False = undefined
+instance Substitutable InferenceEnv where
+  --apply s t | trace ("Applying type env sub\n\t" ++ show s) False = undefined
   apply s e@(Env vars aliases) = e {unificationVars = Map.map (apply s) vars}
   ftv (Env vars aliases) = ftv $ Map.elems vars
 
@@ -83,14 +86,14 @@ instance Substitutable IConstraint where
    ftv (EqCons eq)   = ftv eq
    ftv (ImplCons ip) = ftv ip
 
-instance Substitutable ImplProtocol where
-  apply s ip | trace ("Applying IP constraint sub\n\t" ++ show s ++ "\n\t" ++ show ip) False = undefined
+instance Substitutable ImplConstraint where
+  --apply s ip | trace ("Applying IP constraint sub\n\t" ++ show s ++ "\n\t" ++ show ip) False = undefined
   apply s  (t `IP` p) =  trace ("\tResult: " ++ show res) res
     where res = apply s t `IP` p
 
   ftv (t `IP` p) = ftv  t
 instance Substitutable Equality where
-  apply s e | trace ("Applying EQ constraint sub\n\t" ++ show s ++ "\n\t" ++ show e) False = undefined
+  --apply s e | trace ("Applying EQ constraint sub\n\t" ++ show s ++ "\n\t" ++ show e) False = undefined
   apply s  (t1 `EQ` t2) = apply s t1 `EQ` apply s t2
   ftv (t1 `EQ` t2) = ftv t1 `Set.union` ftv t2
 
@@ -106,19 +109,22 @@ s1 `compose` s2 = s `Map.union` s1
 
 
 
-runSolve :: [IConstraint] -> Either InferenceError (Subst, [ImplProtocol])
+runSolve :: [IConstraint] -> Either InferenceError (Subst, [ImplConstraint])
 runSolve cs | trace ("Solving: " ++ show cs) False = undefined
-runSolve cs = runExcept $ runReaderT (solver cs) builtInProtocols
+runSolve cs =  runExcept $ runReaderT (solver cs) builtInProtocols
 
 
-solver :: [IConstraint] -> Solve (Subst, [ImplProtocol])
+
+solver :: [IConstraint] -> Solve (Subst, [ImplConstraint])
 solver constraints = do
   let eqs' = eqs constraints
   traceM $ "EQs: " ++ show eqs'
   sub <- unification nullSubst eqs'
   traceM $ "\nMGU:\n\t" ++ show sub
   is <- reduce $ apply sub $ impls constraints
+  resolve is
   return (sub, is)
+
 
   where
     impls cs =  [ ip | ImplCons ip <- cs ]
@@ -137,8 +143,9 @@ unification s (e:es) | t1 `EQ` t2 <- e = do
 
 
 
-unify :: Type -> Type -> Solve Subst
-unify t1 t2 | trace ("Unifying:\n\t" ++ show t1 ++ "\n\t" ++ show t2) False = undefined
+
+unify :: (MonadError e m, e ~ InferenceError) => Type -> Type -> m Subst
+--unify t1 t2 | trace ("Unifying:\n\t" ++ show t1 ++ "\n\t" ++ show t2) False = undefined
 unify (il `TArrow` ol) (ir `TArrow` or) = do
   sub <- unify il ir
   s <- apply sub ol `unify` apply sub or
@@ -162,7 +169,7 @@ unify sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
 unify t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch"
 unify t t' = throwError $ UnificationFail t t'
 
-bind :: Tyvar -> Type -> Solve Subst
+bind :: (MonadError e m, e ~ InferenceError) => Tyvar -> Type -> m Subst
 bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
 bind a t
   | t == TVar a = return nullSubst
@@ -180,7 +187,7 @@ occursCheck a t = a `Set.member` set
   where
     set = ftv t
 
-isSubtype :: Type -> Type -> Solve Subst
+isSubtype :: (MonadError e m, e ~ InferenceError) => Type -> Type -> m Subst
 -- isSubtype  a b | trace ("subtype " ++ show a ++ " <: " ++ show b ++ "\n  ") False = undefined
 TLiteral (LInt _) `isSubtype` TPrimitive TInt = return nullSubst
 TLiteral (LString _) `isSubtype` TPrimitive TString = return nullSubst
@@ -201,23 +208,56 @@ nullSubst = Map.empty
 
 -- | Implementation Constraints solving
 
-reduce :: [ImplProtocol] -> Solve [ImplProtocol]
+resolve :: [ImplConstraint] -> Solve ()
+resolve cs | trace ("\n\nProtocol Resolution:\n\t" ++ show cs) False = undefined
+resolve constraints = do
+  env <- ask
+  traceM $ "\tGrouped Constraints: " ++ show (groupBy byType constraints)
+  traceM $ "\tGrouped Implementations: " ++ show (groupBy byType' (impls env))
+  forM_ constraintGroups findImplementingType
+
+  where
+    findImplementingType :: [ProtocolID] -> Solve ()
+    findImplementingType ps = do
+      env <- ask
+      if any' (implGroups env) (hasAll ps)
+        then return ()
+        else throwError $ Fail $ "Could not resolve for protocols: " ++ show ps
+
+    impls = concatMap implementations . Map.elems
+    byType (ty `IP` _) (ty' `IP` _) = ty == ty'
+    extract (IP _ p) = p
+
+    byType' (_ :=> IP ty _) (_ :=> IP ty' _) = ty == ty'
+    extract' (_ :=> IP _ p) = p
+
+    constraintGroups = fmap extract <$> groupBy byType constraints
+    implGroups env = fmap extract' <$> groupBy byType' (impls env)
+
+    hasAll as bs = as `intersect`  bs == as
+    any' = flip any
+
+
+
+
+reduce :: [ImplConstraint] -> Solve [ImplConstraint]
 reduce cs | trace ("\nReducing\n\tImplementation constraint:" ++ show cs) False = undefined
 reduce cs = mapM toHNF cs >>= simplify . concat
 
-toHNF :: ImplProtocol -> Solve [ImplProtocol]
+toHNF :: ImplConstraint -> Solve [ImplConstraint]
 toHNF ip | inHNF ip   = return [ip]
          | otherwise =  do
             ipConstraints <- byImplementation ip
             ipConstraints' <- mapM toHNF ipConstraints
             return $ concat ipConstraints'
 
-inHNF :: ImplProtocol -> Bool
+inHNF :: ImplConstraint -> Bool
 inHNF (ty `IP` p) = hnf ty
  where hnf (TVar v) = True
        hnf _        = False
 
-byImplementation :: ImplProtocol -> Solve [ImplProtocol]
+byImplementation :: ImplConstraint -> Solve [ImplConstraint]
+byImplementation impl | trace ("\nSearch by Implementation:\n\t" ++ show impl) False = undefined
 byImplementation implConstraint@(ty `IP` p)    = do
   env <- ask
   concat <$> sequence [ tryInst impl | impl <- impls env p ]
@@ -230,7 +270,7 @@ byImplementation implConstraint@(ty `IP` p)    = do
       sub <- unifyImpl implConstraint' implConstraint
       return $ fmap (apply sub . mkIP) cs
 
-unifyImpl :: ImplProtocol -> ImplProtocol -> Solve Subst
+unifyImpl :: ImplConstraint -> ImplConstraint -> Solve Subst
 unifyImpl p1 p2 | trace ("\n-------\nUnifying Implementations\n-------\n" ++ show p1 ++ "\n" ++ show p2 ++ "\n") False = undefined
 unifyImpl (ty `IP` p) (ty' `IP` p')
   | p == p'   = ty `match` ty'
@@ -245,7 +285,7 @@ unifyImpl (ty `IP` p) (ty' `IP` p')
 
 
 
-simplify   :: [ImplProtocol] -> Solve [ImplProtocol]
+simplify   :: [ImplConstraint] -> Solve [ImplConstraint]
 simplify cs | trace ("\nSimplifying\n\tImplementation constraint:" ++ show cs) False = undefined
 simplify cs = loop [] cs
  where
@@ -256,7 +296,7 @@ simplify cs = loop [] cs
       then loop checked ipcs
       else loop (ipc: checked) ipcs
 
-entail :: [ImplProtocol] -> ImplProtocol -> Solve Bool
+entail :: [ImplConstraint] -> ImplConstraint -> Solve Bool
 entail ipcs current | trace ("\nEntailing\n\tCurrent: " ++ show current ++ "\n\tOthers:" ++ show ipcs) False = undefined
 entail ipcs ipConstraint = do
   protocols <- ask
@@ -275,11 +315,14 @@ entail ipcs ipConstraint = do
       return (not (null entailments) && and entailments)
 
 
-byBase :: ImplProtocol -> Solve [ImplProtocol]
+byBase :: ImplConstraint -> Solve [ImplConstraint]
+byBase impl | trace ("\nSearching base constraints of\n\t" ++ show impl) False = undefined
 byBase impl@(ty `IP` p) = do
     protocols <- ask
     impls <- sequence [ byBase (ty `IP` base) | base <- sups protocols p ]
-    return $ impl : concat impls
+    let all = impl : concat impls
+    traceM $ "Found:\n\t" ++ show all
+    return all
     where
       sups env id = maybe [] supers $ Map.lookup id env
 

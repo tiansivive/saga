@@ -42,11 +42,27 @@ run input = do
 
 runInfer :: Infer Type -> Either InferenceError Scheme
 runInfer m = do
+  traceM "\n\n"
+  traceM "--------------------"
+  traceM "RUNNING INFERENCE"
+  traceM "\n\n"
   (ty, constraints) <- runExcept $ evalRWST m empty initState
+  traceM "\n\n"
+  traceM "--------------------"
+  traceM "SOLVING CONSTRAINTS"
+  traceM $ "Inferred Type: " ++ show ty
+  traceM $ "Emitted Constraints" ++ show constraints
+  traceM "\n\n"
   (subst, implConstraints) <- runSolve constraints
+  traceM "\n\n"
+  traceM "--------------------"
+  traceM "CLOSING OVER"
+  traceM $ "Subst: " ++ show subst
+  traceM $ "Impl constraints" ++ show implConstraints
+  traceM "\n\n"
   return $ closeOver implConstraints $ apply subst ty
 
-closeOver :: [ImplProtocol] -> Type -> Scheme
+closeOver :: [ImplConstraint] -> Type -> Scheme
 closeOver cs = normalize . generalize empty cs
 
 class Instantiate t where
@@ -81,7 +97,7 @@ instantiate (Scheme tvars qualified@(cs :=> t)) = do
 
 
 
-generalize :: TypeEnv -> [ImplProtocol] -> Type -> Scheme
+generalize :: InferenceEnv -> [ImplConstraint] -> Type -> Scheme
 generalize env impls t
   | trace
       ( "Generalizing: "
@@ -129,8 +145,13 @@ infer ex = case ex of
     out <- fresh KType
     fnTy <- infer fn
     argTy <- infer arg
-    let inferred = argTy `TArrow` out
+    genArg <- generalizeArg argTy
+
+    -- foo <- argTy `unify`
+
+    let inferred = genArg `TArrow` out
     emit $ EqCons $ fnTy `EQ` inferred
+    --emit $ EqCons $ argTy `EQ` genArg
     return out
   FnApp fn (a : as) -> infer curried
     where
@@ -161,15 +182,22 @@ infer ex = case ex of
     where
       infer' = mapM infer
 
-  Term literal -> case literal of
-      (LString s) -> return $ TLiteral (LString s)
-      (LBool b) -> return $ TLiteral (LBool b)
-      (LInt i) -> do
+  Term literal -> return $ TLiteral literal
+
+
+generalizeArg :: Type -> Infer Type
+generalizeArg (TLiteral lit) = generalize' $ case lit of
+    LString _ -> ("IsString", TString)
+    LBool _   -> ("IsBool", TBool)
+    LInt _    -> ("Num", TInt)
+    where
+      generalize' (protocol, t) = do
         tVar <- fresh KType
-        emit $ EqCons $ tVar `EQ` TPrimitive TInt
-        emit $ ImplCons $ tVar `IP` "Num"
+        --emit $ EqCons $ tVar `EQ` TPrimitive t
+        emit $ ImplCons $ tVar `IP` protocol
         return tVar
 
+generalizeArg ty = return ty
 
 normalize :: Scheme -> Scheme
 normalize sc | trace ("Normalizing: " ++ show sc) False = undefined

@@ -54,8 +54,12 @@ data Type where
   TUnit :: Type
 
 type ProtocolId = String
-data Tycon = Tycon String Kind deriving (Show, Eq)
-data Tyvar = Tyvar String Kind deriving (Show, Eq, Ord)
+data Tycon = Tycon String Kind deriving ( Eq)
+data Tyvar = Tyvar String Kind deriving ( Eq, Ord)
+instance Show Tyvar where
+  show (Tyvar s _) = s
+instance Show Tycon where
+  show (Tycon s _) = s
 data BuiltInType
   = TBool
   | TInt
