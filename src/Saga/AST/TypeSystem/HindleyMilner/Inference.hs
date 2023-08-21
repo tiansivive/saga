@@ -131,6 +131,7 @@ infer :: Expr -> Infer Type
 infer ex | trace ("Inferring: " ++ show ex) False = undefined
 infer ex = case ex of
   Identifier x -> lookupEnv x
+  Parens expr -> infer expr
 
   Lambda (param : rest) body -> do
     tVar <- fresh KType
@@ -147,11 +148,9 @@ infer ex = case ex of
     argTy <- infer arg
     genArg <- generalizeArg argTy
 
-    -- foo <- argTy `unify`
-
     let inferred = genArg `TArrow` out
     emit $ EqCons $ fnTy `EQ` inferred
-    --emit $ EqCons $ argTy `EQ` genArg
+
     return out
   FnApp fn (a : as) -> infer curried
     where

@@ -163,7 +163,9 @@ unify (TLiteral a) (TLiteral b) | a == b = return nullSubst
 unify (TTuple as) (TTuple bs) = do
   ss <- zipWithM unify as bs
   return $ foldl compose nullSubst ss
+
 unify sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
+unify lit@(TLiteral _) prim@(TPrimitive _) = lit `isSubtype` prim
 
 
 unify t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch"

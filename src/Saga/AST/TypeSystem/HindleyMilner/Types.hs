@@ -144,6 +144,3 @@ deriving instance Eq Term
 
 
 
-
-builtInTypes :: [Type]
-builtInTypes = [TPrimitive TInt, TPrimitive TBool, TPrimitive TString]

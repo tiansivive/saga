@@ -14,11 +14,17 @@ import           Saga.AST.TypeSystem.HindleyMilner.Constraints (HasKind (kind),
                                                                 occursCheck,
                                                                 runSolve, unify)
 
-import           Saga.AST.TypeSystem.HindleyMilner.Environment (Infer,
+import           Control.Monad.Trans.RWS                       (evalRWST)
+import           Data.Bifunctor                                (first)
+import           Debug.Trace                                   (trace, traceM)
+import           Saga.AST.TypeSystem.HindleyMilner.Environment (IConstraint,
+                                                                Infer,
                                                                 InferenceEnv,
                                                                 InferenceError,
                                                                 Scheme,
-                                                                builtInProtocols)
+                                                                builtInProtocols,
+                                                                empty,
+                                                                initState)
 import           Saga.AST.TypeSystem.HindleyMilner.Inference   (closeOver,
                                                                 infer)
 import           Saga.AST.TypeSystem.HindleyMilner.Types       (BuiltInType (..),
@@ -30,7 +36,7 @@ import           Saga.AST.TypeSystem.HindleyMilner.Types       (BuiltInType (..)
 
 
 
-type Check = ReaderT ProtocolEnv (Except TypeCheckError)
+type Check = ReaderT ProtocolEnv (Except InferenceError)
 
 data TypeCheckError
     = TypeMismatch Type Type
@@ -39,21 +45,37 @@ data TypeCheckError
 
 
 
+run :: Expr -> Type-> Either String (Bool, [IConstraint])
+run expr ty = show `first` runExcept (evalRWST (check expr ty) empty initState)
 
-check :: Expr -> Type -> Infer (Either InferenceError Subst)
+
+check :: Expr -> Type -> Infer Bool
 check expr ty = do
-    ty' <- infer expr
-    let solve = runExcept $ runReaderT ( ty `unify` ty') builtInProtocols
-    return solve
+    inferred <- infer expr
+    inferred `matches` ty
+    -- let solve = runExcept $ runReaderT ( ty `unify` ty') builtInProtocols
+    -- return solve
 
 
-
-
-
-matches :: Type -> Type-> Either InferenceError Scheme
+matches :: Type -> Type -> Infer Bool
+matches ty ty' | trace ("\nMatching:\n\tInferred: " ++ show ty ++ "\n\tSpecified: " ++ show ty') False = undefined
 matches ty ty' = do
-    (subst, implConstraints) <- runSolve []
-    return $ closeOver implConstraints $ apply subst ty
+    sub <- ty `unify` ty'
+
+    if Map.null sub then
+        return True
+    else do
+        traceM $ "Substitution:\n\t" ++ show sub
+        traceM $ "Subbed inferred:  " ++ show (apply sub ty)
+        traceM $ "Subbed specified: " ++ show (apply sub ty')
+        -- return $
+        return True
+
+
+-- matches :: Type -> Type-> Check ()
+-- matches ty ty' = do
+--     (subst, implConstraints) <- runSolve []
+--     return $ closeOver implConstraints $ apply subst ty
 
 
 

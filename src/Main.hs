@@ -3,39 +3,47 @@
 
 module Main (main) where
 
-import qualified Saga.AST.Scripts                            as Scripts
-import qualified Saga.AST.Syntax                             as AST
-import qualified Saga.Lexer.Lexer                            as L
-import           Saga.Parser.Parser                          (runSagaDec,
-                                                              runSagaExpr,
-                                                              runSagaKind,
-                                                              runSagaScript,
-                                                              runSagaType)
+import qualified Saga.AST.Scripts                              as Scripts
+import qualified Saga.AST.Syntax                               as AST
+import qualified Saga.Lexer.Lexer                              as L
+import           Saga.Parser.Parser                            (runSagaDec,
+                                                                runSagaExpr,
+                                                                runSagaKind,
+                                                                runSagaScript,
+                                                                runSagaType)
 
-import qualified Data.Map                                    as Map
-import qualified Saga.AST.Evaluation                         as E
-import qualified Saga.AST.TypeSystem.HindleyMilner.Inference as HMI
-import qualified Saga.AST.TypeSystem.Inference               as Infer
-import qualified Saga.Parser.ParserHM                        as HMP
-import qualified Saga.Parser.ParsingInfo                     as HMPI
+import qualified Data.Map                                      as Map
+import qualified Saga.AST.Evaluation                           as E
+import qualified Saga.AST.TypeSystem.HindleyMilner.Check       as HMC
+import qualified Saga.AST.TypeSystem.HindleyMilner.Environment as HME
+import qualified Saga.AST.TypeSystem.HindleyMilner.Inference   as HMI
+import qualified Saga.AST.TypeSystem.HindleyMilner.Refinement  as HMR
+import qualified Saga.AST.TypeSystem.Inference                 as Infer
+import qualified Saga.Parser.ParserHM                          as HMP
+import qualified Saga.Parser.ParsingInfo                       as HMPI
 
 import           Control.Monad.State.Lazy
-import           Data.Maybe                                  (fromJust)
+import           Data.Maybe                                    (fromJust)
 
 import           Control.Monad.Except
-import           Data.Bifunctor                              (first)
-import           Saga.AST.TypeSystem.Check                   (check, check_kind)
-import           Saga.AST.TypeSystem.Inference               (kindOf)
-import qualified Saga.AST.TypeSystem.Types                   as T
-import           System.Console.Haskeline                    (defaultSettings,
-                                                              getInputLine,
-                                                              outputStrLn,
-                                                              runInputT)
-import           System.IO                                   (IOMode (ReadMode, ReadWriteMode, WriteMode),
-                                                              hClose,
-                                                              hGetContents,
-                                                              openFile)
-import           Text.Pretty.Simple                          (pHPrint, pPrint)
+import           Control.Monad.RWS                             (evalRWST)
+import           Data.Bifunctor                                (first)
+import           Saga.AST.TypeSystem.Check                     (check,
+                                                                check_kind)
+import qualified Saga.AST.TypeSystem.HindleyMilner.Refinement  as HMR
+import           Saga.AST.TypeSystem.HindleyMilner.Refinement  (refine)
+import           Saga.AST.TypeSystem.HindleyMilner.Types       (Qualified (constraints))
+import           Saga.AST.TypeSystem.Inference                 (kindOf)
+import qualified Saga.AST.TypeSystem.Types                     as T
+import           System.Console.Haskeline                      (defaultSettings,
+                                                                getInputLine,
+                                                                outputStrLn,
+                                                                runInputT)
+import           System.IO                                     (IOMode (ReadMode, ReadWriteMode, WriteMode),
+                                                                hClose,
+                                                                hGetContents,
+                                                                openFile)
+import           Text.Pretty.Simple                            (pHPrint, pPrint)
 
 
 
@@ -90,21 +98,22 @@ repl = runInputT defaultSettings $ repl' Map.empty
 
             typecheck expr ty = let
                     parsed = do
-                        expr' <- runSagaExpr expr
-                        ty' <- runSagaType ty
-                        inferred <- Infer.infer expr
-                        return (expr', ty', inferred)
+                        HMPI.Parsed expr' _ _ <- HMP.runSagaExpr expr
+                        HMPI.Parsed tyExpr' _ _ <- HMP.runSagaType ty
+                        ty' <- HMR.run tyExpr'
+                        (bool, constraints) <- HMC.run expr' ty'
+                        return (expr', ty', bool, constraints)
                 in case parsed of
                     Left e -> pPrint e
-                    Right (expr', ty', inferred) -> do
-                        outputStrLn "Expression:"
+                    Right (expr', ty', bool, constraints) -> do
+                        outputStrLn "\nExpression:"
                         pPrint expr'
-                        outputStrLn "\nInferred Type:"
-                        pPrint inferred
                         outputStrLn "\nType:"
                         pPrint ty'
+                        outputStrLn "\nConstraints:"
+                        pPrint constraints
                         outputStrLn "\nTypecheck:"
-                        pPrint $ Infer.run $ check expr' ty'
+                        pPrint bool
 
             parseTerm input = do
                 case HMP.runSagaExpr input of

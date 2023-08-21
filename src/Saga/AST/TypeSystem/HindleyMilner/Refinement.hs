@@ -19,9 +19,10 @@ import           Debug.Trace                                   (trace, traceM)
 
 import           Saga.AST.TypeSystem.HindleyMilner.Types
 
-import           Control.Monad.Trans.Reader                    (ReaderT, ask,
-                                                                local)
+import           Control.Monad.Trans.Reader                    (ReaderT (runReaderT),
+                                                                ask, local)
 import           Control.Monad.Trans.State                     (StateT)
+import           Data.Bifunctor                                (first)
 import           Prelude                                       hiding (lookup)
 import           Saga.AST.TypeSystem.HindleyMilner.Environment (scoped)
 import           Saga.Parser.ParsingInfo
@@ -36,6 +37,23 @@ data RefinementError
     = UnexpectedType String
     | UnboundIdentifier String
     | TooManyArguments TypeExpr [TypeExpr]
+  deriving (Show)
+
+
+
+
+run :: TypeExpr -> Either String Type
+run tyExpr = show `first` runExcept (runReaderT (refine tyExpr) builtInTypes)
+
+
+builtInTypes :: RefinementEnv
+builtInTypes = Map.fromList
+  [ ("Int", TPrimitive TInt)
+  , ("Bool", TPrimitive TBool)
+  , ("String", TPrimitive TString)
+  , ("List", TData (Tycon "List" (KArrow KType KType)))
+  , ("Function", TData (Tycon "Function" (KArrow KType (KArrow KType KType))))
+  ]
 
 
 
@@ -47,12 +65,13 @@ lookup id = do
         Just ty -> return ty
 
 refine :: TypeExpr -> Refined Type
--- refine a | trace ("refining: " ++ show a) False = undefined
+refine a | trace ("refining: " ++ show a) False = undefined
 -- refine (Type ty)                      = return ty
 -- refine (TClause _ tyExp)              = refine tyExp
 -- refine (TBlock [])                    = return TUnit
 -- refine (TBlock tyExps)                = refine $ last tyExps
 -- refine (TReturn tyExp)                = refine tyExp
+refine (TTerm term) = return $ TLiteral term
 refine (TIdentifier id) = lookup id
 refine (TParens tyExp) = refine tyExp
 refine (TETuple tyExps) = mapM refine tyExps <&> TTuple
