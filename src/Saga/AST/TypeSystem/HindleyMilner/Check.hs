@@ -56,7 +56,9 @@ check expr ty = do
     -- let solve = runExcept $ runReaderT ( ty `unify` ty') builtInProtocols
     -- return solve
 
-
+-- | TODO: Need to have different unification rules here between type literals and primitives
+-- | In addition, need to incorporate a mechanism for TClosure evaluation.
+-- | Possibly replace all TIdentifiers, which refer to the params, in the TClosure body expression with TVars
 matches :: Type -> Type -> Infer Bool
 matches ty ty' | trace ("\nMatching:\n\tInferred: " ++ show ty ++ "\n\tSpecified: " ++ show ty') False = undefined
 matches ty ty' = do
@@ -72,47 +74,3 @@ matches ty ty' = do
         return True
 
 
--- matches :: Type -> Type-> Check ()
--- matches ty ty' = do
---     (subst, implConstraints) <- runSolve []
---     return $ closeOver implConstraints $ apply subst ty
-
-
-
--- unify :: Type -> Type -> Check Subst
--- --unify t1 t2 | trace ("Unifying:\n\t" ++ show t1 ++ "\n\t" ++ show t2) False = undefined
--- unify (il `TArrow` ol) (ir `TArrow` or) = do
---   sub <- unify il ir
---   s <- apply sub ol `unify` apply sub or
---   return $ s `compose` sub
--- unify (TApplied f t) (TApplied f' t') = do
---   sub <- unify f f'
---   s <- apply sub t `unify` apply sub t'
---   return $ s `compose` sub
-
--- unify (TData lCons) (TData rCons) | lCons == rCons = return nullSubst
--- unify (TVar a) t = bind a t
--- unify t (TVar a) = bind a t
--- unify (TPrimitive a) (TPrimitive b) | a == b = return nullSubst
--- unify (TLiteral a) (TLiteral b) | a == b = return nullSubst
--- unify (TTuple as) (TTuple bs) = do
---   ss <- zipWithM unify as bs
---   return $ foldl compose nullSubst ss
--- unify sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
-
-
--- unify t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch"
--- unify t t' = throwError $ UnificationFail t t'
-
--- bind :: Tyvar -> Type -> Solve Subst
--- bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
--- bind a t
---   | t == TVar a = return nullSubst
---   | occursCheck a t = throwError $ InfiniteType a t
---   | kind a /= kind t = throwError $ Fail "kinds do not match"
---   | TLiteral l <- t = return . Map.singleton a $
---       case l of
---         LInt _    -> TPrimitive TInt
---         LString _ -> TPrimitive TString
---         LBool _   -> TPrimitive TBool
---   | otherwise = return $ Map.singleton a t
