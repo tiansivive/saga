@@ -32,6 +32,12 @@ spec = do
         Scheme [] ([] :=> HM.TArrow (HM.TVar input) (HM.TVar output)) <- return $ infer "\\x -> x"
         input `shouldBe` output
 
+      it "can infer protocol constraints" $ do
+        Scheme [] ([ HM.TVar a `HM.Implements` "Num"] :=> HM.TArrow (HM.TVar input) (HM.TVar output)) <- return $ infer "\\x -> x + 1"
+        a `shouldBe` input
+        a `shouldBe` output
+        input `shouldBe` output
+
 
 
 
