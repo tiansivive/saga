@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 
 
 module Saga.AST.TypeSystem.HindleyMilner.Refinement where
@@ -35,7 +36,7 @@ type Refined = ReaderT RefinementEnv (Except RefinementError)
 
 data RefinementError
     = UnexpectedType String
-    | UnboundIdentifier String
+    | UnboundIdentifier String String
     | TooManyArguments TypeExpr [TypeExpr]
   deriving (Show)
 
@@ -61,7 +62,7 @@ lookup :: String -> Refined Type
 lookup id = do
     aliases <- ask
     case Map.lookup id aliases of
-        Nothing -> throwError $ UnboundIdentifier id
+        Nothing -> throwError $ UnboundIdentifier id ""
         Just ty -> return ty
 
 refine :: TypeExpr -> Refined Type
@@ -85,6 +86,29 @@ refine (TEUnion true false) = do
     true' <- refine true
     false' <- refine false
     return $ true' `TUnion` false'
+
+refine (TClause tyExpr bindings) = do
+    env <- ask
+    env' <- foldM extend env bindings
+    env'' <- foldM constrainImpls env' bindings
+
+    let scoped = local (env'' `Map.union`)
+
+    scoped $ refine tyExpr
+
+      where
+        extend env binding = case binding of
+          Bind id tyExpr' -> refine tyExpr' <&> Map.insert id <*> return env
+          _               -> return env
+
+        constrainImpls :: RefinementEnv -> Binding TypeExpr -> Refined RefinementEnv
+        constrainImpls env binding = case binding of
+          ImplBind id protocol -> Map.alterF (\case
+              Just ty' -> return $ Just $ TQualified ([ty' `Implements` protocol] :=> ty')
+              Nothing -> throwError $ UnboundIdentifier id $ "When trying to implement protocol: " ++ protocol
+            ) id env
+          _ -> return env
+
 
 refine (TLambda params body) = ask <&> TClosure params body
 refine (TFnApp fnExpr argExprs) = do

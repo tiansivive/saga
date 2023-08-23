@@ -29,7 +29,7 @@ data TypeExpr where
 
 data Binding a
   = Bind String a
-  | ImplBind String [a]
+  | ImplBind String String
   | SubtypeBind String a
   | RefineBind String a
   deriving (Show, Eq)
@@ -50,7 +50,7 @@ data Type where
   -- TConstrained :: [Constraint] -> Type -> Type
   -- TProtocol         :: TypeExpr -> Type
   -- TImplementation   :: TypeExpr -> [RequiredImplId] -> Type
-
+  TQualified :: Qualified Type -> Type
   TUnit :: Type
 
 type ProtocolId = String

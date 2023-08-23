@@ -71,13 +71,14 @@ class Instantiate t where
 instance Instantiate Type where
   -- inst ts (TAp l r) = TAp (inst ts l) (inst ts r)
   -- inst ts (TGen n)  = ts !! n
-  inst ts t = t
+  inst ts (TQualified (cs :=> t)) = TQualified (inst ts cs :=> inst ts t)
+  inst ts t                       = t
 
 instance Instantiate a => Instantiate [a] where
   inst ts = map (inst ts)
 
-instance Instantiate t => Instantiate (Qualified t) where
-  inst ts (cs :=> t) = inst ts cs :=> inst ts t
+-- instance Instantiate t => Instantiate (Qualified t) where
+--   inst ts (cs :=> t) = inst ts cs :=> inst ts t
 
 instance Instantiate Constraint where
   inst ts (t `T.Implements` p) = inst ts t `T.Implements` p

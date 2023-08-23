@@ -103,7 +103,7 @@ data IConstraint
   deriving (Show, Eq)
 
 data Equality = EQ Type Type deriving (Show, Eq)
-data ImplConstraint = IP Type ProtocolID deriving (Show, Eq)
+data ImplConstraint = IP Type String deriving (Show, Eq)
 
 data InferenceError
   = UnboundVariable String

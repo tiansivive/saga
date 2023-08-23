@@ -64,6 +64,10 @@ idStr :: HM.Expr -> String
 idStr (HM.Identifier id) = id
 idStr e                  = error $ "Not identifier expression:\n" ++ show e
 
+tyIdStr :: HM.TypeExpr -> String
+tyIdStr (HM.TIdentifier id) = id
+tyIdStr e                  = error $ "Not type identifier expression:\n" ++ show e
+
 
 -- | EXPRESSIONS
 
@@ -278,7 +282,7 @@ data BindingType = Id | Impl | Subtype | Refinement
 tyBinding:: BindingType -> ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData (HM.Binding HM.TypeExpr)
 tyBinding bindType id expr = case bindType of
     Id         -> Parsed (HM.Bind id' expr') range' toks
-    Impl       -> Parsed (HM.ImplBind id' [expr']) range' toks
+    Impl       -> Parsed (HM.ImplBind id' (tyIdStr expr')) range' toks
     Subtype    -> Parsed (HM.SubtypeBind id' expr') range' toks
     Refinement -> Parsed (HM.RefineBind id' expr') range' toks
     where
