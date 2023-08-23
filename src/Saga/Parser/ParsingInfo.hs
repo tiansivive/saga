@@ -313,6 +313,7 @@ kindArrow input output =
 kindId :: ParsedData HM.Expr -> ParsedData HM.Kind
 kindId (Parsed e rng toks)
     | idStr e == "Type" = Parsed HM.KType rng toks
+    | idStr e == "Protocol" = Parsed HM.KProtocol rng toks
     | otherwise =  error $ "Unrecognised Kind: " ++ show e
 
 
@@ -358,6 +359,16 @@ typeDef expr kind tyExpr = Parsed tyDef (range expr) (tokens expr)
     where
         id = idStr $ value expr
         tyDef = Type id (fmap value kind) (value tyExpr)
+
+
+implementation :: ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData HM.TypeExpr
+implementation expr tyExpr = Parsed impl rng toks
+    where
+        impl = HM.TImplementation (idStr $ value expr) (value tyExpr)
+        rng = range expr <-> range tyExpr
+        toks = nub $ tokens expr ++ tokens tyExpr
+
+
 
 
 -- | SCRIPTS

@@ -40,23 +40,32 @@ let modified
     = modify (.foo.bar) (\n -> n + 1) obj!
 
 
-/*
-type Union =
-  | \a => Foo: { stuff: a }
-  | Bar: String
-  | Baz 
-*/
-  
 
 data MyType
   = Foo: Int
   | Bar: String -> Bool
   | Baz: \a => custom -> a
-  
   where custom = String
 
 
 type TypeFn = \a => { val: a }
-
 type Foo = TypeFn Int!
 
+type Functor
+  :: (Type -> Type) -> Protocol 
+  = \f => 
+    { map: \a b => (a -> b) -> f a! -> f b! }
+
+
+let listFunctorImpl
+  : impl Functor: List
+  = { map: \f fa -> someDummyImpl f fa!}
+
+/*
+type Union =
+  | \a => Foo: { stuff: a }
+  | Bar: String
+  | Baz 
+  
+
+*/

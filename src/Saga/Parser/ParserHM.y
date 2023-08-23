@@ -252,7 +252,6 @@ expr
   | expr '/' expr           { P.binaryOp $1 $2 $3 }
 
 
-
 -- Types
 tpairs
   :                                     { [] }
@@ -291,22 +290,31 @@ typeArgs
 
 
 tbinding
-  : identifier '=' typeExpr         %prec RIGHT { P.tyBinding P.Id $1 $3 }
-  | identifier implements typeExpr  %prec RIGHT { P.tyBinding P.Impl $1 $3 }
-  | identifier '|->' typeExpr       %prec RIGHT { P.tyBinding P.Subtype $1 $3 }
-  | identifier '|' typeExpr         %prec RIGHT { P.tyBinding P.Refinement $1 $3 }
+  : identifier '=' typeExpr         { P.tyBinding P.Id $1 $3 }
+  | identifier implements typeExpr  { P.tyBinding P.Impl $1 $3 }
+  | identifier '|->' typeExpr       { P.tyBinding P.Subtype $1 $3 }
+  | identifier '|' typeExpr         { P.tyBinding P.Refinement $1 $3 }
 
 tbindings
   : tbinding   {[$1]}
   | tbindings ';' tbinding {$1 ++ [$3]}
 
+tagged
+  : identifier ':' typeExpr    %shift { P.tagged $1 $3 }
+
+
+-- union
+--   :                        {  }
+--   | '|' typeExpr            %shift        { $2 }
+--   | union '|' typeExpr       %shift      { P.typeUnion $1 $3 }
+
 typeExpr 
-  : typeAtom '->' typeExpr     { P.typeArrow $1 $3 }
-  | '\\' params '=>' typeExpr  { P.typeLambda $2 $4 $1 }
+  : typeAtom                              { $1 }
+  | tagged                                { $1 }
+  | typeExpr '->' typeExpr     %shift     { P.typeArrow $1 $3 }                               
+  | '\\' params '=>' typeExpr   %shift    { P.typeLambda $2 $4 $1 }
   | typeAtom typeArgs '!'                 { P.typeFnApplication $1 $2 $3 }
-  | typeAtom                              { $1 }
-  -- | ' typeExpr '|' typeExpr             { P.typeUnion $2 $4 }
-  | identifier ':' typeExpr               { P.tagged $1 $3 }
+  
   
 
   
@@ -317,15 +325,17 @@ typeExpr
   -- | with args '=>' implements identifier ':' typeExpr %shift { Types.Type (Types.TImplementation $5 $7 $2) }
 
 typeAnnotation
-  :                               { Nothing }
-  | ':' typeExpr                  { Just $2 }
-  | ':' typeExpr where tbindings  { Just $ P.typeClause $2 $4 } 
+  :                                       { Nothing }
+  | ':' typeExpr                          { Just $2 }
+  | ':' typeExpr where tbindings          { Just $ P.typeClause $2 $4 } 
+  | ':' instance identifier ':' typeExpr  { Just $ P.implementation $3 $5 } 
 
 
 
 
 kindExpr
   : kindExpr '->' kindExpr  %prec RIGHT { P.kindArrow $1 $3 }
+  | '(' kindExpr ')'                    { $2 }  
   | identifier                          { P.kindId $1 }
 
 
