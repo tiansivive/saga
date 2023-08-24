@@ -266,9 +266,13 @@ script fp =
 parseScript :: FilePath -> IO ()
 parseScript fp = do
     handle <- openFile fp ReadMode
+    parsingH <- openFile "./lang/test.parsing.log" WriteMode
     contents <- hGetContents handle
-    --let res = HMP.runSagaScript contents
-    pPrint $  HMP.runSagaScript contents
+    let res = HMP.runSagaScript contents
+    pPrint res
+    pHPrint parsingH res
+    hClose handle
+    hClose parsingH
     putStrLn "Bye!"
 
 

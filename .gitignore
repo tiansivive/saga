@@ -11,3 +11,4 @@ src/Main
 **/ParserHM.info
 
 logs
+*.log
