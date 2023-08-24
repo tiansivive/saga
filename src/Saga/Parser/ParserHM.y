@@ -68,6 +68,9 @@ import qualified Saga.AST.Scripts as Scripts
   '||'         { L.RangedToken (T.Operator "||") _ } 
   '&&'         { L.RangedToken (T.Operator "&&") _ } 
 
+  '|>'         { L.RangedToken (T.Operator "|>") _ } 
+  '<|'         { L.RangedToken (T.Operator "<|") _ } 
+
   op         { L.RangedToken (T.Operator _) _ }
 
   -- Keywords
@@ -137,7 +140,7 @@ import qualified Saga.AST.Scripts as Scripts
 %right '.'
 
 
-%nonassoc ',' ';' '=' '==' '!=' '&&' '||' '<' '>' '<=' '>=' 
+%nonassoc ',' ';' '=' '==' '!=' '&&' '||' '<' '>' '<=' '>=' '|>' '<|' 
 %left '+' '-'
 %left '*' '/'
 
@@ -209,41 +212,44 @@ controlFlow
 
 patListElems
   : identifier                    { [$1] }
-  | identifier ',' patListElems  {  $1 : $3 }
+  | identifier ',' patListElems   { $1 : $3 }
 
 patTupleElems
-  : ',' identifier { [$2] }
-  | ',' identifier patTupleElems { $2 : $3 }
+  : ',' identifier                { [$2] }
+  | ',' identifier patTupleElems  { $2 : $3 }
 
 patRecordKeys
-  :                        { [] }
-  | identifier             { [$1] }
-  | identifier ',' patRecordKeys   { $1 : $3 }
+  :                               { [] }
+  | identifier                    { [$1] }
+  | identifier ',' patRecordKeys  { $1 : $3 }
+
+patRest
+  :                 { Nothing }
+  | '|' identifier  { Just $2 }
 
 patData
-  : identifier ':' { [$1]}
+  : identifier ':'     { [$1]}
   | patData identifier { $1 ++ [$2] }
 
 pattern 
   : identifier                        { P.pattern $ P.Var $1   }
   | term                              { P.pattern $ P.Term $ fmap HM.Term $1   }
-  | '[' ']'                           { P.pattern $ P.List [] }
-  | '[' patListElems ']'              { P.pattern $ P.List $2 }
   | '(' identifier patTupleElems ')'  { P.pattern $ P.Tuple ($2 : $3) }
-  | '{' patRecordKeys '}'             { P.pattern $ P.Record $2 }
+  | '[' ']'                           { P.pattern $ P.List [] Nothing }
+  | '[' patListElems patRest ']'      { P.pattern $ P.List $2 $3 }
+  | '{' patRecordKeys patRest '}'     { P.pattern $ P.Record $2 $3 }
   | patData                           { P.pattern $ P.Tagged $1 }
 
 
 --EXPRESSIONS
 term 
   : number     { P.number HM.LInt $1 }
-  | boolean    { P.boolean HM.LBool $1 }
   | string     { P.string HM.LString $1 }
+  | boolean    { P.boolean HM.LBool $1 } 
 
   
 atom
   : identifier              { $1 }
- 
   | term                    { P.term $1 }
   | tuple                   { $1 }
   | list                    { $1 }
@@ -288,6 +294,8 @@ expr
   | expr '>' expr           { P.binaryOp $1 $2 $3 }
   | expr '<=' expr           { P.binaryOp $1 $2 $3 }
   | expr '>=' expr           { P.binaryOp $1 $2 $3 }
+  | expr '|>' expr           { P.binaryOp $1 $2 $3 }
+  | expr '<|' expr           { P.binaryOp $1 $2 $3 }
 
 
 -- Types

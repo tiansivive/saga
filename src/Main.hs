@@ -28,6 +28,7 @@ import           Data.Maybe                                    (fromJust)
 import           Control.Monad.Except
 import           Control.Monad.RWS                             (evalRWST)
 import           Data.Bifunctor                                (first)
+import           Debug.Trace                                   (traceM)
 import           Saga.AST.TypeSystem.Check                     (check,
                                                                 check_kind)
 import qualified Saga.AST.TypeSystem.HindleyMilner.Refinement  as HMR
@@ -266,8 +267,8 @@ parseScript :: FilePath -> IO ()
 parseScript fp = do
     handle <- openFile fp ReadMode
     contents <- hGetContents handle
-
-    pPrint $ HMP.runSagaScript contents
+    --let res = HMP.runSagaScript contents
+    pPrint $  HMP.runSagaScript contents
     putStrLn "Bye!"
 
 

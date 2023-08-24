@@ -143,9 +143,9 @@ data Case = Case Pattern Expr deriving (Show, Eq)
 data Pattern
     = Id String
     | Literal Term
-    | PatList [String]
     | PatTuple [String]
-    | PatRecord [String]
+    | PatList [String] (Maybe String)
+    | PatRecord [String] (Maybe String)
     | PatData String [String]
   deriving (Show, Eq)
 

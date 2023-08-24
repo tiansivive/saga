@@ -1,3 +1,5 @@
+{-# LANGUAGE MonadComprehensions #-}
+
 module Saga.Parser.ParsingInfo where
 
 import qualified Saga.Lexer.Lexer                        as L
@@ -48,16 +50,21 @@ instance Functor ParsedData where
 
 instance Applicative ParsedData where
     pure a = Parsed a (L.Range (L.AlexPn 0 0 0) (L.AlexPn 0 0 0)) []
+    pab <*> pa = do
+        f <- pab
+        f <$> pa
+
+
 
 instance MonadFail ParsedData where
     fail = error "Failed ParsedData monadic action"
 
 instance Monad ParsedData where
-    (>>=) (Parsed val range toks) f = Parsed val' (range <-> range') unique
+    Parsed val range toks >>= f = Parsed val' (range <-> range') unique
         where
             Parsed val' range' toks' = f val
             unique = nub $ toks ++ toks'
-
+    return = pure
 
 
 
@@ -141,37 +148,47 @@ controlFlow rtStart (Parsed cond _ toks) (Parsed true _ toks') (Parsed false end
 data Pattern a
     = Var a
     | Term a
-    | List [a]
+    | List [a] (Maybe a)
     | Tuple [a]
-    | Record [a]
+    | Record [a] (Maybe a)
     | Tagged [a]
+    deriving (Show, Eq)
 
 pattern :: Pattern (ParsedData HM.Expr) -> ParsedData HM.Pattern
+--pattern e | trace ("\nBuilding pattern: " ++ show e) False = undefined
 pattern (Var e)  = fmap (HM.Id . idStr) e
 pattern (Term e) = fmap (HM.Literal . toLit) e
     where
         toLit (HM.Term t) = t
         toLit _ = error $ "Unexpected non Literal value in Term pattern: " ++ show e
-pattern (List vars) = fmap HM.PatList $ fmap idStr <$> sequence vars
-pattern (Tuple vars) = fmap HM.PatTuple $ fmap idStr <$> sequence vars
-pattern (Record vars) = fmap HM.PatRecord $ fmap idStr <$> sequence vars
-pattern (Tagged vars) = Parsed (HM.PatData (idStr $ value tag) (value vars')) rng toks
+
+pattern (Tuple vars) = HM.PatTuple <$> mapM (fmap idStr) vars
+pattern (List vars rest) = HM.PatList <$> vars' <*> rest'
+  where
+        rest' = fmap idStr <$> sequence rest
+        vars' =  mapM (fmap idStr) vars
+pattern (Record vars rest) = HM.PatRecord <$> vars' <*> rest'
     where
-        tag = head vars
-        vars' = fmap idStr <$> sequence (tail vars)
-        rng = range tag <-> range vars'
-        toks = nub $ tokens tag ++ tokens vars'
+        rest' = fmap idStr <$> sequence rest
+        vars' =  mapM (fmap idStr) vars
+
+pattern (Tagged vars) =
+    [ HM.PatData (idStr tag) (fmap idStr dat)
+    | tag <- head vars
+    , dat <- sequence $ tail vars
+    ]
+
+
 
 matchCase :: ParsedData HM.Pattern -> ParsedData HM.Expr -> ParsedData HM.Case
-matchCase pat expr = Parsed (HM.Case (value pat) (value expr)) (range pat <-> range expr) (nub $ tokens pat ++ tokens expr)
+--matchCase p e | trace ("Building case:\n\tPattern: " ++ show p ++ "\n\tExpr: " ++ show e) False = undefined
+matchCase pat expr = [ HM.Case p e | p <- pat, e <- expr]
+
 
 
 match :: ParsedData HM.Expr -> [ParsedData HM.Case] -> ParsedData HM.Expr
-match expr cases = Parsed (HM.Match (value expr) cases') rng toks
-    where
-        cases' = fmap value cases
-        rng = range expr <-> range (last cases)
-        toks = nub $ foldl (\toks' c -> toks' ++ tokens c) (tokens expr) cases
+--match e cs | trace ("Building match:\n\tExpr: " ++ show e ++ "\n\tCases: " ++ show cs) False = undefined
+match expr cases = [ HM.Match e cs | e <- expr, cs <- sequence cases]
 
 
 assignment :: ParsedData HM.Expr -> ParsedData HM.Expr -> ParsedData HM.Expr
@@ -200,7 +217,6 @@ parseError tok = do
 lambda :: [ParsedData HM.Expr] -> ParsedData HM.Expr -> RangedToken -> ParsedData HM.Expr
 lambda params (Parsed body' bRange bToks) rt =
     let
-
         expr = HM.Lambda (fmap (idStr . value) params) body'
         toks = foldl (\toks' param -> toks' ++ tokens param) (rt:bToks) params
     in Parsed expr (L.rtRange rt <-> bRange) (nub toks)
@@ -385,6 +401,7 @@ data Declaration
     deriving (Show, Eq)
 
 letdec :: ParsedData HM.Expr -> Maybe (ParsedData HM.TypeExpr) -> Maybe (ParsedData HM.Kind) -> ParsedData HM.Expr -> ParsedData Declaration
+--letdec id ty k e | trace ("LetDec:\n\tid: " ++ show id ++ "\n\tType: " ++ show ty ++ "\n\tKind: " ++ show k ++ "\n\tExpression: " ++ show e)  False = undefined
 letdec idExpr tyExpr kind expr = Parsed dec (range expr) (tokens expr)
     where
         id = idStr $ value idExpr

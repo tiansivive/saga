@@ -54,23 +54,18 @@ type Functor
     { map: \a b => (a -> b) -> f a! -> f b! }
 
 
+
 let listFunctorImpl
   : impl Functor: List
   = { map: \f fa -> someDummyImpl f fa!}
 
 
+
 let fmap
-  : \f a b => (a -> b) -> f a! -> f b!
-    where f implements Functor
+  : \f a b => (a -> b) -> f a! -> f b! where f implements Functor
   = \f fa -> match fa
-              | [] -> fa
-              | [id]  -> f id! 
-/* Not capturing tail yet  */
-
-
-
-
-
+      | []          -> fa
+      | [x | rest]  -> fmap f rest! |> prepend (f x!)! 
 
 
 
