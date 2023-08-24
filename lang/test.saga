@@ -1,12 +1,4 @@
 
-
-
-
-type GenericType = \f => f Int!
-type TyBindings = foo -> Int
-  where foo = String
-
-
 let hof = \f -> f 1!
 
 let i
@@ -51,6 +43,11 @@ data MyType
 type TypeFn = \a => { val: a }
 type Foo = TypeFn Int!
 
+type GenericType = \f => f Foo!
+type TyBindings = foo -> Int
+  where foo = String
+
+
 type Functor
   :: (Type -> Type) -> Protocol 
   = \f => 
@@ -61,11 +58,23 @@ let listFunctorImpl
   : impl Functor: List
   = { map: \f fa -> someDummyImpl f fa!}
 
+
+let fmap
+  : \f a b => (a -> b) -> f a! -> f b!
+    where f implements Functor
+  = \f fa -> map f fa!
+
+
+
+
+
+
+
+
 /*
 type Union =
   | \a => Foo: { stuff: a }
   | Bar: String
   | Baz 
   
-
 */

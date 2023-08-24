@@ -208,6 +208,29 @@ controlFlow
 --   | expr block  { $1 : $2 }
 
 
+-- PATTERN MATCHING
+
+patTupleElems
+  : ',' identifier {}
+  | ',' identifier patTupleElems {}
+
+patRecordPairs
+  :                        { [] }
+  | identifier             { [$1] }
+  | identifier ',' pairs   { $1 : $3 }
+
+patData
+  : identifier { [$1]}
+  | patData identifier { $1 ++ [$2] }
+
+pattern 
+  : identifier {}
+  | term {}
+  | '(' identifier patTupleElems ')' {}
+  | '{' patRecordPairs '}' {}
+  | patData {}
+
+
 --EXPRESSIONS
 term 
   : number     { P.number HM.LInt $1 }
@@ -226,6 +249,12 @@ atom
   | '(' expr ')'            { P.parenthesised $2 $1 $3 }
 
 
+patterns
+  : '|' pattern '->' expr    {}
+  | patterns '|' pattern '->' expr {}
+
+lambdaMatch
+  : '\\' match patterns { }
 
 assignment 
   : identifier '=' expr     { P.assignment $1 $3 }  
@@ -240,6 +269,7 @@ bindings
 expr
   
   : controlFlow             { $1 }    
+  | lambdaMatch {}
   | fnApplication           { $1 }
   | '\\' params '->' expr   { P.lambda $2 $4 $1 }
   | atom %shift             { $1 }
