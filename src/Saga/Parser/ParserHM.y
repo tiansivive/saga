@@ -220,7 +220,7 @@ patRecordPairs
   | identifier ',' pairs   { $1 : $3 }
 
 patData
-  : identifier { [$1]}
+  : identifier ':' { [$1]}
   | patData identifier { $1 ++ [$2] }
 
 pattern 
@@ -254,7 +254,7 @@ patterns
   | patterns '|' pattern '->' expr {}
 
 lambdaMatch
-  : '\\' match patterns { }
+  : '\\' match patterns %shift { }
 
 assignment 
   : identifier '=' expr     { P.assignment $1 $3 }  
@@ -269,7 +269,7 @@ bindings
 expr
   
   : controlFlow             { $1 }    
-  | lambdaMatch {}
+  | lambdaMatch             {}
   | fnApplication           { $1 }
   | '\\' params '->' expr   { P.lambda $2 $4 $1 }
   | atom %shift             { $1 }
