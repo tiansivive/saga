@@ -135,19 +135,16 @@ import qualified Saga.AST.Scripts as Scripts
 %right '|'
 %right '->'
 %right '.'
-%right RIGHT
-%left '||'
-%left '&&'
-%left LEFT
 
 
-%nonassoc ',' ';' '='
-%nonassoc "==" "!=" '<' '>' '<=' '>='
+%nonassoc ',' ';' '=' '==' '!=' '&&' '||' '<' '>' '<=' '>=' 
 %left '+' '-'
 %left '*' '/'
 
 %nonassoc id number string boolean '(' ')' '[' ']' '{' '}'  
 %nonassoc APP
+%right RIGHT
+%left LEFT
 %%
 
 
@@ -169,13 +166,13 @@ pairs
 record 
   : '{' pairs '}'   { P.record $2 $1 $3 }
 
--- listElements
---   :                         { [] }
---   | expr                    { [$1] }
---   | expr ',' listElements   { $1 : $3 }
+listElements
+  :                         { [] }
+  | expr                    { [$1] }
+  | expr ',' listElements   { $1 : $3 }
 
--- list 
---   : '[' listElements ']'    { (L.rtRange $1 <-> L.rtRange $3, HM.LList $2) }
+list 
+  : '[' listElements ']'    { P.list $2 $1 $3 }
 
 tupleElems
   : ',' expr              { [$2] }
@@ -210,25 +207,31 @@ controlFlow
 
 -- PATTERN MATCHING
 
-patTupleElems
-  : ',' identifier {}
-  | ',' identifier patTupleElems {}
+patListElems
+  : identifier                    { [$1] }
+  | identifier ',' patListElems  {  $1 : $3 }
 
-patRecordPairs
+patTupleElems
+  : ',' identifier { [$2] }
+  | ',' identifier patTupleElems { $2 : $3 }
+
+patRecordKeys
   :                        { [] }
   | identifier             { [$1] }
-  | identifier ',' pairs   { $1 : $3 }
+  | identifier ',' patRecordKeys   { $1 : $3 }
 
 patData
   : identifier ':' { [$1]}
   | patData identifier { $1 ++ [$2] }
 
 pattern 
-  : identifier {}
-  | term {}
-  | '(' identifier patTupleElems ')' {}
-  | '{' patRecordPairs '}' {}
-  | patData {}
+  : identifier                        { P.pattern $ P.Var $1   }
+  | term                              { P.pattern $ P.Term $ fmap HM.Term $1   }
+  | '[' ']'                           { P.pattern $ P.List [] }
+  | '[' patListElems ']'              { P.pattern $ P.List $2 }
+  | '(' identifier patTupleElems ')'  { P.pattern $ P.Tuple ($2 : $3) }
+  | '{' patRecordKeys '}'             { P.pattern $ P.Record $2 }
+  | patData                           { P.pattern $ P.Tagged $1 }
 
 
 --EXPRESSIONS
@@ -243,21 +246,19 @@ atom
  
   | term                    { P.term $1 }
   | tuple                   { $1 }
---   | list                    { $1 }
+  | list                    { $1 }
   | record                  { $1 }
   -- | '{' block '}'           { HM.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
   | '(' expr ')'            { P.parenthesised $2 $1 $3 }
 
 
-patterns
-  : '|' pattern '->' expr    {}
-  | patterns '|' pattern '->' expr {}
+cases
+  : '|' pattern '->' expr           { [P.matchCase $2 $4] }
+  | cases '|' pattern '->' expr  { $1 ++ [P.matchCase $3 $5] }
 
-lambdaMatch
-  : '\\' match patterns %shift { }
+matchExpr
+  : match expr cases %shift { P.match $2 $3 }
 
-assignment 
-  : identifier '=' expr     { P.assignment $1 $3 }  
 
 binding
   : identifier '=' expr  %prec RIGHT { P.binding $1 $3 }
@@ -267,19 +268,26 @@ bindings
   | bindings ',' binding {$1 ++ [$3]}
 
 expr
-  
   : controlFlow             { $1 }    
-  | lambdaMatch             {}
+  | matchExpr               { $1 }
   | fnApplication           { $1 }
   | '\\' params '->' expr   { P.lambda $2 $4 $1 }
   | atom %shift             { $1 }
   | '.' atom                { P.dotLambda $2 }
-  -- | identifier '=' expr     { Syntax.Assign $1 $3 }  
+
   | expr '.' identifier     { P.binaryOp $1 $2 $3 }
   | expr '+' expr           { P.binaryOp $1 $2 $3 }
   | expr '-' expr           { P.binaryOp $1 $2 $3 }
   | expr '*' expr           { P.binaryOp $1 $2 $3 }
   | expr '/' expr           { P.binaryOp $1 $2 $3 }
+  | expr '||' expr           { P.binaryOp $1 $2 $3 }
+  | expr '&&' expr           { P.binaryOp $1 $2 $3 }
+  | expr '==' expr           { P.binaryOp $1 $2 $3 }
+  | expr '!=' expr           { P.binaryOp $1 $2 $3 }
+  | expr '<' expr           { P.binaryOp $1 $2 $3 }
+  | expr '>' expr           { P.binaryOp $1 $2 $3 }
+  | expr '<=' expr           { P.binaryOp $1 $2 $3 }
+  | expr '>=' expr           { P.binaryOp $1 $2 $3 }
 
 
 -- Types

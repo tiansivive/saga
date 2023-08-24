@@ -33,7 +33,8 @@ import qualified Saga.AST.TypeSystem.HindleyMilner.Types       as T
 import           Saga.AST.TypeSystem.HindleyMilner.Types       hiding
                                                                (Implements)
 import           Saga.Parser.ParserHM                          (runSagaExpr)
-import           Saga.Parser.ParsingInfo
+import           Saga.Parser.ParsingInfo                       hiding (Record,
+                                                                Term, Tuple)
 
 run :: String -> Either String Scheme
 run input = do

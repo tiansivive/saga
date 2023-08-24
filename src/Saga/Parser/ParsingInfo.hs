@@ -16,6 +16,7 @@ import           Saga.AST.Syntax                         (Expr (FnApp),
                                                           Term (LRecord))
 import           Saga.Lexer.Lexer                        (RangedToken (rtToken))
 
+import           Data.Functor                            ((<&>))
 import           Debug.Trace                             (trace)
 
 
@@ -108,6 +109,13 @@ record pairs start end = Parsed rec' range' toks
         range' = L.rtRange start <-> L.rtRange end
         toks = foldl (\toks' parsed -> tokens parsed ++ toks') [start, end] pairs
 
+list :: [ParsedData HM.Expr] -> RangedToken -> RangedToken -> ParsedData HM.Expr
+list elems start end = Parsed list' range' toks
+    where
+        list' = HM.List $ map value elems
+        range' = L.rtRange start <-> L.rtRange end
+        toks = nub $ foldl (\toks' parsed -> tokens parsed ++ toks') [start, end] elems
+
 
 
 tuple :: [ParsedData HM.Expr] -> RangedToken -> RangedToken -> ParsedData HM.Expr
@@ -128,6 +136,43 @@ controlFlow rtStart (Parsed cond _ toks) (Parsed true _ toks') (Parsed false end
         val = HM.IfElse cond true false
         span = L.rtRange rtStart <-> end
         tokens = toks ++ toks' ++ toks'' ++ [rtStart]
+
+
+data Pattern a
+    = Var a
+    | Term a
+    | List [a]
+    | Tuple [a]
+    | Record [a]
+    | Tagged [a]
+
+pattern :: Pattern (ParsedData HM.Expr) -> ParsedData HM.Pattern
+pattern (Var e)  = fmap (HM.Id . idStr) e
+pattern (Term e) = fmap (HM.Literal . toLit) e
+    where
+        toLit (HM.Term t) = t
+        toLit _ = error $ "Unexpected non Literal value in Term pattern: " ++ show e
+pattern (List vars) = fmap HM.PatList $ fmap idStr <$> sequence vars
+pattern (Tuple vars) = fmap HM.PatTuple $ fmap idStr <$> sequence vars
+pattern (Record vars) = fmap HM.PatRecord $ fmap idStr <$> sequence vars
+pattern (Tagged vars) = Parsed (HM.PatData (idStr $ value tag) (value vars')) rng toks
+    where
+        tag = head vars
+        vars' = fmap idStr <$> sequence (tail vars)
+        rng = range tag <-> range vars'
+        toks = nub $ tokens tag ++ tokens vars'
+
+matchCase :: ParsedData HM.Pattern -> ParsedData HM.Expr -> ParsedData HM.Case
+matchCase pat expr = Parsed (HM.Case (value pat) (value expr)) (range pat <-> range expr) (nub $ tokens pat ++ tokens expr)
+
+
+match :: ParsedData HM.Expr -> [ParsedData HM.Case] -> ParsedData HM.Expr
+match expr cases = Parsed (HM.Match (value expr) cases') rng toks
+    where
+        cases' = fmap value cases
+        rng = range expr <-> range (last cases)
+        toks = nub $ foldl (\toks' c -> toks' ++ tokens c) (tokens expr) cases
+
 
 assignment :: ParsedData HM.Expr -> ParsedData HM.Expr -> ParsedData HM.Expr
 assignment id expr = do

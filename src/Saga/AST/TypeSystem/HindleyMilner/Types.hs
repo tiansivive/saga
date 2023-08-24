@@ -123,6 +123,7 @@ data Expr where
   Record :: [(String, Expr)] -> Expr
   Assign :: String -> Expr -> Expr
   IfElse :: Expr -> Expr -> Expr -> Expr
+  Match :: Expr -> [Case] -> Expr
   Lambda :: [String] -> Expr -> Expr
   FnApp :: Expr -> [Expr] -> Expr
   Clause :: Expr -> [Binding Expr] -> Expr
@@ -136,6 +137,17 @@ data Term where
   LInt :: Int -> Term
   LBool :: Bool -> Term
   LString :: String -> Term
+
+
+data Case = Case Pattern Expr deriving (Show, Eq)
+data Pattern
+    = Id String
+    | Literal Term
+    | PatList [String]
+    | PatTuple [String]
+    | PatRecord [String]
+    | PatData String [String]
+  deriving (Show, Eq)
 
 deriving instance Show Expr
 deriving instance Eq Expr

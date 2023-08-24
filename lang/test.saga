@@ -62,7 +62,10 @@ let listFunctorImpl
 let fmap
   : \f a b => (a -> b) -> f a! -> f b!
     where f implements Functor
-  = \f fa -> map f fa!
+  = \f fa -> match fa
+              | [] -> fa
+              | [id]  -> f id! 
+/* Not capturing tail yet  */
 
 
 
