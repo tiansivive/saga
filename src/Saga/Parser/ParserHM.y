@@ -57,6 +57,9 @@ import qualified Saga.AST.Scripts as Scripts
   '-'         { L.RangedToken (T.Operator "-") _ } 
   '*'         { L.RangedToken (T.Operator "*") _ } 
   '/'         { L.RangedToken (T.Operator "/") _ } 
+  '^'         { L.RangedToken (T.Operator "^") _ } 
+
+  '++'        { L.RangedToken (T.Operator "++") _ } 
 
   '=='         { L.RangedToken (T.Operator "==") _ } 
   '!='         { L.RangedToken (T.Operator "!=") _ } 
@@ -141,8 +144,9 @@ import qualified Saga.AST.Scripts as Scripts
 
 
 %nonassoc ',' ';' '=' '==' '!=' '&&' '||' '<' '>' '<=' '>=' '|>' '<|' 
-%left '+' '-'
+%left '+' '-' '++'
 %left '*' '/'
+%left '^'
 
 %nonassoc id number string boolean '(' ')' '[' ']' '{' '}'  
 %nonassoc APP
@@ -259,7 +263,7 @@ atom
 
 
 cases
-  : '|' pattern '->' expr           { [P.matchCase $2 $4] }
+  : '|' pattern '->' expr        { [P.matchCase $2 $4] }
   | cases '|' pattern '->' expr  { $1 ++ [P.matchCase $3 $5] }
 
 matchExpr
@@ -270,8 +274,8 @@ binding
   : identifier '=' expr  %prec RIGHT { P.binding $1 $3 }
 
 bindings
-  : binding   {[$1]}
-  | bindings ',' binding {$1 ++ [$3]}
+  : binding               { [$1] }
+  | bindings ',' binding  { $1 ++ [$3] }
 
 expr
   : controlFlow             { $1 }    
@@ -286,16 +290,18 @@ expr
   | expr '-' expr           { P.binaryOp $1 $2 $3 }
   | expr '*' expr           { P.binaryOp $1 $2 $3 }
   | expr '/' expr           { P.binaryOp $1 $2 $3 }
-  | expr '||' expr           { P.binaryOp $1 $2 $3 }
-  | expr '&&' expr           { P.binaryOp $1 $2 $3 }
-  | expr '==' expr           { P.binaryOp $1 $2 $3 }
-  | expr '!=' expr           { P.binaryOp $1 $2 $3 }
+  | expr '^' expr           { P.binaryOp $1 $2 $3 }
+  | expr '||' expr          { P.binaryOp $1 $2 $3 }
+  | expr '&&' expr          { P.binaryOp $1 $2 $3 }
+  | expr '==' expr          { P.binaryOp $1 $2 $3 }
+  | expr '!=' expr          { P.binaryOp $1 $2 $3 }
   | expr '<' expr           { P.binaryOp $1 $2 $3 }
   | expr '>' expr           { P.binaryOp $1 $2 $3 }
-  | expr '<=' expr           { P.binaryOp $1 $2 $3 }
-  | expr '>=' expr           { P.binaryOp $1 $2 $3 }
-  | expr '|>' expr           { P.binaryOp $1 $2 $3 }
-  | expr '<|' expr           { P.binaryOp $1 $2 $3 }
+  | expr '<=' expr          { P.binaryOp $1 $2 $3 }
+  | expr '>=' expr          { P.binaryOp $1 $2 $3 }
+  | expr '|>' expr          { P.binaryOp $1 $2 $3 }
+  | expr '<|' expr          { P.binaryOp $1 $2 $3 }
+  | expr '++' expr          { P.binaryOp $1 $2 $3 }
 
 
 -- Types
@@ -342,22 +348,23 @@ tbinding
   | identifier '|' typeExpr         { P.tyBinding P.Refinement $1 $3 }
 
 tbindings
-  : tbinding   {[$1]}
-  | tbindings ';' tbinding {$1 ++ [$3]}
+  : tbinding                { [$1] }
+  | tbindings ';' tbinding  { $1 ++ [$3] }
 
 tagged
   : identifier ':' typeExpr    %shift { P.tagged $1 $3 }
 
 
--- union
---   :                        {  }
---   | '|' typeExpr            %shift        { $2 }
---   | union '|' typeExpr       %shift      { P.typeUnion $1 $3 }
+union
+  --:                               { }
+  : '|' typeExpr            { [$2] }
+  | union '|' typeExpr      { $1 ++ [$3] }
 
 typeExpr 
   : typeAtom                              { $1 }
   | tagged                                { $1 }
-  | typeExpr '->' typeExpr     %shift     { P.typeArrow $1 $3 }                               
+  | union                       %shift    { P.typeUnion $1 }
+  | typeExpr '->' typeExpr      %shift    { P.typeArrow $1 $3 }                               
   | '\\' params '=>' typeExpr   %shift    { P.typeLambda $2 $4 $1 }
   | typeAtom typeArgs '!'                 { P.typeFnApplication $1 $2 $3 }
   

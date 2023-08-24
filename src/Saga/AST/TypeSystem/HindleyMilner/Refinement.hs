@@ -81,12 +81,8 @@ refine (TEArrow input output) = do
   in' <- refine input
   out' <- refine output
   return $ in' `TArrow` out'
-refine (TConditional cond true false) = refine $ TEUnion true false -- assumes same return type, will change with union types
-refine (TEUnion true false) = do
-    true' <- refine true
-    false' <- refine false
-    return $ true' `TUnion` false'
-
+refine (TConditional cond true false) = refine $ TEUnion [true, false] -- assumes same return type, will change with union types
+refine (TEUnion tyExprs) = TUnion <$> mapM refine tyExprs
 refine (TClause tyExpr bindings) = do
     env <- ask
     env' <- foldM extend env bindings

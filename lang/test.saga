@@ -68,11 +68,29 @@ let fmap
       | [x | rest]  -> fmap f rest! |> prepend (f x!)! 
 
 
+let overload
+    : \f a => 
+    | One: Int    -> (Tag: String ) -> f Int!    
+    | Two: Bool   -> a             -> f String! 
+    | Foo: String -> a             -> f Bool!   
+    | Bar: Int    -> Int           -> f Int!    
+    where 
+        f implements Functor;
+        a implements Show
+    
+    = \fn -> match fn
+        | One: i str -> of <| length str! + i
+        | Two: b a   -> of <|
+            if b then show a!
+            else "None!"
+        | Foo: str a -> of <| str ++ show a!
+        | Bar: i j   -> of <| i + j
 
-/*
+
+
 type Union =
   | \a => Foo: { stuff: a }
   | Bar: String
   | Baz 
   
-*/
+

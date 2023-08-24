@@ -172,7 +172,7 @@ infer ex = case ex of
     no' <- infer no
     emit $ EqCons $ cond' `EQ` TPrimitive TBool
     -- \| TODO: this should change to a union type when those get implemented
-    return $ if yes' == no' then yes' else TUnion yes' no'
+    return $ if yes' == no' then yes' else TUnion [yes', no']
 
   Tuple elems -> do
     tElems <- mapM infer elems

@@ -18,7 +18,7 @@ data TypeExpr where
   TClause      :: TypeExpr -> [Binding TypeExpr] -> TypeExpr
   -- TBlock          :: [TypeExpr] -> TypeExpr
   -- TReturn         :: TypeExpr -> TypeExpr
-  TEUnion        :: TypeExpr -> TypeExpr -> TypeExpr
+  TEUnion        :: [TypeExpr] -> TypeExpr
   TTagged       :: String -> TypeExpr -> TypeExpr
   TLambda :: [String] -> TypeExpr -> TypeExpr
   TFnApp :: TypeExpr -> [TypeExpr] -> TypeExpr
@@ -41,7 +41,7 @@ data Type where
   TPrimitive :: BuiltInType -> Type
   TTuple :: [Type] -> Type
   TRecord :: [(String, Type)] -> Type
-  TUnion :: Type -> Type -> Type
+  TUnion :: [Type] -> Type
   TArrow :: Type -> Type -> Type
   TData :: Tycon -> Type
   TClosure :: [String] -> TypeExpr -> Map String Type -> Type

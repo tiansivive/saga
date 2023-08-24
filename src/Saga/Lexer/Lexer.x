@@ -96,6 +96,8 @@ tokens :-
     <0> "%"                 { tok $ Operator "%" }
     <0> "^"                 { tok $ Operator "^" }
 
+    <0> "++"                { tok $ Operator "++" }
+
     <0> "<"                 { tok $ Operator "<" }
     <0> "<="                { tok $ Operator "<=" }
     <0> ">"                 { tok $ Operator ">" }
