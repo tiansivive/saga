@@ -31,12 +31,10 @@ class Expandable a where
 instance Expandable L.Range where
     (<->) r r' = L.Range (L.start r) (L.stop r')
 
--- instance Expandable [T.Token] where
---     (<->) toks toks' = nub $ toks ++ toks'
+instance Expandable a => Expandable (ParsedData a) where
+    left <-> right = [left' <-> right' | left' <- left, right' <- right]
 
 
-pRange :: ParsedData a -> L.Range
-pRange (Parsed _ r _) = r
 
 
 data ParsedData a = Parsed { value:: a, range:: L.Range, tokens:: [L.RangedToken] }
@@ -48,23 +46,21 @@ instance Show a => Show (ParsedData a) where
 instance Functor ParsedData where
     fmap f (Parsed expr range toks) = Parsed (f expr) range toks
 
-instance Applicative ParsedData where
-    pure a = Parsed a (L.Range (L.AlexPn 0 0 0) (L.AlexPn 0 0 0)) []
-    pab <*> pa = do
-        f <- pab
-        f <$> pa
-
-
-
-instance MonadFail ParsedData where
-    fail = error "Failed ParsedData monadic action"
-
 instance Monad ParsedData where
     Parsed val range toks >>= f = Parsed val' (range <-> range') unique
         where
             Parsed val' range' toks' = f val
             unique = nub $ toks ++ toks'
     return = pure
+instance MonadFail ParsedData where
+    fail = error "Failed ParsedData monadic action"
+
+instance Applicative ParsedData where
+    pure a = Parsed a (L.Range (L.AlexPn 0 0 0) (L.AlexPn 0 0 0)) []
+    pab <*> pa = do
+        f <- pab
+        f <$> pa
+
 
 
 
@@ -432,7 +428,7 @@ implementation expr tyExpr = Parsed impl rng toks
 
 -- | SCRIPTS
 
-data Script = Script [Declaration]
+newtype Script = Script [Declaration]
     deriving (Show, Eq)
 
 script :: [ParsedData Declaration] -> ParsedData Script
