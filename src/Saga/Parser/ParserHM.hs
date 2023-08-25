@@ -11,24 +11,14 @@ module Saga.Parser.ParserHM
     , parseSagaDec
     ) where
 
-import Data.Char (isLower)
-import Data.ByteString.Lazy.Char8 (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.Maybe  (Maybe (..), fromJust)
-import Data.Monoid (First (..))
-import Data.List (last, head)
 
 import qualified Saga.Lexer.Lexer as L
 import qualified Saga.Lexer.Tokens as T
 import qualified Saga.Parser.ParsingInfo as P
 import           Saga.Parser.ParsingInfo ((<->))
 
-import qualified Saga.AST.TypeSystem.Types as Types
-import qualified Saga.AST.TypeSystem.Kinds as Kinds
 
 import qualified Saga.AST.TypeSystem.HindleyMilner.Types as HM
-
-import qualified Saga.AST.Scripts as Scripts
 import qualified Data.Array as Happy_Data_Array
 import qualified Data.Bits as Bits
 import Control.Applicative(Applicative(..))
@@ -3148,7 +3138,7 @@ happyReduction_104 (HappyAbsSyn43  happy_var_3)
 	_
 	(HappyAbsSyn42  happy_var_1)
 	 =  HappyAbsSyn42
-		 (P.typeUnion $ happy_var_1 ++ [happy_var_3]
+		 (happy_var_1 ++ [happy_var_3]
 	)
 happyReduction_104 _ _ _  = notHappyAtAll 
 
@@ -3169,7 +3159,7 @@ happyReduction_106 _  = notHappyAtAll
 happyReduce_107 = happySpecReduce_1  43 happyReduction_107
 happyReduction_107 (HappyAbsSyn42  happy_var_1)
 	 =  HappyAbsSyn43
-		 (happy_var_1
+		 (P.typeUnion happy_var_1
 	)
 happyReduction_107 _  = notHappyAtAll 
 
@@ -3498,7 +3488,7 @@ parseSagaDec = happySomeParser where
 happySeq = happyDontSeq
 
 
-runSagaScript :: String -> Either String (P.ParsedData P.Script)
+runSagaScript :: String -> Either String (P.ParsedData HM.Script)
 runSagaScript input = input `P.run` parseSagaScript
 
 runSagaExpr :: String -> Either String (P.ParsedData HM.Expr)
@@ -3510,7 +3500,7 @@ runSagaType input = input `P.run` parseSagaType
 runSagaKind :: String -> Either String (P.ParsedData HM.Kind)
 runSagaKind input = input `P.run` parseSagaKind
 
-runSagaDec :: String -> Either String (P.ParsedData P.Declaration)
+runSagaDec :: String -> Either String (P.ParsedData HM.Declaration)
 runSagaDec input = input `P.run` parseSagaDec
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 -- $Id: GenericTemplate.hs,v 1.26 2005/01/14 14:47:22 simonmar Exp $

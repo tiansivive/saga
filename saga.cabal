@@ -16,23 +16,16 @@ extra-source-files:
 library
   exposed-modules:
       Main
+      REPL.Repl
       Saga.AST.Evaluation
-      Saga.AST.Scripts
-      Saga.AST.Syntax
-      Saga.AST.TypeSystem.BuiltIns
-      Saga.AST.TypeSystem.Check
       Saga.AST.TypeSystem.HindleyMilner.Check
       Saga.AST.TypeSystem.HindleyMilner.Constraints
       Saga.AST.TypeSystem.HindleyMilner.Environment
       Saga.AST.TypeSystem.HindleyMilner.Inference
       Saga.AST.TypeSystem.HindleyMilner.Refinement
       Saga.AST.TypeSystem.HindleyMilner.Types
-      Saga.AST.TypeSystem.Inference
-      Saga.AST.TypeSystem.Kinds
-      Saga.AST.TypeSystem.Types
       Saga.Lexer.Lexer
       Saga.Lexer.Tokens
-      Saga.Parser.Parser
       Saga.Parser.ParserHM
       Saga.Parser.ParsingInfo
       Saga.Utils.Utils

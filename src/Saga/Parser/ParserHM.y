@@ -11,24 +11,14 @@ module Saga.Parser.ParserHM
     , parseSagaDec
     ) where
 
-import Data.Char (isLower)
-import Data.ByteString.Lazy.Char8 (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as BS
-import Data.Maybe  (Maybe (..), fromJust)
-import Data.Monoid (First (..))
-import Data.List (last, head)
 
 import qualified Saga.Lexer.Lexer as L
 import qualified Saga.Lexer.Tokens as T
 import qualified Saga.Parser.ParsingInfo as P
 import           Saga.Parser.ParsingInfo ((<->))
 
-import qualified Saga.AST.TypeSystem.Types as Types
-import qualified Saga.AST.TypeSystem.Kinds as Kinds
 
 import qualified Saga.AST.TypeSystem.HindleyMilner.Types as HM
-
-import qualified Saga.AST.Scripts as Scripts
 
 }
 
@@ -429,7 +419,7 @@ script
 {
 
 
-runSagaScript :: String -> Either String (P.ParsedData P.Script)
+runSagaScript :: String -> Either String (P.ParsedData HM.Script)
 runSagaScript input = input `P.run` parseSagaScript
 
 runSagaExpr :: String -> Either String (P.ParsedData HM.Expr)
@@ -441,7 +431,7 @@ runSagaType input = input `P.run` parseSagaType
 runSagaKind :: String -> Either String (P.ParsedData HM.Kind)
 runSagaKind input = input `P.run` parseSagaKind
 
-runSagaDec :: String -> Either String (P.ParsedData P.Declaration)
+runSagaDec :: String -> Either String (P.ParsedData HM.Declaration)
 runSagaDec input = input `P.run` parseSagaDec
 
 }

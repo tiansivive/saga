@@ -1,7 +1,6 @@
 module Saga.AST.InferenceSpec where
 
 import qualified Data.Map                                      as Map
-import qualified Saga.AST.Syntax                               as AST
 import qualified Saga.AST.TypeSystem.HindleyMilner.Inference   as I
 import qualified Saga.AST.TypeSystem.HindleyMilner.Types       as HM
 
@@ -10,7 +9,7 @@ import           Test.Hspec
 import           Control.Monad.State.Lazy
 import           Saga.AST.TypeSystem.HindleyMilner.Environment (Scheme (Scheme))
 import           Saga.AST.TypeSystem.HindleyMilner.Types       (Qualified ((:=>)))
-import           Saga.Parser.Parser                            as P
+
 
 
 infer :: String -> Scheme

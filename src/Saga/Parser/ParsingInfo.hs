@@ -14,8 +14,7 @@ import           Data.Char                               (isLower)
 import           Data.List                               (nub)
 import           Data.Maybe                              (Maybe (..), fromJust)
 import           Data.Monoid                             (First (..))
-import           Saga.AST.Syntax                         (Expr (FnApp),
-                                                          Term (LRecord))
+
 import           Saga.Lexer.Lexer                        (RangedToken (rtToken))
 
 import           Data.Functor                            ((<&>))
@@ -187,11 +186,11 @@ match :: ParsedData HM.Expr -> [ParsedData HM.Case] -> ParsedData HM.Expr
 match expr cases = [ HM.Match e cs | e <- expr, cs <- sequence cases]
 
 
-assignment :: ParsedData HM.Expr -> ParsedData HM.Expr -> ParsedData HM.Expr
-assignment id expr = do
-    HM.Identifier id' <- id
-    expr' <- expr
-    Parsed (HM.Assign id' expr') (range id <-> range expr) (nub $ tokens id ++ tokens expr)
+-- assignment :: ParsedData HM.Expr -> ParsedData HM.Expr -> ParsedData HM.Expr
+-- assignment id expr = do
+--     HM.Identifier id' <- id
+--     expr' <- expr
+--     Parsed (HM.Assign id' expr') (range id <-> range expr) (nub $ tokens id ++ tokens expr)
 
 
 parenthesised :: ParsedData HM.Expr -> RangedToken -> RangedToken -> ParsedData HM.Expr
@@ -375,9 +374,9 @@ kindId (Parsed e rng toks)
 
 -- | DATA TYPE
 
-type DataExpr = (String, HM.TypeExpr)
 
-dataExpr :: ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData DataExpr
+
+dataExpr :: ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData HM.DataExpr
 dataExpr expr tyExpr = Parsed (id, value tyExpr) range' (nub toks)
     where
         id = idStr $ value expr
@@ -387,60 +386,43 @@ dataExpr expr tyExpr = Parsed (id, value tyExpr) range' (nub toks)
 
 -- | DECLARATIONS
 
-data Declaration
-    = Let String (Maybe HM.TypeExpr) (Maybe HM.Kind) HM.Expr
-    | Type String (Maybe HM.Kind) HM.TypeExpr
-    | Data String (Maybe HM.Kind) [DataExpr] [HM.Binding HM.TypeExpr]
-    deriving (Show, Eq)
 
-letdec :: ParsedData HM.Expr -> Maybe (ParsedData HM.TypeExpr) -> Maybe (ParsedData HM.Kind) -> ParsedData HM.Expr -> ParsedData Declaration
+
+letdec :: ParsedData HM.Expr -> Maybe (ParsedData HM.TypeExpr) -> Maybe (ParsedData HM.Kind) -> ParsedData HM.Expr -> ParsedData HM.Declaration
 --letdec id ty k e | trace ("LetDec:\n\tid: " ++ show id ++ "\n\tType: " ++ show ty ++ "\n\tKind: " ++ show k ++ "\n\tExpression: " ++ show e)  False = undefined
 letdec idExpr tyExpr kind expr = Parsed dec (range expr) (tokens expr)
     where
         id = idStr $ value idExpr
-        dec = Let id (fmap value tyExpr) (fmap value kind) (value expr)
+        dec = HM.Let id (fmap value tyExpr) (fmap value kind) (value expr)
 
-dataType :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> [ParsedData DataExpr] -> [ParsedData (HM.Binding HM.TypeExpr)]  -> ParsedData Declaration
+dataType :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> [ParsedData HM.DataExpr] -> [ParsedData (HM.Binding HM.TypeExpr)]  -> ParsedData HM.Declaration
 dataType (Parsed expr rt ts) kind dtExprs bindings = Parsed d range' (nub dataToks)
     where
         id = idStr expr
         dataToks = foldl (\toks' d -> toks' ++ tokens d) ts dtExprs
         -- toks = maybe tokens [] kind  ++ dataToks
         range' = rt <-> range (last dtExprs)
-        d = Data id (fmap value kind) (fmap value dtExprs) (fmap value bindings)
+        d = HM.Data id (fmap value kind) (fmap value dtExprs) (fmap value bindings)
 
-typeDef :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> ParsedData HM.TypeExpr -> ParsedData Declaration
-typeDef expr kind tyExpr = Parsed tyDef (range expr) (tokens expr)
-    where
-        id = idStr $ value expr
-        tyDef = Type id (fmap value kind) (value tyExpr)
+typeDef :: ParsedData HM.Expr -> Maybe (ParsedData HM.Kind) -> ParsedData HM.TypeExpr -> ParsedData HM.Declaration
+typeDef expr kind tyExpr =
+    [ HM.Type (idStr e) k ty
+    | e <- expr
+    , k <- sequence kind
+    , ty <- tyExpr
+    ]
 
 
 implementation :: ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData HM.TypeExpr
-implementation expr tyExpr = Parsed impl rng toks
-    where
-        impl = HM.TImplementation (idStr $ value expr) (value tyExpr)
-        rng = range expr <-> range tyExpr
-        toks = nub $ tokens expr ++ tokens tyExpr
-
-
+implementation expr tyExpr = [HM.TImplementation (idStr e) ty | e <- expr, ty <- tyExpr]
 
 
 -- | SCRIPTS
-
-newtype Script = Script [Declaration]
-    deriving (Show, Eq)
-
-script :: [ParsedData Declaration] -> ParsedData Script
-script decs = Parsed script' rng toks
-    where
-        script' = Script $ fmap value decs
-        rng = range $ last decs
-        toks = tokens $ last decs
+script :: [ParsedData HM.Declaration] -> ParsedData HM.Script
+script decs = [HM.Script decs' | decs' <- sequence decs]
 
 
 -- | Utils
-
 lexer :: (L.RangedToken -> L.Alex a) -> L.Alex a
 lexer = (=<< L.alexMonadScan)
 

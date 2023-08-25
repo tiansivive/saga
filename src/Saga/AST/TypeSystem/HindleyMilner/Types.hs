@@ -121,7 +121,6 @@ data Expr where
   List :: [Expr] -> Expr
   Tuple :: [Expr] -> Expr
   Record :: [(String, Expr)] -> Expr
-  Assign :: String -> Expr -> Expr
   IfElse :: Expr -> Expr -> Expr -> Expr
   Match :: Expr -> [Case] -> Expr
   Lambda :: [String] -> Expr -> Expr
@@ -131,7 +130,7 @@ data Expr where
   Block :: [Expr] -> Expr
   Return :: Expr -> Expr
   Parens :: Expr -> Expr
-  FieldAccess :: Expr -> String -> Expr
+  --FieldAccess :: Expr -> String -> Expr
 
 data Term where
   LInt :: Int -> Term
@@ -155,4 +154,13 @@ deriving instance Show Term
 deriving instance Eq Term
 
 
+type DataExpr = (String, TypeExpr)
+
+data Declaration
+    = Let String (Maybe TypeExpr) (Maybe Kind) Expr
+    | Type String (Maybe Kind) TypeExpr
+    | Data String (Maybe Kind) [DataExpr] [Binding TypeExpr]
+    deriving (Show, Eq)
+newtype Script = Script [Declaration]
+    deriving (Show, Eq)
 

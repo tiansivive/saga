@@ -4,38 +4,47 @@
 
 module Saga.AST.Evaluation where
 
-import           Saga.AST.Scripts           (Declaration (..))
-import           Saga.AST.Syntax            (Expr (..), Name (..), Term (..))
 
-import           Data.ByteString.Lazy.Char8 (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as BS
-import qualified Data.Map                   as Map
+import           Data.ByteString.Lazy.Char8              (ByteString)
+import qualified Data.ByteString.Lazy.Char8              as BS
+import qualified Data.Map                                as Map
 
+import           Control.Monad.Except                    (ExceptT,
+                                                          MonadError (throwError),
+                                                          runExcept)
+import           Control.Monad.Reader                    (MonadReader (ask),
+                                                          ReaderT (runReaderT),
+                                                          asks)
 import           Control.Monad.State.Lazy
-import           Data.List                  (find, findIndex)
-import           Debug.Trace                (traceM)
-import           Saga.Utils.Utils
+import           Control.Monad.Trans.Except              (Except)
+import           Data.List                               (find, findIndex)
+import           Data.Maybe                              (fromJust, fromMaybe)
+import           Debug.Trace                             (traceM)
+import           Saga.AST.TypeSystem.HindleyMilner.Types (Binding (..),
+                                                          Declaration (..),
+                                                          Expr (..), Term (..))
+import           Saga.Utils.Utils                        hiding (fromMaybe)
 
 
 
 builtInEnv :: [String]
 builtInEnv = ["+", "-","*", "^", "/", "%", "<", ">", "<=", ">=", "==", "!=", "||", "&&"]
 
-data Value a
+data Value
   = VInt Int
   | VBool Bool
   | VString String
-  | VList [Value a]
-  | VTuple [Value a]
-  | VRecord [(String, Value a)]
-  | VClosure [Name a] (Expr a) (Env a)
+  | VList [Value ]
+  | VTuple [Value ]
+  | VRecord [(String, Value )]
+  | VClosure [String] Expr Env
   | BuiltIn String
   | Void
   deriving (Show, Eq)
 
-type Env a = Map.Map String (Value a)
+type Env  = Map.Map String Value
 
-type EvalState a = StateT (Env a) (Either String) (Value a)
+type Evaluated = ReaderT Env (Except String)
 
 instance MonadFail (Either String) where
   fail err = Left $ "Something went wrong:" <> err
@@ -44,140 +53,143 @@ instance MonadFail (Either String) where
 unidentified :: String -> String
 unidentified id =  "Undefined identifier \"" <> id <> "\""
 
-eval :: (Eq a, Show a) => Expr a -> EvalState a
-eval (Term l) = evalTerm l
-eval (Parens _ e) = eval e
-eval (Return _ e) = eval e
+eval :: Expr -> Evaluated Value
+eval (Term l) = evalLiteral l
+eval (Parens e) = eval e
+eval (Return e) = eval e
 
-eval (FieldAccess _  expr path) = do
-    VRecord pairs <- eval expr
-    eval' pairs path
-      where
-        find' :: String -> [(String, Value a)] -> EvalState a
-        find' id pairs
-          | Just (_ , val) <- find (\(name, _) -> name == id) pairs = return val
-          | otherwise = lift $ Left $ "Could not find property " <> id
+-- eval (FieldAccess _  expr path) = do
+--     VRecord pairs <- eval expr
+--     eval' pairs path
+--       where
+--         find' :: String -> [(String, Value a)] -> Evaluated a
+--         find' id pairs
+--           | Just (_ , val) <- find (\(name, _) -> name == id) pairs = return val
+--           | otherwise = lift $ Left $ "Could not find property " <> id
 
-        eval' pairs [Name _ id] = find' id pairs
-        eval' pairs ((Name _ id):rest) = do
-          VRecord pairs' <- find' id pairs
-          eval' pairs' rest
+--         eval' pairs [id] = find' id pairs
+--         eval' pairs (id:rest) = do
+--           VRecord pairs' <- find' id pairs
+--           eval' pairs' rest
 
 
-eval (Identifier (Name _ name)) =
-    if name `elem` builtInEnv
-      then return $ BuiltIn name
-      else  do
-        env <- get
-        let val = Map.lookup name env
-        lift $ fromMaybe (unidentified name) val
+eval (Identifier name) =
+    if name `elem` builtInEnv then
+      return $ BuiltIn name
+    else do
+      env <- ask
+      case Map.lookup name env of
+        Just val -> return val
+        Nothing  -> throwError $ unidentified name
 
-eval (Assign (Name _ name) e )  = do
-      val <- eval e
-      modify $ Map.insert name val
-      return val
+-- eval (Assign name e )  = do
+--       val <- eval e
+--       modify $ Map.insert name val
+--       return val
 
-eval (Clause _ assignments e) =
-  let
-    eval' = do
-      mapM_ eval assignments
-      eval e
-  in do
-      env <- get
-      lift $ evalStateT eval' env
+eval (Clause e bindings ) = do
+  bindings' <- mapM evalBinding bindings
+  eval e `scoped` Map.union (Map.fromList bindings')
 
-eval (IfElse _ cond onTrue onFalse) = do
+
+
+eval (IfElse cond onTrue onFalse) = do
   val <- eval cond
   case val of
     (VBool True) -> eval onTrue
     (VBool False) -> eval onFalse
-    _ -> lift $ Left "Could not evaluate non boolean expression as a if condition"
+    _ -> throwError "Could not evaluate non boolean expression as a if condition"
 
-eval (Block _ exprs) = do
+eval (Block exprs) = do
   mapM_ eval exprs'
   eval' rest
     where
-      returnStmt e | (Return _ _) <- e = True
+      returnStmt e | (Return _) <- e = True
                    | otherwise         = False
       (exprs', rest) = break returnStmt exprs
       eval' es | [] <- es = return Void
                | otherwise = eval $ head es
 
-eval (Lambda _ args body) = VClosure args body <$> get
+eval (Lambda args body) = asks (VClosure args body)
 
-eval (FnApp _ fnExpr argExprs) = do
+eval (FnApp fnExpr argExprs) = do
   vals <- mapM eval argExprs
   closure <- eval fnExpr
-  env <- get
-  let (VInt x) = vals !! 0
+  env <- ask
+  let (VInt x) = head vals
   let (VInt y) = vals !! 1
 
-  let (VBool b1) = vals !! 0
+  let (VBool b1) = head vals
   let (VBool b2) = vals !! 1
 
 
 
   case closure of
-    (BuiltIn "+") -> lift $ Right $ VInt (x + y)
-    (BuiltIn "-") -> lift $ Right $ VInt (x - y)
-    (BuiltIn "*") -> lift $ Right $ VInt (x * y)
-    (BuiltIn "/") -> lift $ Right $ VInt (x `div` y)
-    (BuiltIn "%") -> lift $ Right $ VInt (x `mod` y)
+    (BuiltIn "+") -> return $ VInt (x + y)
+    (BuiltIn "-") -> return $ VInt (x - y)
+    (BuiltIn "*") -> return $ VInt (x * y)
+    (BuiltIn "/") -> return $ VInt (x `div` y)
+    (BuiltIn "%") -> return $ VInt (x `mod` y)
 
-    (BuiltIn "||") -> lift $ Right $ VBool (b1 || b2)
-    (BuiltIn "&&") -> lift $ Right $ VBool (b1 && b2)
-    (BuiltIn "==") -> lift $ Right $ VBool (vals !! 0 == vals !! 1)
-    (BuiltIn "!=") -> lift $ Right $ VBool  (vals !! 0 == vals !! 1)
+    (BuiltIn "||") -> return $ VBool (b1 || b2)
+    (BuiltIn "&&") -> return $ VBool (b1 && b2)
+    (BuiltIn "==") -> return $ VBool (head vals == vals !! 1)
+    (BuiltIn "!=") -> return $ VBool  (head vals == vals !! 1)
 
-    (BuiltIn "<") -> lift $ Right $ VBool (x < y)
-    (BuiltIn "<=") -> lift $ Right $ VBool (x <= y)
-    (BuiltIn ">") -> lift $ Right $ VBool (x > y)
-    (BuiltIn ">=") -> lift $ Right $ VBool  (x >= y)
+    (BuiltIn "<")  -> return $ VBool (x < y)
+    (BuiltIn "<=") -> return $ VBool (x <= y)
+    (BuiltIn ">")  -> return $ VBool (x > y)
+    (BuiltIn ">=") -> return $ VBool  (x >= y)
 
     (VClosure paramNames bodyExpr capturedEnv) ->
       if length paramNames == length vals then
         let
           pairs = zip paramNames vals
-          insert' (Name _ name, v) = Map.insert name v
+          insert' (name, v) = Map.insert name v
           env' = foldr insert' capturedEnv pairs
-          env'' = Map.union env' env -- left side overrides any duplicates
-
         in
-          lift $ evalStateT (eval bodyExpr) env''
+          eval bodyExpr `scoped` Map.union env'
+          --lift $ evalStateT (eval bodyExpr) env''
 
-      else lift $ Left "Wrong number of params"
-    _ -> lift $ Left "Cannot apply this expression"
-
-
-
-
-evalTerm :: (Eq a, Show a) => Term a -> EvalState a
-evalTerm (LInt _ int)    = return $ VInt int
-evalTerm (LBool _ bool)  = return $ VBool bool
-evalTerm (LString _ str) = return $ VString $ BS.unpack str
-evalTerm (LList _ list) = do
-  vals <- mapM eval list
-  return $ VList vals
-evalTerm (LTuple _ tuple)  = do
-  vals <- mapM eval tuple
-  return $ VTuple vals
-evalTerm (LRecord _ record) = do
-  vals <- mapM evalPair record
-  return $ VRecord vals
-  where
-    evalPair (Name _ name, e) = do
-      v <- eval e
-      return (name, v)
-
-
-evalDeclaration :: (Eq a, Show a) => Declaration a -> EvalState a
-evalDeclaration (Let name _ _ expr) = eval $ Assign name expr
-evalDeclaration _                   = return Void
-
-runEvaluation :: (Eq a, Show a ) => Expr a -> Either String (Value a, Env a)
-runEvaluation e = runStateT (eval e) Map.empty
+      else throwError "Wrong number of params"
+    _ -> throwError "Cannot apply this expression"
 
 
 
+
+evalLiteral :: Term -> Evaluated Value
+evalLiteral (LInt int)    = return $ VInt int
+evalLiteral (LBool bool)  = return $ VBool bool
+evalLiteral (LString str) = return $ VString str
+-- evalLiteral (LList _ list) = do
+--   vals <- mapM eval list
+--   return $ VList vals
+-- evalLiteral (LTuple _ tuple)  = do
+--   vals <- mapM eval tuple
+--   return $ VTuple vals
+-- evalLiteral (LRecord _ record) = do
+--   vals <- mapM evalPair record
+--   return $ VRecord vals
+--   where
+--     evalPair (Name _ name, e) = do
+--       v <- eval e
+--       return (name, v)
+
+
+evalBinding :: Binding Expr -> Evaluated (String, Value)
+evalBinding (Bind id expr) = sequence (id, eval expr)
+evalBinding _              = throwError "Wrong binding expression. Can only bind terms to identifiers"
+
+
+evalDeclaration :: Declaration -> Evaluated (String, Value)
+evalDeclaration (Let name _ _ expr) = sequence (name, eval expr)
+evalDeclaration _                   = throwError "Tried to evaluate non let declaration"
+
+
+runEvaluated :: Expr -> Except String Value
+runEvaluated e = runReaderT (eval e) Map.empty
+
+run :: Maybe Env -> Evaluated a -> Either String a
+run env evaluation = runExcept $ runReaderT evaluation $ fromMaybe Map.empty env
 
 
