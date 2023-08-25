@@ -17,6 +17,7 @@ terminal protocol is unused
 terminal interface is unused
 terminal module is unused
 terminal import is unused
+terminal ';' is unused
 terminal '<-' is unused
 terminal newline is unused
 terminal eof is unused
@@ -125,7 +126,7 @@ Grammar
 	tbinding -> identifier '|->' typeExpr              (98)
 	tbinding -> identifier '|' typeExpr                (99)
 	tbindings -> tbinding                              (100)
-	tbindings -> tbindings ';' tbinding                (101)
+	tbindings -> tbindings ',' tbinding                (101)
 	tagged -> identifier ':' typeExpr                  (102)
 	union -> '|' typeExpr                              (103)
 	union -> union '|' typeExpr                        (104)
@@ -409,7 +410,6 @@ State 6
 	'{'            reduce using rule 5
 	'}'            reduce using rule 5
 	':'            reduce using rule 5
-	';'            reduce using rule 5
 	','            reduce using rule 5
 	'->'           reduce using rule 5
 	'=>'           reduce using rule 5
@@ -503,7 +503,6 @@ State 14
 	'{'            reduce using rule 92
 	'}'            reduce using rule 92
 	':'            shift, and enter state 88
-	';'            reduce using rule 92
 	','            reduce using rule 92
 	'->'           reduce using rule 92
 	'='            reduce using rule 92
@@ -529,7 +528,6 @@ State 15
 	')'            reduce using rule 90
 	'{'            reduce using rule 90
 	'}'            reduce using rule 90
-	';'            reduce using rule 90
 	','            reduce using rule 90
 	'->'           reduce using rule 90
 	'='            reduce using rule 90
@@ -555,7 +553,6 @@ State 16
 	')'            reduce using rule 89
 	'{'            reduce using rule 89
 	'}'            reduce using rule 89
-	';'            reduce using rule 89
 	','            reduce using rule 89
 	'->'           reduce using rule 89
 	'='            reduce using rule 89
@@ -581,7 +578,6 @@ State 17
 	')'            reduce using rule 91
 	'{'            reduce using rule 91
 	'}'            reduce using rule 91
-	';'            reduce using rule 91
 	','            reduce using rule 91
 	'->'           reduce using rule 91
 	'='            reduce using rule 91
@@ -608,7 +604,6 @@ State 18
 	')'            reduce using rule 105
 	'{'            reduce using rule 94
 	'}'            reduce using rule 105
-	';'            reduce using rule 105
 	','            reduce using rule 105
 	'->'           reduce using rule 105
 	'='            reduce using rule 105
@@ -628,7 +623,6 @@ State 19
 	ty             reduce using rule 106
 	')'            reduce using rule 106
 	'}'            reduce using rule 106
-	';'            reduce using rule 106
 	','            reduce using rule 106
 	'->'           reduce using rule 106
 	'='            reduce using rule 106
@@ -648,7 +642,6 @@ State 20
 	ty             reduce using rule 107
 	')'            reduce using rule 107
 	'}'            reduce using rule 107
-	';'            reduce using rule 107
 	','            reduce using rule 107
 	'->'           reduce using rule 107
 	'='            reduce using rule 107
@@ -683,7 +676,6 @@ State 22
 	')'            reduce using rule 86
 	'{'            reduce using rule 86
 	'}'            reduce using rule 86
-	';'            reduce using rule 86
 	','            reduce using rule 86
 	'->'           reduce using rule 86
 	'='            reduce using rule 86
@@ -709,7 +701,6 @@ State 23
 	')'            reduce using rule 88
 	'{'            reduce using rule 88
 	'}'            reduce using rule 88
-	';'            reduce using rule 88
 	','            reduce using rule 88
 	'->'           reduce using rule 88
 	'='            reduce using rule 88
@@ -735,7 +726,6 @@ State 24
 	')'            reduce using rule 87
 	'{'            reduce using rule 87
 	'}'            reduce using rule 87
-	';'            reduce using rule 87
 	','            reduce using rule 87
 	'->'           reduce using rule 87
 	'='            reduce using rule 87
@@ -2253,7 +2243,6 @@ State 81
 	ty             reduce using rule 103
 	')'            reduce using rule 103
 	'}'            reduce using rule 103
-	';'            reduce using rule 103
 	','            reduce using rule 103
 	'->'           shift, and enter state 85
 	'='            reduce using rule 103
@@ -2517,7 +2506,6 @@ State 101
 	ty             reduce using rule 102
 	')'            reduce using rule 102
 	'}'            reduce using rule 102
-	';'            reduce using rule 102
 	','            reduce using rule 102
 	'->'           shift, and enter state 85
 	'='            reduce using rule 102
@@ -2562,7 +2550,6 @@ State 104
 	ty             reduce using rule 110
 	')'            reduce using rule 110
 	'}'            reduce using rule 110
-	';'            reduce using rule 110
 	','            reduce using rule 110
 	'->'           reduce using rule 110
 	'='            reduce using rule 110
@@ -2582,7 +2569,6 @@ State 105
 	ty             reduce using rule 104
 	')'            reduce using rule 104
 	'}'            reduce using rule 104
-	';'            reduce using rule 104
 	','            reduce using rule 104
 	'->'           shift, and enter state 85
 	'='            reduce using rule 104
@@ -2602,7 +2588,6 @@ State 106
 	ty             reduce using rule 108
 	')'            reduce using rule 108
 	'}'            reduce using rule 108
-	';'            reduce using rule 108
 	','            reduce using rule 108
 	'->'           shift, and enter state 85
 	'='            reduce using rule 108
@@ -2635,7 +2620,6 @@ State 108
 	')'            reduce using rule 93
 	'{'            reduce using rule 93
 	'}'            reduce using rule 93
-	';'            reduce using rule 93
 	','            reduce using rule 93
 	'->'           reduce using rule 93
 	'='            reduce using rule 93
@@ -2684,7 +2668,6 @@ State 110
 	')'            reduce using rule 82
 	'{'            reduce using rule 82
 	'}'            reduce using rule 82
-	';'            reduce using rule 82
 	','            reduce using rule 82
 	'->'           reduce using rule 82
 	'='            reduce using rule 82
@@ -4312,7 +4295,6 @@ State 158
 	ty             reduce using rule 109
 	')'            reduce using rule 109
 	'}'            reduce using rule 109
-	';'            reduce using rule 109
 	','            reduce using rule 109
 	'->'           shift, and enter state 85
 	'='            reduce using rule 109
@@ -4361,7 +4343,6 @@ State 161
 	')'            reduce using rule 85
 	'{'            reduce using rule 85
 	'}'            reduce using rule 85
-	';'            reduce using rule 85
 	','            reduce using rule 85
 	'->'           reduce using rule 85
 	'='            reduce using rule 85
@@ -4971,7 +4952,7 @@ State 207
 	let            reduce using rule 100
 	data           reduce using rule 100
 	ty             reduce using rule 100
-	';'            reduce using rule 100
+	','            reduce using rule 100
 	'='            reduce using rule 100
 	'::'           reduce using rule 100
 	%eof           reduce using rule 100
@@ -4979,10 +4960,10 @@ State 207
 
 State 208
 
-	tbindings -> tbindings . ';' tbinding               (rule 101)
+	tbindings -> tbindings . ',' tbinding               (rule 101)
 	typeAnnotation -> ':' typeExpr where tbindings .    (rule 113)
 
-	';'            shift, and enter state 213
+	','            shift, and enter state 213
 	'='            reduce using rule 113
 	'::'           reduce using rule 113
 
@@ -5077,7 +5058,7 @@ State 212
 
 State 213
 
-	tbindings -> tbindings ';' . tbinding               (rule 101)
+	tbindings -> tbindings ',' . tbinding               (rule 101)
 
 	id             shift, and enter state 6
 
@@ -5200,25 +5181,25 @@ State 219
 
 State 220
 
-	tbindings -> tbindings . ';' tbinding               (rule 101)
+	tbindings -> tbindings . ',' tbinding               (rule 101)
 	dec -> data identifier kindAnnotation '=' dataExprs where tbindings .    (rule 126)
 
 	let            reduce using rule 126
 	data           reduce using rule 126
 	ty             reduce using rule 126
-	';'            shift, and enter state 213
+	','            shift, and enter state 213
 	%eof           reduce using rule 126
 
 
 State 221
 
-	tbindings -> tbindings . ';' tbinding               (rule 101)
+	tbindings -> tbindings . ',' tbinding               (rule 101)
 	dec -> ty identifier kindAnnotation '=' typeExpr where tbindings .    (rule 128)
 
 	let            reduce using rule 128
 	data           reduce using rule 128
 	ty             reduce using rule 128
-	';'            shift, and enter state 213
+	','            shift, and enter state 213
 	%eof           reduce using rule 128
 
 
@@ -5344,7 +5325,7 @@ State 231
 	let            reduce using rule 99
 	data           reduce using rule 99
 	ty             reduce using rule 99
-	';'            reduce using rule 99
+	','            reduce using rule 99
 	'->'           shift, and enter state 85
 	'='            reduce using rule 99
 	'::'           reduce using rule 99
@@ -5359,7 +5340,7 @@ State 232
 	let            reduce using rule 96
 	data           reduce using rule 96
 	ty             reduce using rule 96
-	';'            reduce using rule 96
+	','            reduce using rule 96
 	'->'           shift, and enter state 85
 	'='            reduce using rule 96
 	'::'           reduce using rule 96
@@ -5374,7 +5355,7 @@ State 233
 	let            reduce using rule 98
 	data           reduce using rule 98
 	ty             reduce using rule 98
-	';'            reduce using rule 98
+	','            reduce using rule 98
 	'->'           shift, and enter state 85
 	'='            reduce using rule 98
 	'::'           reduce using rule 98
@@ -5389,7 +5370,7 @@ State 234
 	let            reduce using rule 97
 	data           reduce using rule 97
 	ty             reduce using rule 97
-	';'            reduce using rule 97
+	','            reduce using rule 97
 	'->'           shift, and enter state 85
 	'='            reduce using rule 97
 	'::'           reduce using rule 97
@@ -5398,12 +5379,12 @@ State 234
 
 State 235
 
-	tbindings -> tbindings ';' tbinding .               (rule 101)
+	tbindings -> tbindings ',' tbinding .               (rule 101)
 
 	let            reduce using rule 101
 	data           reduce using rule 101
 	ty             reduce using rule 101
-	';'            reduce using rule 101
+	','            reduce using rule 101
 	'='            reduce using rule 101
 	'::'           reduce using rule 101
 	%eof           reduce using rule 101

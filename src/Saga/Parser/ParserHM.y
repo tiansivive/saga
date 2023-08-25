@@ -339,7 +339,7 @@ tbinding
 
 tbindings
   : tbinding                { [$1] }
-  | tbindings ';' tbinding  { $1 ++ [$3] }
+  | tbindings ',' tbinding  { $1 ++ [$3] }
 
 tagged
   : identifier ':' typeExpr    %shift { P.tagged $1 $3 }

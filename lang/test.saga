@@ -65,18 +65,19 @@ let fmap
   : \f a b => (a -> b) -> f a! -> f b! where f implements Functor
   = \f fa -> match fa
       | []          -> fa
-      | [x | rest]  -> fmap f rest! |> prepend (f x!)! 
+      | [x | rest]  -> f x! |> prepend (fmap f rest!)!
+                      
 
 
 let overload
     : \f a => 
     | One: Int    -> (Tag: String ) -> f Int!    
-    | Two: Bool   -> a             -> f String! 
-    | Foo: String -> a             -> f Bool!   
-    | Bar: Int    -> Int           -> f Int!    
-    where 
-        f implements Functor;
-        a implements Show
+    | Two: Bool   -> a              -> f String! 
+    | Foo: String -> a              -> f Bool!   
+    | Bar: Int    -> Int            -> f Int!    
+    
+    where f implements Functor
+        , a implements Show
     
     = \fn -> match fn
         | One: i str -> of <| length str! + i
