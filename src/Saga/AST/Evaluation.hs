@@ -56,7 +56,6 @@ unidentified id =  "Undefined identifier \"" <> id <> "\""
 eval :: Expr -> Evaluated Value
 eval (Term l) = evalLiteral l
 eval (Parens e) = eval e
-eval (Return e) = eval e
 
 -- eval (FieldAccess _  expr path) = do
 --     VRecord pairs <- eval expr
@@ -100,15 +99,15 @@ eval (IfElse cond onTrue onFalse) = do
     (VBool False) -> eval onFalse
     _ -> throwError "Could not evaluate non boolean expression as a if condition"
 
-eval (Block exprs) = do
-  mapM_ eval exprs'
-  eval' rest
-    where
-      returnStmt e | (Return _) <- e = True
-                   | otherwise         = False
-      (exprs', rest) = break returnStmt exprs
-      eval' es | [] <- es = return Void
-               | otherwise = eval $ head es
+-- eval (Block exprs) = do
+--   mapM_ eval exprs'
+--   eval' rest
+--     where
+--       returnStmt e | (Return _) <- e = True
+--                    | otherwise         = False
+--       (exprs', rest) = break returnStmt exprs
+--       eval' es | [] <- es = return Void
+--                | otherwise = eval $ head es
 
 eval (Lambda args body) = asks (VClosure args body)
 

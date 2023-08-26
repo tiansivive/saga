@@ -129,7 +129,7 @@ import qualified Saga.AST.TypeSystem.HindleyMilner.Types as HM
 
 %right else in
 %right '|'
-%right '->'
+%right '->' '<-'
 %right '.'
 
 
@@ -150,9 +150,6 @@ import qualified Saga.AST.TypeSystem.HindleyMilner.Types as HM
 identifier
   : id { P.identifier $1 HM.Identifier }
 
--- path
---   : identifier          { \(range, id) -> (range, [$1]) }
---   | path '.' identifier { \(range, path) _ (range', id) -> (range <-> range') (path ++ [id])}
 
  -- COLLECTIONS
 pairs
@@ -189,17 +186,12 @@ args
   | args atom     { $1 ++ [$2] }
 
 fnApplication 
-  : atom args '!' { P.fnApplication $1 $2 $3 }
+  : atom args '!'  { P.fnApplication $1 $2 $3 }
  
 --CONTROL FLOW
 controlFlow 
   : if expr then expr else expr { P.controlFlow $1 $2 $4 $6 }
 
-
--- BLOCKS
--- block
---   : return expr   { [HM.Return (L.rtRange $1 <-> info $2) $2] }
---   | expr block  { $1 : $2 }
 
 
 -- PATTERN MATCHING
@@ -222,17 +214,18 @@ patRest
   | '|' identifier  { Just $2 }
 
 patData
-  : identifier ':'     { [$1]}
-  | patData identifier { $1 ++ [$2] }
+  : identifier ':'      %shift  { [$1]}
+  | patData identifier          { $1 ++ [$2] }
 
 pattern 
-  : identifier                        { P.pattern $ P.Var $1   }
-  | term                              { P.pattern $ P.Term $ fmap HM.Term $1   }
-  | '(' identifier patTupleElems ')'  { P.pattern $ P.Tuple ($2 : $3) }
-  | '[' ']'                           { P.pattern $ P.List [] Nothing }
-  | '[' patListElems patRest ']'      { P.pattern $ P.List $2 $3 }
-  | '{' patRecordKeys patRest '}'     { P.pattern $ P.Record $2 $3 }
-  | patData                           { P.pattern $ P.Tagged $1 }
+  : identifier                        %shift  { P.pattern $ P.Var $1 }
+  --| term                              %shift  { P.pattern $ P.Term $ fmap HM.Term $1   }
+  | patData                           %shift  { P.pattern $ P.Tagged $1 }
+  | '(' identifier patTupleElems ')'  %shift  { P.pattern $ P.Tuple ($2 : $3) }
+  | '[' ']'                           %shift  { P.pattern $ P.List [] Nothing }
+  | '[' patListElems patRest ']'      %shift  { P.pattern $ P.List $2 $3 }
+  | '{' patRecordKeys patRest '}'     %shift  { P.pattern $ P.Record $2 $3 }
+  | '(' pattern ')'                   %shift  { $2 }
 
 
 --EXPRESSIONS
@@ -248,7 +241,7 @@ atom
   | tuple                   { $1 }
   | list                    { $1 }
   | record                  { $1 }
-  -- | '{' block '}'           { HM.Block (L.rtRange  $1 <-> L.rtRange $3) $2 }
+  | '{' block '}'           { P.block $2 $1 $3 }
   | '(' expr ')'            { P.parenthesised $2 $1 $3 }
 
 
@@ -294,7 +287,30 @@ expr
   | expr '++' expr          { P.binaryOp $1 $2 $3 }
 
 
--- Types
+
+-- BLOCKS
+patterns
+  : pattern ','    %shift   { [$1] }
+  | patterns pattern %shift { $1 ++ [$2] }
+
+backcall
+  : pattern '<-' expr            { P.backcall [$1] $3 }
+  | patterns '<-' expr           { P.backcall $1 $3 }
+
+statement
+  : return expr                  { P.returnStmt $2 $1 }
+  | dec                          { fmap HM.Declaration $1 }
+  | fnApplication                { fmap HM.Procedure $1 }
+  | backcall                     { $1 }
+
+block
+  : statement ';'       { [$1] }
+  | block statement ';' { $1 ++ [$2] }
+
+
+
+-- | TYPES
+
 tpairs
   :                                     { [] }
   | identifier ':' typeExpr ',' tpairs  { (P.keyValPair $1 $3) : $5 }

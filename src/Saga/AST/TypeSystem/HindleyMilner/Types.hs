@@ -127,18 +127,33 @@ data Expr where
   FnApp :: Expr -> [Expr] -> Expr
   Clause :: Expr -> [Binding Expr] -> Expr
 
-  Block :: [Expr] -> Expr
-  Return :: Expr -> Expr
+  Block :: [Statement] -> Expr
   Parens :: Expr -> Expr
   --FieldAccess :: Expr -> String -> Expr
+deriving instance Show Expr
+deriving instance Eq Expr
 
 data Term where
   LInt :: Int -> Term
   LBool :: Bool -> Term
   LString :: String -> Term
+deriving instance Show Term
+deriving instance Eq Term
 
 
-data Case = Case Pattern Expr deriving (Show, Eq)
+
+data Statement where
+  Return      :: Expr -> Statement
+  BackCall    :: [Pattern] -> Expr -> Statement
+  Declaration :: Declaration -> Statement
+  Procedure   :: Expr -> Statement
+
+deriving instance Show Statement
+deriving instance Eq Statement
+
+
+data Case = Case Pattern Expr
+  deriving (Show, Eq)
 data Pattern
     = Id String
     | Literal Term
@@ -147,12 +162,6 @@ data Pattern
     | PatRecord [String] (Maybe String)
     | PatData String [String]
   deriving (Show, Eq)
-
-deriving instance Show Expr
-deriving instance Eq Expr
-deriving instance Show Term
-deriving instance Eq Term
-
 
 type DataExpr = (String, TypeExpr)
 

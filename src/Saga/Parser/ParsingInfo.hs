@@ -31,7 +31,7 @@ instance Expandable L.Range where
     (<->) r r' = L.Range (L.start r) (L.stop r')
 
 instance Expandable a => Expandable (ParsedData a) where
-    left <-> right = [left' <-> right' | left' <- left, right' <- right]
+    left <-> right = [ left' <-> right' | left' <- left, right' <- right]
 
 
 
@@ -73,8 +73,6 @@ tyIdStr e                  = error $ "Not type identifier expression:\n" ++ show
 
 
 -- | EXPRESSIONS
-
-
 identifier :: L.RangedToken -> (String -> a) -> ParsedData a
 identifier rt constructor = Parsed expr (L.rtRange rt) [rt]
   where
@@ -200,15 +198,6 @@ parenthesised expr@(Parsed val range _) start end = expr
     }
 
 
-parseError :: L.RangedToken -> L.Alex a
-parseError tok = do
-  (L.AlexPn _ line column, prev, inStr, _) <- L.alexGetInput
-  L.alexError $ "Parse error at line " <> show line <> ", column " <> show column <>
-                " Previous character: " <> show prev <>
-                " Current input string: " <> show inStr <>
-                " Token: " <> show tok
-
-
 lambda :: [ParsedData HM.Expr] -> ParsedData HM.Expr -> RangedToken -> ParsedData HM.Expr
 lambda params (Parsed body' bRange bToks) rt =
     let
@@ -266,9 +255,26 @@ clause (Parsed expr' rt ts) bindings =
     in Parsed (HM.Clause expr' bindings') (rt <-> range (last bindings)) (nub toks)
 
 
+-- | BLOCKS
+
+returnStmt :: ParsedData HM.Expr -> RangedToken -> ParsedData HM.Statement
+returnStmt expr tok = Parsed (HM.Return $ value expr) rng toks
+    where
+        rng = L.rtRange tok <-> range expr
+        toks = nub $ tok : tokens expr
+
+
+backcall :: [ParsedData HM.Pattern] -> ParsedData HM.Expr -> ParsedData HM.Statement
+backcall pats expr = [ HM.BackCall pats' expr'
+                     | pats' <- sequence pats
+                     , expr' <- expr
+                     ]
+
+block :: [ParsedData HM.Statement] -> RangedToken -> RangedToken -> ParsedData HM.Expr
+block stmts _ _ = HM.Block <$> sequence stmts
+
+
 -- | TYPES
-
-
 tyRecord :: [ParsedData (String, HM.TypeExpr)] -> RangedToken -> RangedToken -> ParsedData HM.TypeExpr
 tyRecord pairs start end = Parsed rec' range' toks
     where
@@ -320,7 +326,7 @@ tyIdentifier = fmap $ HM.TIdentifier . idStr
 
 
 typeUnion :: [ParsedData HM.TypeExpr] -> ParsedData HM.TypeExpr
-typeUnion branches = [HM.TEUnion tyExprs | tyExprs <- sequence branches ]
+typeUnion branches = [ HM.TEUnion tyExprs | tyExprs <- sequence branches ]
 
 
 tagged :: ParsedData HM.Expr -> ParsedData HM.TypeExpr  -> ParsedData HM.TypeExpr
@@ -373,9 +379,6 @@ kindId (Parsed e rng toks)
 
 
 -- | DATA TYPE
-
-
-
 dataExpr :: ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData HM.DataExpr
 dataExpr expr tyExpr = Parsed (id, value tyExpr) range' (nub toks)
     where
@@ -385,9 +388,6 @@ dataExpr expr tyExpr = Parsed (id, value tyExpr) range' (nub toks)
 
 
 -- | DECLARATIONS
-
-
-
 letdec :: ParsedData HM.Expr -> Maybe (ParsedData HM.TypeExpr) -> Maybe (ParsedData HM.Kind) -> ParsedData HM.Expr -> ParsedData HM.Declaration
 --letdec id ty k e | trace ("LetDec:\n\tid: " ++ show id ++ "\n\tType: " ++ show ty ++ "\n\tKind: " ++ show k ++ "\n\tExpression: " ++ show e)  False = undefined
 letdec idExpr tyExpr kind expr = Parsed dec (range expr) (tokens expr)
@@ -414,12 +414,12 @@ typeDef expr kind tyExpr =
 
 
 implementation :: ParsedData HM.Expr -> ParsedData HM.TypeExpr -> ParsedData HM.TypeExpr
-implementation expr tyExpr = [HM.TImplementation (idStr e) ty | e <- expr, ty <- tyExpr]
+implementation expr tyExpr = [ HM.TImplementation (idStr e) ty | e <- expr, ty <- tyExpr]
 
 
 -- | SCRIPTS
 script :: [ParsedData HM.Declaration] -> ParsedData HM.Script
-script decs = [HM.Script decs' | decs' <- sequence decs]
+script decs = [ HM.Script decs' | decs' <- sequence decs]
 
 
 -- | Utils
@@ -430,6 +430,10 @@ lexer = (=<< L.alexMonadScan)
 run :: String -> L.Alex a -> Either String a
 run =  L.runAlex . BS.pack
 
-
-
-
+parseError :: L.RangedToken -> L.Alex a
+parseError tok = do
+  (L.AlexPn _ line column, prev, inStr, _) <- L.alexGetInput
+  L.alexError $ "Parse error at line " <> show line <> ", column " <> show column <>
+                " Previous character: " <> show prev <>
+                " Current input string: " <> show inStr <>
+                " Token: " <> show tok

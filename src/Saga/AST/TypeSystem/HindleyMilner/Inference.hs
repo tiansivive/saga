@@ -34,7 +34,8 @@ import           Saga.AST.TypeSystem.HindleyMilner.Types       hiding
                                                                (Implements)
 import           Saga.Parser.ParserHM                          (runSagaExpr)
 import           Saga.Parser.ParsingInfo                       hiding (Record,
-                                                                Term, Tuple)
+                                                                Term, Tuple,
+                                                                return)
 
 run :: String -> Either String Scheme
 run input = do
@@ -132,10 +133,10 @@ lookupEnv x = do
 infer :: Expr -> Infer Type
 infer ex | trace ("Inferring: " ++ show ex) False = undefined
 infer ex = case ex of
-  Identifier x -> lookupEnv x
-  Parens expr -> infer expr
+  T.Identifier x -> lookupEnv x
+  T.Parens expr -> infer expr
 
-  Lambda (param : rest) body -> do
+  T.Lambda (param : rest) body -> do
     tVar <- fresh KType
     out' <- infer out `scoped` (Tyvar param KType, Scheme (tvars tVar) ([] :=> tVar))
     return $ tVar `TArrow` out'
@@ -144,7 +145,7 @@ infer ex = case ex of
       out = case rest of
         [] -> body
         _  -> Lambda rest body
-  FnApp fn [arg] -> do
+  T.FnApp fn [arg] -> do
     out <- fresh KType
     fnTy <- infer fn
     argTy <- infer arg
@@ -154,7 +155,7 @@ infer ex = case ex of
     emit $ EqCons $ fnTy `EQ` inferred
 
     return out
-  FnApp fn (a : as) -> infer curried
+  T.FnApp fn (a : as) -> infer curried
     where
       partial = FnApp fn [a]
       curried = foldl (\f a -> FnApp f [a]) partial as
@@ -166,7 +167,7 @@ infer ex = case ex of
   -- modify $ \env -> env `extend` (x, t')
   -- return (s, t)
 
-  IfElse cond yes no -> do
+  T.IfElse cond yes no -> do
     cond' <- infer cond
     yes' <- infer yes
     no' <- infer no
@@ -174,17 +175,26 @@ infer ex = case ex of
     -- \| TODO: this should change to a union type when those get implemented
     return $ if yes' == no' then yes' else TUnion [yes', no']
 
-  Tuple elems -> do
+  -- T.Match _ cases -> do
+
+  --   _d
+
+
+  -- T.List expr -> do
+  --   mapM ()
+
+
+  T.Tuple elems -> do
     tElems <- mapM infer elems
     return $ TTuple tElems
-  Record pairs -> do
+  T.Record pairs -> do
     tPairs <- mapM infer' pairs
     return $ TRecord tPairs
     where
       infer' = mapM infer
 
-  Term literal -> return $ TLiteral literal
-
+  T.Term literal -> return $ TLiteral literal
+  ty -> error $ "Inference not implemented yet: " ++ show ty
 
 generalizeArg :: Type -> Infer Type
 generalizeArg (TLiteral lit) = generalize' $ case lit of

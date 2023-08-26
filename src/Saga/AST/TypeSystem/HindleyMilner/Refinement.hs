@@ -26,7 +26,7 @@ import           Control.Monad.Trans.State                     (StateT)
 import           Data.Bifunctor                                (first)
 import           Prelude                                       hiding (lookup)
 import           Saga.AST.TypeSystem.HindleyMilner.Environment (scoped)
-import           Saga.Parser.ParsingInfo
+import           Saga.Parser.ParsingInfo                       hiding (return)
 
 
 type RefinementEnv = Map.Map String Type

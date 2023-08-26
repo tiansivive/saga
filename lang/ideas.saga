@@ -126,3 +126,54 @@ let fn
             else "None!"
         | Foo: str a -> of <| str ++ show a!
         | Bar: i j   -> of <| i + j
+
+
+// Ideas for totality check on backcall pattern binding
+let try
+  : String -> Promise Int!
+  = \url -> { 
+
+        Right: val1 <- bind <| fetch url!
+        Right: val2 <- await <| fetch url!
+
+        match val <- bind <| fetch url!
+          | Right v -> v
+          | Left s -> fail s
+
+
+        return val1 + val2
+      }
+
+
+// Ideas for monadic blocks 
+let monadic
+    : String -> Promise Int!
+    = \str -> 
+        do {
+            val <- fetch url!
+            return val
+        } using promiseSeq
+          where 
+            fetch = Promise.of
+
+let monadicInverted
+    : String -> Promise Int!
+    = \str -> 
+        do { val | val <- fetch url! } using promiseSeq
+          where 
+            fetch = Promise.of
+
+
+// Ideas for monadic comprehensions
+let comprehension
+    : String -> Promise Int!
+    = \str -> yield val from fetch url! using promiseSeq 
+
+let listComprehension
+    : Int -> List Int!
+    = \n -> yield (x, y) where 
+                x from xs | y from ys
+                then sort `by` .x
+                then take 5
+                --then group `by` .y // not really sure about how group works, maybe leave it for later
+                using someMonadImpl
