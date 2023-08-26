@@ -219,7 +219,7 @@ patData
 
 pattern 
   : identifier                        %shift  { P.pattern $ P.Var $1 }
-  --| term                              %shift  { P.pattern $ P.Term $ fmap HM.Term $1   }
+  | term                              %shift  { P.pattern $ P.Term $ fmap HM.Term $1   }
   | patData                           %shift  { P.pattern $ P.Tagged $1 }
   | '(' identifier patTupleElems ')'  %shift  { P.pattern $ P.Tuple ($2 : $3) }
   | '[' ']'                           %shift  { P.pattern $ P.List [] Nothing }
@@ -290,22 +290,29 @@ expr
 
 -- BLOCKS
 patterns
-  : pattern ','    %shift   { [$1] }
-  | patterns pattern %shift { $1 ++ [$2] }
+  : pattern ','       %shift { [$1] }
+  | patterns pattern  %shift { $1 ++ [$2] }
 
 backcall
-  : pattern '<-' expr            { P.backcall [$1] $3 }
-  | patterns '<-' expr           { P.backcall $1 $3 }
+  : identifier '<-' expr            { P.backcall [P.pattern $ P.Var $1] $3 }
+  -- | identifier '<-' expr           { P.backcall $1 $3 }
 
+-- decStmt
 statement
-  : return expr                  { P.returnStmt $2 $1 }
-  | dec                          { fmap HM.Declaration $1 }
-  | fnApplication                { fmap HM.Procedure $1 }
+  : fnApplication                { fmap HM.Procedure $1 }
+  | letdec                       { fmap HM.Declaration $1 }
   | backcall                     { $1 }
 
+stmts
+  : statement       { [$1] }
+  | stmts statement { $1 ++ [$2] }
+
+returnStmt 
+  : return expr                  { P.returnStmt $2 $1 }
+
 block
-  : statement ';'       { [$1] }
-  | block statement ';' { $1 ++ [$2] }
+  : returnStmt        { [$1] }
+  | stmts returnStmt  { $1 ++ [$2] }
 
 
 
@@ -414,9 +421,10 @@ dataExprs
 
 
 -- Decs
-
-dec 
+letdec
   : let identifier typeAnnotation kindAnnotation '=' expr                 { P.letdec $2 $3 $4 $6 }
+dec 
+  : letdec                                                                { $1 }
   | let identifier typeAnnotation kindAnnotation '=' expr where bindings  { P.letdec $2 $3 $4 (P.clause $6 $8) }
   | data identifier kindAnnotation '=' dataExprs                          { P.dataType $2 $3 $5 [] }
   | data identifier kindAnnotation '=' dataExprs where tbindings          { P.dataType $2 $3 $5 $7 }

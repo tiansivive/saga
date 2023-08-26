@@ -92,16 +92,19 @@ let overload
 type Union =
   | \a => Foo: { stuff: a }
   | Bar: String
-  | Baz */
+  | Baz 
+
+*/
   
 
 let try
   : String -> Promise Int!
   = \url -> { 
-        val1 <- (fetch url!);
-        val2 <- (fetch url!);
-
-        return val1 + val2;
+        val1 <- fetch url!
+        val2 <- fetch url!
+        (console.log) 2!
+        return val1 + val2
       }
 
 
+let field = console.log <| 2
