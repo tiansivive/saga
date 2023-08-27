@@ -3,44 +3,53 @@
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Saga.AST.TypeSystem.HindleyMilner.Inference where
 
-import           Control.Applicative                           ((<|>))
+module Saga.Language.TypeSystem.HindleyMilner.Inference where
+
+import           Control.Applicative                                ((<|>))
 import           Control.Monad.Except
-import           Control.Monad.RWS                             (MonadReader (ask, local),
-                                                                MonadWriter (tell),
-                                                                RWST (runRWST),
-                                                                evalRWST)
-import           Control.Monad.State.Lazy                      (MonadState,
-                                                                State,
-                                                                evalState,
-                                                                evalStateT,
-                                                                replicateM)
-import           Control.Monad.Trans.Except                    (ExceptT,
-                                                                runExceptT)
-import           Data.Bifunctor                                (Bifunctor (first))
-import           Data.Functor                                  ((<&>))
-import           Data.List                                     (nub, partition,
-                                                                (\\))
-import qualified Data.Map                                      as Map
-import           Data.Maybe                                    (fromMaybe)
-import qualified Data.Set                                      as Set
-import           Debug.Trace                                   (trace, traceM)
-import           Prelude                                       hiding (EQ)
-import           Saga.AST.TypeSystem.HindleyMilner.Constraints
-import           Saga.AST.TypeSystem.HindleyMilner.Environment
-import qualified Saga.AST.TypeSystem.HindleyMilner.Types       as T
-import           Saga.AST.TypeSystem.HindleyMilner.Types       hiding
-                                                               (Implements)
-import           Saga.Parser.ParserHM                          (runSagaExpr)
-import           Saga.Parser.ParsingInfo                       hiding (Record,
-                                                                Term, Tuple,
-                                                                return)
+import           Control.Monad.RWS                                  (MonadReader (ask, local),
+                                                                     MonadWriter (tell),
+                                                                     RWST (runRWST),
+                                                                     evalRWST)
+import           Control.Monad.State.Lazy                           (MonadState,
+                                                                     State,
+                                                                     evalState,
+                                                                     evalStateT,
+                                                                     replicateM)
+import           Control.Monad.Trans.Except                         (ExceptT,
+                                                                     runExceptT)
+import           Data.Bifunctor                                     (Bifunctor (first))
+import           Data.Functor                                       ((<&>))
+import           Data.List                                          (nub,
+                                                                     partition,
+                                                                     (\\))
+import qualified Data.Map                                           as Map
+import           Data.Maybe                                         (fromMaybe)
+import qualified Data.Set                                           as Set
+import           Debug.Trace                                        (trace,
+                                                                     traceM)
+import           Prelude                                            hiding (EQ)
+import           Saga.Language.Core.Literals                        (Literal (..))
+import           Saga.Language.Core.Syntax
+import           Saga.Language.TypeSystem.HindleyMilner.Constraints
+import           Saga.Language.TypeSystem.HindleyMilner.Environment
+import qualified Saga.Language.TypeSystem.HindleyMilner.Types       as T
+import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
+                                                                    (Implements)
+import           Saga.Parser.Desugar                                (desugar)
+import           Saga.Parser.Parser                                 (runSagaExpr)
+import           Saga.Parser.Shared                                 hiding
+                                                                    (Record,
+                                                                     Term,
+                                                                     Tuple,
+                                                                     return)
 
 run :: String -> Either String Scheme
 run input = do
   Parsed expr _ _ <- runSagaExpr input
-  show `first` runInfer (infer expr)
+  show `first` runInfer (infer $ desugar expr)
+
 
 runInfer :: Infer Type -> Either InferenceError Scheme
 runInfer m = do
@@ -133,10 +142,10 @@ lookupEnv x = do
 infer :: Expr -> Infer Type
 infer ex | trace ("Inferring: " ++ show ex) False = undefined
 infer ex = case ex of
-  T.Identifier x -> lookupEnv x
-  T.Parens expr -> infer expr
+  Identifier x -> lookupEnv x
 
-  T.Lambda (param : rest) body -> do
+
+  Lambda (param : rest) body -> do
     tVar <- fresh KType
     out' <- infer out `scoped` (Tyvar param KType, Scheme (tvars tVar) ([] :=> tVar))
     return $ tVar `TArrow` out'
@@ -145,7 +154,7 @@ infer ex = case ex of
       out = case rest of
         [] -> body
         _  -> Lambda rest body
-  T.FnApp fn [arg] -> do
+  FnApp fn [arg] -> do
     out <- fresh KType
     fnTy <- infer fn
     argTy <- infer arg
@@ -155,19 +164,13 @@ infer ex = case ex of
     emit $ EqCons $ fnTy `EQ` inferred
 
     return out
-  T.FnApp fn (a : as) -> infer curried
+  FnApp fn (a : as) -> infer curried
     where
       partial = FnApp fn [a]
       curried = foldl (\f a -> FnApp f [a]) partial as
 
-  -- Assign x e -> infer $ Lambda [x] e
-  -- t <- infer e
-  -- t' <- generalize t
-  -- let scope
-  -- modify $ \env -> env `extend` (x, t')
-  -- return (s, t)
 
-  T.IfElse cond yes no -> do
+  IfElse cond yes no -> do
     cond' <- infer cond
     yes' <- infer yes
     no' <- infer no
@@ -175,25 +178,19 @@ infer ex = case ex of
     -- \| TODO: this should change to a union type when those get implemented
     return $ if yes' == no' then yes' else TUnion [yes', no']
 
-  -- T.Match _ cases -> do
-
-  --   _d
 
 
-  -- T.List expr -> do
-  --   mapM ()
 
-
-  T.Tuple elems -> do
+  Tuple elems -> do
     tElems <- mapM infer elems
     return $ TTuple tElems
-  T.Record pairs -> do
+  Record pairs -> do
     tPairs <- mapM infer' pairs
     return $ TRecord tPairs
     where
       infer' = mapM infer
 
-  T.Term literal -> return $ TLiteral literal
+  Literal literal -> return $ TLiteral literal
   ty -> error $ "Inference not implemented yet: " ++ show ty
 
 generalizeArg :: Type -> Infer Type

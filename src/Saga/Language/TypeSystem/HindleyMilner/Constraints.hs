@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs #-}
-module Saga.AST.TypeSystem.HindleyMilner.Constraints where
+module Saga.Language.TypeSystem.HindleyMilner.Constraints where
 
 import           Control.Monad.Except
 import           Control.Monad.Reader                          (MonadReader (local),
@@ -20,12 +20,13 @@ import           Data.Maybe                                    (fromJust,
 import qualified Data.Set                                      as Set
 import           Debug.Trace
 import           Prelude                                       hiding (EQ)
-import           Saga.AST.TypeSystem.HindleyMilner.Environment hiding
+import           Saga.Language.TypeSystem.HindleyMilner.Environment hiding
                                                                (Implements)
-import           Saga.AST.TypeSystem.HindleyMilner.Types       hiding
+import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
                                                                (ProtocolID,
                                                                 implementationTy)
 import           Text.Pretty.Simple                            (pShow)
+import Saga.Language.Core.Literals (Literal(..))
 
 -- type Solve = StateT SolveState (Except InferenceError)
 

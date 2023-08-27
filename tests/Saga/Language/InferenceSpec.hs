@@ -1,14 +1,18 @@
-module Saga.AST.InferenceSpec where
+module Saga.Language.InferenceSpec where
 
 import qualified Data.Map                                      as Map
-import qualified Saga.AST.TypeSystem.HindleyMilner.Inference   as I
-import qualified Saga.AST.TypeSystem.HindleyMilner.Types       as HM
+import qualified Saga.Language.TypeSystem.HindleyMilner.Inference   as I
+import qualified Saga.Language.TypeSystem.HindleyMilner.Types       as T
+
+import qualified Saga.Language.Core.Syntax as E
+import qualified Saga.Language.Core.Literals as L
+
 
 import           Test.Hspec
 
 import           Control.Monad.State.Lazy
-import           Saga.AST.TypeSystem.HindleyMilner.Environment (Scheme (Scheme))
-import           Saga.AST.TypeSystem.HindleyMilner.Types       (Qualified ((:=>)))
+import           Saga.Language.TypeSystem.HindleyMilner.Environment (Scheme (Scheme))
+import           Saga.Language.TypeSystem.HindleyMilner.Types       (Qualified ((:=>)))
 
 
 
@@ -24,15 +28,15 @@ spec = do
       it "can infer literal types" $ do
         -- Scheme [] ([] :=> HM.TLiteral (HM.LInt n)) <- return $ infer "1"
         -- n `shouldBe` 1
-        Scheme [] ([] :=> HM.TLiteral (HM.LString str)) <- return $ infer "\"string\""
+        Scheme [] ([] :=> T.TLiteral (L.LString str)) <- return $ infer "\"string\""
         str `shouldBe` "string"
 
       it "can infer arrow types" $ do
-        Scheme [] ([] :=> HM.TArrow (HM.TVar input) (HM.TVar output)) <- return $ infer "\\x -> x"
+        Scheme [] ([] :=> T.TArrow (T.TVar input) (T.TVar output)) <- return $ infer "\\x -> x"
         input `shouldBe` output
 
       it "can infer protocol constraints" $ do
-        Scheme [] ([ HM.TVar a `HM.Implements` "Num"] :=> HM.TArrow (HM.TVar input) (HM.TVar output)) <- return $ infer "\\x -> x + 1"
+        Scheme [] ([ T.TVar a `T.Implements` "Num"] :=> T.TArrow (T.TVar input) (T.TVar output)) <- return $ infer "\\x -> x + 1"
         a `shouldBe` input
         a `shouldBe` output
         input `shouldBe` output

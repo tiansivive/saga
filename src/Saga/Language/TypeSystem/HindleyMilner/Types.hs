@@ -1,14 +1,15 @@
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-module Saga.AST.TypeSystem.HindleyMilner.Types where
+module Saga.Language.TypeSystem.HindleyMilner.Types where
 
 import           Data.Map          (Map)
 import           GHC.Base          ()
 import           Saga.Lexer.Tokens (Token (Qualified))
+import Saga.Language.Core.Literals (Literal)
 
 data TypeExpr where
-  TTerm :: Term -> TypeExpr
+  TTerm :: Literal -> TypeExpr
   TIdentifier :: String -> TypeExpr
   TETuple :: [TypeExpr] -> TypeExpr
   TERecord :: [(String, TypeExpr)] -> TypeExpr
@@ -37,7 +38,7 @@ data Binding a
 
 
 data Type where
-  TLiteral :: Term -> Type
+  TLiteral :: Literal -> Type
   TPrimitive :: BuiltInType -> Type
   TTuple :: [Type] -> Type
   TRecord :: [(String, Type)] -> Type
@@ -111,65 +112,4 @@ data Mode = Strict | Lazy
 
 
 
-
-
-
--- | Term expressions
-data Expr where
-  Term :: Term -> Expr
-  Identifier :: String -> Expr
-  List :: [Expr] -> Expr
-  Tuple :: [Expr] -> Expr
-  Record :: [(String, Expr)] -> Expr
-  IfElse :: Expr -> Expr -> Expr -> Expr
-  Match :: Expr -> [Case] -> Expr
-  Lambda :: [String] -> Expr -> Expr
-  FnApp :: Expr -> [Expr] -> Expr
-  Clause :: Expr -> [Binding Expr] -> Expr
-
-  Block :: [Statement] -> Expr
-  Parens :: Expr -> Expr
-  --FieldAccess :: Expr -> String -> Expr
-deriving instance Show Expr
-deriving instance Eq Expr
-
-data Term where
-  LInt :: Int -> Term
-  LBool :: Bool -> Term
-  LString :: String -> Term
-deriving instance Show Term
-deriving instance Eq Term
-
-
-
-data Statement where
-  Return      :: Expr -> Statement
-  BackCall    :: [Pattern] -> Expr -> Statement
-  Declaration :: Declaration -> Statement
-  Procedure   :: Expr -> Statement
-
-deriving instance Show Statement
-deriving instance Eq Statement
-
-
-data Case = Case Pattern Expr
-  deriving (Show, Eq)
-data Pattern
-    = Id String
-    | Literal Term
-    | PatTuple [String]
-    | PatList [String] (Maybe String)
-    | PatRecord [String] (Maybe String)
-    | PatData String [String]
-  deriving (Show, Eq)
-
-type DataExpr = (String, TypeExpr)
-
-data Declaration
-    = Let String (Maybe TypeExpr) (Maybe Kind) Expr
-    | Type String (Maybe Kind) TypeExpr
-    | Data String (Maybe Kind) [DataExpr] [Binding TypeExpr]
-    deriving (Show, Eq)
-newtype Script = Script [Declaration]
-    deriving (Show, Eq)
 

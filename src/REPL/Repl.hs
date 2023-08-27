@@ -1,27 +1,29 @@
 module REPL.Repl where
 
 
-import qualified Saga.AST.Evaluation                          as E
-import qualified Saga.AST.TypeSystem.HindleyMilner.Check      as HMC
+import qualified Saga.Language.Evaluation                          as E
+import qualified Saga.Language.TypeSystem.HindleyMilner.Check      as HMC
 
-import qualified Saga.AST.TypeSystem.HindleyMilner.Inference  as HMI
-import qualified Saga.AST.TypeSystem.HindleyMilner.Refinement as HMR
+import qualified Saga.Language.TypeSystem.HindleyMilner.Inference  as HMI
+import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement as HMR
 
-import qualified Saga.Parser.ParserHM                         as HMP
+import qualified Saga.Parser.Parser                                as P
 
-import           Data.Map                                     (Map)
-import qualified Data.Map                                     as Map
+import           Data.Map                                          (Map)
+import qualified Data.Map                                          as Map
 
-import           Control.Monad.Except                         (ExceptT)
-import           Control.Monad.State                          (StateT)
-import           Debug.Trace                                  (traceM)
-import           Saga.Parser.ParsingInfo                      hiding (Term)
-import           System.Console.Haskeline                     (defaultSettings,
-                                                               getInputLine,
-                                                               outputStrLn,
-                                                               runInputT)
-import           Text.Pretty.Simple                           (pPrint)
-
+import           Control.Monad.Except                              (ExceptT)
+import           Control.Monad.State                               (StateT)
+import           Debug.Trace                                       (traceM)
+import           Saga.Language.Core.Syntax                         (Expr)
+import           Saga.Parser.Desugar                               (desugar)
+import           Saga.Parser.ParsingInfo                           hiding (Term)
+import           Saga.Parser.Shared                                (ParsedData (..))
+import           System.Console.Haskeline                          (defaultSettings,
+                                                                    getInputLine,
+                                                                    outputStrLn,
+                                                                    runInputT)
+import           Text.Pretty.Simple                                (pPrint)
 
 
 data Sort = Type | Kind | Term
@@ -82,6 +84,8 @@ repl = runInputT defaultSettings $ repl' Map.empty
 
 
             where
+
+                desugared = (fmap . fmap) desugar
                 evalExpr line = case result of
                     Left e -> do { pPrint e; repl' env }
                     Right val -> do
@@ -89,7 +93,7 @@ repl = runInputT defaultSettings $ repl' Map.empty
                         repl' env
                     where
                         result = do
-                            Parsed expr _ _ <- HMP.runSagaExpr line
+                            Parsed expr _ _ <- desugared P.runSagaExpr line
                             E.run (Just env) (E.eval expr)
 
                 evalDec var expr = case result of
@@ -99,14 +103,14 @@ repl = runInputT defaultSettings $ repl' Map.empty
                         repl' $ Map.insert var val env
                     where
                         result = do
-                            Parsed e _ _ <- HMP.runSagaExpr expr
+                            Parsed e _ _ <- desugared P.runSagaExpr expr
                             E.run (Just env) (E.eval e)
 
 
                 typecheck expr ty = let
                         parsed = do
-                            Parsed expr' _ _ <- HMP.runSagaExpr expr
-                            Parsed tyExpr' _ _ <- HMP.runSagaType ty
+                            Parsed expr' _ _ <- desugared P.runSagaExpr expr
+                            Parsed tyExpr' _ _ <- desugared P.runSagaType ty
                             ty' <- HMR.run tyExpr'
                             (bool, constraints) <- HMC.run expr' ty'
                             return (expr', ty', bool, constraints)
@@ -123,19 +127,19 @@ repl = runInputT defaultSettings $ repl' Map.empty
                             pPrint bool
 
                 parseTerm input = do
-                    case HMP.runSagaExpr input of
+                    case P.runSagaExpr input of
                         (Left e)  -> pPrint e
                         (Right t) -> pPrint t
                     repl' env
 
                 parseType input = do
-                    case HMP.runSagaType input of
+                    case P.runSagaType input of
                         (Left e)   -> pPrint e
                         (Right ty) -> pPrint ty
                     repl' env
 
                 parseKind input = do
-                    case HMP.runSagaKind input of
+                    case P.runSagaKind input of
                         (Left e)   -> pPrint e
                         (Right ty) -> pPrint ty
                     repl' env
@@ -197,7 +201,7 @@ repl = runInputT defaultSettings $ repl' Map.empty
 --                 matches <- check expr tyExpr'
 --                 update id inferred inferred matches
 
---         check' (Scripts.Type (AST.Name _ id) kind tyExpr) = do
+--         check' (Scripts.Type (Language.Name _ id) kind tyExpr) = do
 --             k <- Infer.kindOf tyExpr
 --             ty <- Infer.reduce tyExpr
 --             matches <- check_kind tyExpr k

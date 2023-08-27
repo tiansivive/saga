@@ -3,43 +3,16 @@
 
 module Main (main) where
 
-import qualified Saga.Lexer.Lexer                              as L
 
+import           REPL.Repl                (repl)
 
-import qualified Data.Map                                      as Map
-import qualified Saga.AST.Evaluation                           as E
-import qualified Saga.AST.TypeSystem.HindleyMilner.Check       as HMC
-import qualified Saga.AST.TypeSystem.HindleyMilner.Environment as HME
-import qualified Saga.AST.TypeSystem.HindleyMilner.Inference   as HMI
-import qualified Saga.AST.TypeSystem.HindleyMilner.Refinement  as HMR
-import           Saga.AST.TypeSystem.HindleyMilner.Types       as HMT hiding
-                                                                      (Term,
-                                                                       Type)
-import qualified Saga.Parser.ParserHM                          as HMP
-import qualified Saga.Parser.ParsingInfo                       as HMPI
-
-import           Control.Monad.State.Lazy
-import           Data.Maybe                                    (fromJust)
-
-import           Control.Monad.Except
-import           Control.Monad.RWS                             (evalRWST)
-import           Data.Bifunctor                                (first)
-import           Debug.Trace                                   (traceM)
-
-import qualified Saga.AST.TypeSystem.HindleyMilner.Refinement  as HMR
-import           Saga.AST.TypeSystem.HindleyMilner.Refinement  (refine)
-
-import           REPL.Repl                                     (repl)
-import           Saga.Parser.ParsingInfo                       (ParsedData (Parsed))
-import           System.Console.Haskeline                      (defaultSettings,
-                                                                getInputLine,
-                                                                outputStrLn,
-                                                                runInputT)
-import           System.IO                                     (IOMode (ReadMode, ReadWriteMode, WriteMode),
-                                                                hClose,
-                                                                hGetContents,
-                                                                openFile)
-import           Text.Pretty.Simple                            (pHPrint, pPrint)
+import qualified Saga.Lexer.Lexer         as L
+import qualified Saga.Parser.Parser       as P
+import           System.Console.Haskeline (defaultSettings, getInputLine,
+                                           outputStrLn, runInputT)
+import           System.IO                (IOMode (ReadMode, ReadWriteMode, WriteMode),
+                                           hClose, hGetContents, openFile)
+import           Text.Pretty.Simple       (pHPrint, pPrint)
 
 
 
@@ -58,7 +31,7 @@ parseScript fp = do
     handle <- openFile fp ReadMode
     parsingH <- openFile "./lang/test.parsing.log" WriteMode
     contents <- hGetContents handle
-    let res = HMP.runSagaScript contents
+    let res = P.runSagaScript contents
     pPrint res
     pHPrint parsingH res
     hClose handle

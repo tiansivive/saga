@@ -1,7 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
 
 
-module Saga.AST.TypeSystem.HindleyMilner.Refinement where
+module Saga.Language.TypeSystem.HindleyMilner.Refinement where
 
 import           Control.Monad.Except
 import           Control.Monad.State.Lazy                      (MonadState,
@@ -18,14 +18,14 @@ import qualified Data.Map                                      as Map
 import qualified Data.Set                                      as Set
 import           Debug.Trace                                   (trace, traceM)
 
-import           Saga.AST.TypeSystem.HindleyMilner.Types
+import           Saga.Language.TypeSystem.HindleyMilner.Types
 
 import           Control.Monad.Trans.Reader                    (ReaderT (runReaderT),
                                                                 ask, local)
 import           Control.Monad.Trans.State                     (StateT)
 import           Data.Bifunctor                                (first)
 import           Prelude                                       hiding (lookup)
-import           Saga.AST.TypeSystem.HindleyMilner.Environment (scoped)
+import           Saga.Language.TypeSystem.HindleyMilner.Environment (scoped)
 import           Saga.Parser.ParsingInfo                       hiding (return)
 
 

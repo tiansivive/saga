@@ -1,5 +1,5 @@
 {
-module Saga.Parser.ParserHM
+module Saga.Parser.Parser
     ( runSagaExpr
     , runSagaScript
     , runSagaType
@@ -14,11 +14,14 @@ module Saga.Parser.ParserHM
 
 import qualified Saga.Lexer.Lexer as L
 import qualified Saga.Lexer.Tokens as T
+
 import qualified Saga.Parser.ParsingInfo as P
-import           Saga.Parser.ParsingInfo ((<->))
+import qualified Saga.Parser.Shared  as P
+import qualified Saga.Parser.Expr as PE
+import qualified Saga.Parser.Literals as PL
+import qualified Saga.Parser.Types as PT
 
 
-import qualified Saga.AST.TypeSystem.HindleyMilner.Types as HM
 
 }
 
@@ -148,7 +151,7 @@ import qualified Saga.AST.TypeSystem.HindleyMilner.Types as HM
 
 
 identifier
-  : id  { P.identifier $1 HM.Identifier }
+  : id  { P.identifier $1 PE.Identifier }
 
 
  -- COLLECTIONS
@@ -182,11 +185,11 @@ params
   | params identifier { $1 ++ [$2] }
 
 args
-  --:                     { [] }
-  : atom args  %shift   { $1 : $2 }
+  :                     { [] }
+  | atom args  %shift   { $1 : $2 }
 
 fnApplication 
-  : expr args '!' { P.fnApplication $1 $2 $3 }
+  : atom args '!' { P.fnApplication $1 $2 $3 }
   --| expr '!' { P.fnApplication $1 [] $2 }
 -- args
 --   : atom       %shift   { [$1] }
@@ -227,7 +230,7 @@ patData
 
 pattern 
   : identifier                          { P.pattern $ P.Var $1 }
-  | term                                { P.pattern $ P.Term $ fmap HM.Term $1   }
+  | term                                { P.pattern $ P.Term $ fmap PE.Literal $1   }
   | patData                             { P.pattern $ P.Tagged $1 }
   | '(' identifier patTupleElems ')'    { P.pattern $ P.Tuple ($2 : $3) }
   | '[' ']'                             { P.pattern $ P.List [] Nothing }
@@ -238,9 +241,9 @@ pattern
 
 --EXPRESSIONS
 term 
-  : number     { P.number HM.LInt $1 }
-  | string     { P.string HM.LString $1 }
-  | boolean    { P.boolean HM.LBool $1 } 
+  : number     { P.number PL.LInt $1 }
+  | string     { P.string PL.LString $1 }
+  | boolean    { P.boolean PL.LBool $1 } 
 
   
 atom
@@ -273,7 +276,7 @@ expr
   | matchExpr               { $1 }
   | fnApplication           { $1 }
   | '\\' params '->' expr   { P.lambda $2 $4 $1 }
-  | atom              { $1 }
+  | atom      %shift        { $1 }
   | '.' identifier          { P.dotLambda $2 }
   | binaryExpr { $1 }
   
@@ -309,8 +312,8 @@ backcall
 
 -- decStmt
 statement
-  : letdec                       { fmap HM.Declaration $1 } 
-  --| expr  %shift                 { fmap HM.Procedure $1 }
+  : letdec                       { fmap PE.Declaration $1 } 
+  --| expr  %shift                 { fmap PT.Procedure $1 }
   | backcall                     { $1 }
 
 stmts
@@ -345,9 +348,9 @@ ttuple
 
 
 type 
-  : number     { P.number (HM.TTerm . HM.LInt) $1 }
-  | boolean    { P.boolean (HM.TTerm . HM.LBool) $1 }
-  | string     { P.string (HM.TTerm . HM.LString) $1 }
+  : number     { P.number (PT.TLiteral . PL.LInt) $1 }
+  | boolean    { P.boolean (PT.TLiteral . PL.LBool) $1 }
+  | string     { P.string (PT.TLiteral . PL.LString) $1 }
   | ttuple     { $1 }
   | trecord    { $1 }
   
@@ -453,19 +456,19 @@ script
 {
 
 
-runSagaScript :: String -> Either String (P.ParsedData HM.Script)
+runSagaScript :: String -> Either String (P.ParsedData PE.Script)
 runSagaScript input = input `P.run` parseSagaScript
 
-runSagaExpr :: String -> Either String (P.ParsedData HM.Expr)
+runSagaExpr :: String -> Either String (P.ParsedData PE.Expr)
 runSagaExpr input = input `P.run` parseSagaExpr
 
-runSagaType :: String -> Either String (P.ParsedData HM.TypeExpr)
+runSagaType :: String -> Either String (P.ParsedData PT.TypeExpr)
 runSagaType input = input `P.run` parseSagaType
 
-runSagaKind :: String -> Either String (P.ParsedData HM.Kind)
+runSagaKind :: String -> Either String (P.ParsedData PT.Kind)
 runSagaKind input = input `P.run` parseSagaKind
 
-runSagaDec :: String -> Either String (P.ParsedData HM.Declaration)
+runSagaDec :: String -> Either String (P.ParsedData PE.Declaration)
 runSagaDec input = input `P.run` parseSagaDec
 
 }

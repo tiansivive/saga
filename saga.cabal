@@ -17,17 +17,24 @@ library
   exposed-modules:
       Main
       REPL.Repl
-      Saga.AST.Evaluation
-      Saga.AST.TypeSystem.HindleyMilner.Check
-      Saga.AST.TypeSystem.HindleyMilner.Constraints
-      Saga.AST.TypeSystem.HindleyMilner.Environment
-      Saga.AST.TypeSystem.HindleyMilner.Inference
-      Saga.AST.TypeSystem.HindleyMilner.Refinement
-      Saga.AST.TypeSystem.HindleyMilner.Types
+      Saga.Language.Core.Literals
+      Saga.Language.Core.Syntax
+      Saga.Language.Evaluation
+      Saga.Language.TypeSystem.HindleyMilner.Check
+      Saga.Language.TypeSystem.HindleyMilner.Constraints
+      Saga.Language.TypeSystem.HindleyMilner.Environment
+      Saga.Language.TypeSystem.HindleyMilner.Inference
+      Saga.Language.TypeSystem.HindleyMilner.Refinement
+      Saga.Language.TypeSystem.HindleyMilner.Types
       Saga.Lexer.Lexer
       Saga.Lexer.Tokens
-      Saga.Parser.ParserHM
+      Saga.Parser.Desugar
+      Saga.Parser.Expr
+      Saga.Parser.Literals
+      Saga.Parser.Parser
       Saga.Parser.ParsingInfo
+      Saga.Parser.Shared
+      Saga.Parser.Types
       Saga.Utils.Utils
   other-modules:
       Paths_saga
@@ -53,9 +60,9 @@ test-suite saga-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Saga.AST.EvaluationSpec
-      Saga.AST.InferenceSpec
-      Saga.AST.SubtypingSpec
+      Saga.Language.EvaluationSpec
+      Saga.Language.InferenceSpec
+      Saga.Language.SubtypingSpec
       Saga.Parser.ParserSpec
       SpecHook
       Paths_saga
