@@ -192,9 +192,9 @@ match expr cases = [ HM.Match e cs | e <- expr, cs <- sequence cases]
 
 
 parenthesised :: ParsedData HM.Expr -> RangedToken -> RangedToken -> ParsedData HM.Expr
-parenthesised expr@(Parsed val range _) start end = expr
-    { value = HM.Parens val
-    , range = L.rtRange start <-> L.rtRange end
+parenthesised expr start end = expr
+    { range = L.rtRange start <-> L.rtRange end
+    , tokens = start :end : tokens expr
     }
 
 
@@ -209,7 +209,6 @@ lambda params (Parsed body' bRange bToks) rt =
 fnApplication :: ParsedData HM.Expr -> [ParsedData HM.Expr] -> RangedToken -> ParsedData HM.Expr
 fnApplication fn args rt =
     let
-
         expr = HM.FnApp (value fn) $ fmap value args
         toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
     in Parsed expr (range fn <-> L.rtRange rt) (nub toks)

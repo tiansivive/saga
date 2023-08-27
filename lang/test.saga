@@ -94,7 +94,6 @@ type Union =
   | Bar: String
   | Baz 
 
-*/
   
 
 let try
@@ -107,4 +106,7 @@ let try
       }
 
 
-let field = console.log <| 2
+*/
+
+let test = f 1!
+

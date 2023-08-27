@@ -148,7 +148,7 @@ import qualified Saga.AST.TypeSystem.HindleyMilner.Types as HM
 
 
 identifier
-  : id { P.identifier $1 HM.Identifier }
+  : id  { P.identifier $1 HM.Identifier }
 
 
  -- COLLECTIONS
@@ -182,11 +182,19 @@ params
   | params identifier { $1 ++ [$2] }
 
 args
-  :               { [] }
-  | args atom     { $1 ++ [$2] }
+  --:                     { [] }
+  : atom args  %shift   { $1 : $2 }
 
 fnApplication 
-  : atom args '!'  { P.fnApplication $1 $2 $3 }
+  : expr args '!' { P.fnApplication $1 $2 $3 }
+  --| expr '!' { P.fnApplication $1 [] $2 }
+-- args
+--   : atom       %shift   { [$1] }
+--   | args atom  %shift   { $1 ++ [$2] }
+
+-- fnApplication 
+--   : atom args '!'  { P.fnApplication $1 $2 $3 }
+--   | atom '!'       { P.fnApplication $1 [] $2 }
  
 --CONTROL FLOW
 controlFlow 
@@ -218,14 +226,14 @@ patData
   | patData identifier          { $1 ++ [$2] }
 
 pattern 
-  : identifier                        %shift  { P.pattern $ P.Var $1 }
-  | term                              %shift  { P.pattern $ P.Term $ fmap HM.Term $1   }
-  | patData                           %shift  { P.pattern $ P.Tagged $1 }
-  | '(' identifier patTupleElems ')'  %shift  { P.pattern $ P.Tuple ($2 : $3) }
-  | '[' ']'                           %shift  { P.pattern $ P.List [] Nothing }
-  | '[' patListElems patRest ']'      %shift  { P.pattern $ P.List $2 $3 }
-  | '{' patRecordKeys patRest '}'     %shift  { P.pattern $ P.Record $2 $3 }
-  | '(' pattern ')'                   %shift  { $2 }
+  : identifier                          { P.pattern $ P.Var $1 }
+  | term                                { P.pattern $ P.Term $ fmap HM.Term $1   }
+  | patData                             { P.pattern $ P.Tagged $1 }
+  | '(' identifier patTupleElems ')'    { P.pattern $ P.Tuple ($2 : $3) }
+  | '[' ']'                             { P.pattern $ P.List [] Nothing }
+  | '[' patListElems patRest ']'        { P.pattern $ P.List $2 $3 }
+  | '{' patRecordKeys patRest '}'       { P.pattern $ P.Record $2 $3 }
+  | '(' pattern ')'                     { $2 }
 
 
 --EXPRESSIONS
@@ -243,7 +251,7 @@ atom
   | record                  { $1 }
   | '{' block '}'           { P.block $2 $1 $3 }
   | '(' expr ')'            { P.parenthesised $2 $1 $3 }
-
+ 
 
 cases
   : '|' pattern '->' expr        { [P.matchCase $2 $4] }
@@ -254,7 +262,7 @@ matchExpr
 
 
 binding
-  : identifier '=' expr  %prec RIGHT { P.binding $1 $3 }
+  : identifier '=' expr   { P.binding $1 $3 }
 
 bindings
   : binding               { [$1] }
@@ -265,10 +273,12 @@ expr
   | matchExpr               { $1 }
   | fnApplication           { $1 }
   | '\\' params '->' expr   { P.lambda $2 $4 $1 }
-  | atom %shift             { $1 }
-  | '.' atom                { P.dotLambda $2 }
-
-  | expr '.' identifier     { P.binaryOp $1 $2 $3 }
+  | atom              { $1 }
+  | '.' identifier          { P.dotLambda $2 }
+  | binaryExpr { $1 }
+  
+binaryExpr
+  : expr '.' identifier     { P.binaryOp $1 $2 $3 }
   | expr '+' expr           { P.binaryOp $1 $2 $3 }
   | expr '-' expr           { P.binaryOp $1 $2 $3 }
   | expr '*' expr           { P.binaryOp $1 $2 $3 }
@@ -290,8 +300,8 @@ expr
 
 -- BLOCKS
 patterns
-  : pattern ','       %shift { [$1] }
-  | patterns pattern  %shift { $1 ++ [$2] }
+  : pattern ','        { [$1] }
+  | patterns pattern   { $1 ++ [$2] }
 
 backcall
   : identifier '<-' expr            { P.backcall [P.pattern $ P.Var $1] $3 }
@@ -299,8 +309,8 @@ backcall
 
 -- decStmt
 statement
-  : fnApplication                { fmap HM.Procedure $1 }
-  | letdec                       { fmap HM.Declaration $1 }
+  : letdec                       { fmap HM.Declaration $1 } 
+  --| expr  %shift                 { fmap HM.Procedure $1 }
   | backcall                     { $1 }
 
 stmts

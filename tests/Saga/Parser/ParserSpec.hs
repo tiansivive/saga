@@ -13,8 +13,8 @@ import qualified Saga.Parser.ParserHM                    as P
 import           System.IO
 import           Test.Hspec
 
+import           Saga.AST.TypeSystem.HindleyMilner.Types (Declaration (..))
 import           Saga.Parser.ParsingInfo                 (ParsedData (..))
-import           Saga.AST.TypeSystem.HindleyMilner.Types            (Declaration (..))
 
 parse :: String -> HM.Expr
 parse str = case P.runSagaExpr str of
