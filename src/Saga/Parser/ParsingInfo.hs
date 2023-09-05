@@ -33,6 +33,7 @@ identifier :: L.RangedToken -> (String -> a) -> ParsedData a
 identifier rt constructor = Parsed expr (L.rtRange rt) [rt]
   where
     value tok | T.Id name <- rtToken tok = BS.unpack name
+    value tok | T.Hole name <- rtToken tok = BS.unpack name
     expr = constructor $ value rt
 
 
@@ -241,6 +242,10 @@ backcall pats expr = [ E.BackCall pats' expr'
 
 block :: [ParsedData E.Statement] -> RangedToken -> RangedToken -> ParsedData E.Expr
 block stmts _ _ = E.Block <$> sequence stmts
+
+
+
+
 
 
 -- | TYPES

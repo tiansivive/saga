@@ -1,3 +1,7 @@
 
 
-(get ob).a
+{
+    a <- foo
+    b <- a
+    return a
+}

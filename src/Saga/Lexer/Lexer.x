@@ -75,8 +75,7 @@ tokens :-
     <0> ")"                 { tok RParen }
     <0> "["                 { tok LBrack }
     <0> "]"                 { tok RBrack }
-    <0> "{"                 { tok LCurly }
-    <0> "}"                 { tok RCurly }
+    
 
     <0> ":"                 { tok Colon }
     <0> ";"                 { tok SemiColon }
@@ -124,7 +123,19 @@ tokens :-
     <0> "#"                 { tok $ Operator "#" }
     <0> "@"                 { tok $ Operator "#" }
 
-    
+    <0> "{"                 { tok LCurly }
+    <0> "}"                 { tok RCurly }
+    -- -- Alex rules
+    -- <0> {
+    --   ^\s+     { let newIndent = length $ alex_input
+    --             ; if newIndent > currentIndent
+    --               then do { setIndent newIndent; return '{' }
+    --               else if newIndent < currentIndent
+    --               then do { popIndent; return '}' }
+    --               else return ';' -- same level, separate statements
+    --           }
+    --   .|\n     { code to handle other characters }
+    -- }
 
 
 
@@ -154,24 +165,30 @@ data RangedToken = RangedToken
 -- | faking Eq isntances so we dont get problems with the Expr and Type Eq 
 -- | TODO: this definitely needs to change!!!!!
 instance Eq Range where
-  r1 == r2 = True
+  r1 == r2 = start r1 == start r2 && stop r1 == stop r2
 
 instance Eq RangedToken where 
-  rt1 == rt2 = True
+  rt1 == rt2 = rtToken rt1 == rtToken rt2 && rtRange rt1 == rtRange rt2
 
 instance Show Range where
-  show _ = ""
+  show (Range start stop) = "| " ++ show start ++ " <-> " ++ show stop ++ " |"
 instance Show RangedToken where
-  show t =  show $ rtToken t
+  show t = show $ rtToken t
 
 -- At the bottom, we may insert more Haskell definitions, such as data structures, auxiliary functions, etc.
 data AlexUserState = AlexUserState
-  { nestLevel :: Int
+  { nestLevel     :: Int
+  , currentIndent :: Int
+  , indentStack   :: [Int]
   }
+
+
 
 alexInitUserState :: AlexUserState
 alexInitUserState = AlexUserState
     { nestLevel = 0
+    , currentIndent = 0
+    , indentStack = []
     }
 
 get :: Alex AlexUserState
