@@ -38,7 +38,8 @@ import qualified Saga.Parser.Types as PT
 
 %token
   -- Identifiers
-  id { L.RangedToken (T.Id _) _ }
+  id   { L.RangedToken (T.Id _) _ }
+  
   -- Constants
   number     { L.RangedToken (T.Number _) _ }
   string     { L.RangedToken (T.String _) _ }
@@ -152,6 +153,7 @@ import qualified Saga.Parser.Types as PT
 
 identifier
   : id  { P.identifier $1 PE.Identifier }
+
 
 
  -- COLLECTIONS

@@ -13,6 +13,7 @@ import           Saga.Parser.Types    hiding (Binding)
 data Expr where
   Literal :: Literal -> Expr
   Identifier :: String -> Expr
+  Hole :: String -> Expr
   List :: [Expr] -> Expr
   Tuple :: [Expr] -> Expr
   Record :: [(String, Expr)] -> Expr

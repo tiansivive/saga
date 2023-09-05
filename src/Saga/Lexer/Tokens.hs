@@ -5,6 +5,7 @@ import           Data.ByteString.Lazy.Char8 (ByteString)
 -- Lexer
 data Token
   = Id ByteString
+  | Hole ByteString
 
   --  Keywords
   | Let
@@ -65,6 +66,7 @@ data Token
   | LCurly
   | RCurly
   | Section
+  | Backtick
   | Operator ByteString
 
   -- primitives

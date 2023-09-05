@@ -24,6 +24,7 @@ $backslash  = [\\]
 $ws         = [[\ \t\f\v\r]] -- whitespace char set without newline
 
 @id   = ($alpha | \_) ($alpha | $digit | \_ | \' | \? )*
+@hole = (\?) ($alpha | \_) ($alpha | $digit | \_ | \' | \? )*
 
 tokens :-
 
@@ -68,6 +69,7 @@ tokens :-
     <0> yes | on  | true    { tokBoolean True }
     <0> no  | off | false   { tokBoolean False }
     <0> @id                 { tokId }
+    <0> @hole                { tokHole }
     
     <0> "("                 { tok LParen }
     <0> ")"                 { tok RParen }
@@ -86,7 +88,8 @@ tokens :-
     <0> "="                 { tok Equals }
     <0> "|"                 { tok Pipe }
     <0> "."                 { tok Dot }
-    <0> "::"                 { tok Section }
+    <0> "`"                 { tok Backtick }
+    <0> "::"                { tok Section }
     <0> $backslash          { tok BackSlash }
 
     <0> "+"                 { tok $ Operator "+" }
@@ -115,6 +118,7 @@ tokens :-
     
     <0> "|>"                { tok $ Operator "|>" }
     <0> "<|"                { tok $ Operator "<|" }
+
 
     <0> "$"                 { tok $ Operator "$" }
     <0> "#"                 { tok $ Operator "#" }
@@ -197,6 +201,13 @@ tokId :: AlexAction RangedToken
 tokId inp@(_, _, str, _) len =
   pure RangedToken
     { rtToken = Id $ BS.take len str
+    , rtRange = mkRange inp len
+    }
+
+tokHole :: AlexAction RangedToken
+tokHole inp@(_, _, str, _) len =
+  pure RangedToken
+    { rtToken = Hole $ BS.take len str
     , rtRange = mkRange inp len
     }
 

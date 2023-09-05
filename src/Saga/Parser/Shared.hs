@@ -63,7 +63,7 @@ tyIdStr (PT.TIdentifier id) = id
 tyIdStr e                  = error $ "Not type identifier expression:\n" ++ show e
 
 lexer :: (L.RangedToken -> L.Alex a) -> L.Alex a
-lexer = (=<< L.alexMonadScan)
+lexer = (=<< L.alexMonadScan) 
 
 
 run :: String -> L.Alex a -> Either String a
@@ -72,7 +72,7 @@ run =  L.runAlex . BS.pack
 parseError :: L.RangedToken -> L.Alex a
 parseError tok = do
   (L.AlexPn _ line column, prev, inStr, _) <- L.alexGetInput
-  L.alexError $ "Parse error at line " <> show line <> ", column " <> show column <>
-                " Previous character: " <> show prev <>
-                " Current input string: " <> show inStr <>
-                " Token: " <> show tok
+  L.alexError $ "Parse error at\nline " <> show line <> "\ncolumn " <> show column <>
+                "\nPrevious character: " <> show prev <>
+                "\nCurrent input string: " <> show inStr <>
+                "\nToken: " <> show tok

@@ -8,6 +8,7 @@ import           REPL.Repl                (repl)
 
 import qualified Saga.Lexer.Lexer         as L
 import qualified Saga.Parser.Parser       as P
+import qualified Saga.Parser.ParserV2     as PV2
 import           System.Console.Haskeline (defaultSettings, getInputLine,
                                            outputStrLn, runInputT)
 import           System.IO                (IOMode (ReadMode, ReadWriteMode, WriteMode),
@@ -23,6 +24,21 @@ main :: IO ()
 main = do
     putStrLn "Starting Saga..."
     repl
+
+
+
+
+parseScriptV2 :: FilePath -> IO ()
+parseScriptV2 fp = do
+    handle <- openFile fp ReadMode
+    parsingH <- openFile "./lang/test.parsing.log" WriteMode
+    contents <- hGetContents handle
+    let res = PV2.runSagaExpr contents
+    pPrint res
+    pHPrint parsingH res
+    hClose handle
+    hClose parsingH
+    putStrLn "Bye!"
 
 
 

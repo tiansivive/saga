@@ -169,6 +169,20 @@ fnApplication fn args rt =
         toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
     in Parsed expr (range fn <-> L.rtRange rt) (nub toks)
 
+fnApp :: ParsedData E.Expr -> [ParsedData E.Expr] -> ParsedData E.Expr
+fnApp fn args =
+    let
+        expr = E.FnApp (value fn) $ fmap value args
+        toks = foldl (\toks' arg -> toks' ++ tokens arg) (tokens fn) args
+    in Parsed expr (range fn <-> range (last args)) (nub toks)
+
+infixApplication :: ParsedData E.Expr -> [ParsedData E.Expr] -> ParsedData E.Expr
+infixApplication fn args =
+    let
+        expr = E.FnApp (value fn) $ fmap value args
+        toks = foldl (\toks' arg -> toks' ++ tokens arg) (tokens fn) args
+    in Parsed expr (range fn <-> range (last args)) (nub toks)
+
 
 binaryOp :: ParsedData E.Expr -> L.RangedToken -> ParsedData E.Expr -> ParsedData E.Expr
 --binaryOp l o r | trace ("\nbinaryOp: " ++ show o) False = undefined

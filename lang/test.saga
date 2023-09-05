@@ -99,7 +99,7 @@ type Union =
 let try
   : String -> Promise Int!
   = \url -> { 
-        val1 <- fetch url!
+        :Right val1 <- fetch url!
         val2 <- fetch url!
         return val1 + val2
       }

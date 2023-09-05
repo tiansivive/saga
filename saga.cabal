@@ -29,9 +29,13 @@ library
       Saga.Lexer.Lexer
       Saga.Lexer.Tokens
       Saga.Parser.Desugar
+      Saga.Parser.Errors
       Saga.Parser.Expr
+      Saga.Parser.Layout
       Saga.Parser.Literals
+      Saga.Parser.Monad
       Saga.Parser.Parser
+      Saga.Parser.ParserV2
       Saga.Parser.ParsingInfo
       Saga.Parser.Shared
       Saga.Parser.Types
