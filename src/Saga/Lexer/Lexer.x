@@ -6,9 +6,6 @@ import Control.Monad (when)
 import Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
 
-import Debug.Trace (traceM)
-
-
 import Saga.Lexer.Tokens 
 
 
@@ -260,8 +257,6 @@ unnestBlock :: AlexAction RangedToken
 unnestBlock inp len = do
   state <- get
   let level = blockLevel state - 1
-  traceM $ "State: " ++ show state
-  traceM $ "New block level: " ++ show level
   put state{blockLevel = level}
   when (level == 0) $
     alexSetStartCode 0
@@ -273,9 +268,6 @@ identation input len = do
   state <- get
   let len' = fromIntegral len
   let currentIndent = identLevel state
-  traceM $ "Input: " ++ show input 
-  traceM $ "Length: " ++ show len
-  traceM $ "Current Ident level: " ++ show currentIndent
   if len' > currentIndent
     then do 
       modify $ \s -> s{identLevel = len'}

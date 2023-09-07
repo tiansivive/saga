@@ -1,6 +1,8 @@
 
 
-let a = { 
-    key: 2
-    block: 3
+
+fn {
+    var <- bind
+    proc 1
+    return 1
 }

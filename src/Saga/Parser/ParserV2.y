@@ -196,21 +196,13 @@ params
 expr6
   : exprAtom { $1 }
   | '{' block '}' { P.block $2 $1 $3 }
-  -- | '{' block '}'
-  --     {% do
-  --       res <- parseStatement
-  --       pure $ P.block $2 res $3 
-  --     }
-
--- block
---   : 'let' identifier '=' expr {% parseS }
-
+  
 block
   : returnStmt        { [$1] }
   | stmts returnStmt  { $1 ++ [$2] }
 
 returnStmt 
-  : return expr                  { P.returnStmt $2 $1 }
+  : return expr ';'   { P.returnStmt $2 $1 }
 
 stmts
   : statement       { [$1] }
@@ -218,8 +210,8 @@ stmts
 
 -- decStmt
 statement
-  : backcall                     { $1 }
-  --| expr  %shift                 { fmap PT.Procedure $1 }
+  : backcall ';'                     { $1 }
+  | expr ';'  %shift                 { fmap PE.Procedure $1 }
   --| letdec                       { fmap PE.Declaration $1 } 
 
 backcall
