@@ -1,7 +1,6 @@
 
 
-{
-    a <- foo
-    b <- a
-    return a
+let a = { 
+    key: 2
+    block: 3
 }
