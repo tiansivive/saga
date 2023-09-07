@@ -1,8 +1,1 @@
 
-
-
-fn {
-    var <- bind
-    proc 1
-    return 1
-}

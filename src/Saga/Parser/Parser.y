@@ -191,7 +191,7 @@ args
   | atom args  %shift   { $1 : $2 }
 
 fnApplication 
-  : atom args '!' { P.fnApplication $1 $2 $3 }
+  : atom args '!' { P.bangApplication $1 $2 $3 }
   --| expr '!' { P.fnApplication $1 [] $2 }
 -- args
 --   : atom       %shift   { [$1] }

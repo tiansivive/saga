@@ -18,8 +18,8 @@ import qualified Saga.Parser.ParsingInfo as P
 
 
 %name parseSagaExpr expr
-%partial parseBlock block
-%partial parseStatement statement
+-- %partial parseBlock block
+-- %partial parseStatement statement
 --%partial parseDoNext doNext
 
 %tokentype { L.RangedToken }
@@ -61,9 +61,9 @@ import qualified Saga.Parser.ParsingInfo as P
   '|>'         { L.RangedToken (T.Operator "|>") _ } 
   '<|'         { L.RangedToken (T.Operator "<|") _ } 
   
-  '`'         { L.RangedToken (T.Operator "<|") _ } 
-
-  op         { L.RangedToken (T.Operator _) _ }
+  '`'          { L.RangedToken (T.Operator "<|") _ } 
+  '#'          { L.RangedToken (T.Operator "#") _ } 
+  op           { L.RangedToken (T.Operator _) _ }
 
   -- Keywords
   let        { L.RangedToken T.Let _ }
@@ -121,6 +121,7 @@ import qualified Saga.Parser.ParsingInfo as P
 
 
 
+
   newline    { L.RangedToken T.Newline _ }
   eof        { L.RangedToken T.EOF _ }
 
@@ -163,8 +164,8 @@ expr
 expr1 
   : expr2 %shift { $1 }
   | expr1 '+' expr2 %shift { P.binaryOp $1 $2 $3 }
+  
  
-
 expr2 
   : expr3 %shift { $1 }
   | expr2 '`' exprBacktick '`' expr3 %shift { P.infixApplication $3 [$1, $5] }
@@ -175,49 +176,34 @@ exprBacktick
 
 expr3
   : expr4 %shift        { $1 }
-  | expr3 expr4 %shift  { P.fnApp $1 [$2] }
-  --| expr3 expr4 '!'     { P.fnApp $1 [$2] }
+  | expr3 expr4 %shift  { P.fnApplication $1 [$2] }
+  | expr3 '!'           { P.parenthesised $1 $2 $2 }
 
 expr4
   : expr5  { $1 }
   | expr4 '.' identifier %shift  { P.binaryOp $1 $2 $3 }
+  
 
 expr5
   : expr6 { $1 }
   | if expr then expr else expr { P.controlFlow $1 $2 $4 $6 }
   | match expr cases %shift { P.match $2 $3 }       
-  | '\\' params '->' expr   { P.lambda $2 $4 $1 }
+  | '\\' manyOrEmpty(identifier) '->' expr   { P.lambda $2 $4 $1 }
   | '.' identifier { P.dotLambda $2 } 
   
-params
-  :                   { [] }
-  | params identifier { $1 ++ [$2] }
   
 expr6
   : exprAtom { $1 }
   | '{' block '}' { P.block $2 $1 $3 }
   
 block
-  : returnStmt        { [$1] }
-  | stmts returnStmt  { $1 ++ [$2] }
+  : separated(statement, ';') trailing(';') { $1 }
 
-returnStmt 
-  : return expr ';'   { P.returnStmt $2 $1 }
-
-stmts
-  : statement       { [$1] }
-  | stmts statement { $1 ++ [$2] }
-
--- decStmt
 statement
-  : backcall ';'                     { $1 }
-  | expr ';'  %shift                 { fmap PE.Procedure $1 }
+  : identifier '<-' expr  { P.backcall [P.pattern $ P.Var $1] $3 }
+  | expr                  { fmap PE.Procedure $1 }
+  | return expr           { P.returnStmt $2 $1 }
   --| letdec                       { fmap PE.Declaration $1 } 
-
-backcall
-  : identifier '<-' expr            { P.backcall [P.pattern $ P.Var $1] $3 }
-  -- | identifier '<-' expr           { P.backcall $1 $3 }
-
 
 exprAtom 
   : hole                    { $1 }
@@ -233,31 +219,28 @@ term
   | string     { P.string PL.LString $1 }
   | boolean    { P.boolean PL.LBool $1 } 
 
- -- COLLECTIONS
-record 
-  : '{' pairs '}'   { P.record $2 $1 $3 }
+-- COLLECTIONS
+-- record 
+--   : '#' separatedOrEmpty(keyValPair, ';') trailing(';') '#' { P.record $2 $1 $4 }
+--   --| '{' separatedOrEmpty(keyValPair, defaultSeparator) defaultSeparator '}' { P.record $2 $1 $4 }
+record
+  : '{' pairs '}'   { P.record $2 $1 $3 } --TODO:  figure out why the version above fails
+
 pairs
   :                                 { [] }
-  | identifier ':' expr ',' pairs   { (P.keyValPair $1 $3) : $5 }
-  | identifier ':' expr             { [P.keyValPair $1 $3] }
+  | identifier ':' expr ';' pairs   { (P.keyValPair $1 $3) : $5 }
+  | identifier ':' expr ';'  %shift          { [P.keyValPair $1 $3] }
+keyValPair
+  : identifier ':' expr { P.keyValPair $1 $3 }
 
 list 
-  : '[' listElements ']'    { P.list $2 $1 $3 }
-listElements
-  :                         { [] }
-  | expr                    { [$1] }
-  | expr ',' listElements   { $1 : $3 }
+  : '[' separatedOrEmpty(expr, ',') ']'    { P.list $2 $1 $3 }
 
 tuple
-  : '(' expr tupleElems ')'    { P.tuple ($2:$3) $1 $4 }
-tupleElems
-  : ',' expr              { [$2] }
-  | ',' expr tupleElems   { $2 : $3 }
-
+  : '(' separated(expr, ',') ')'    { P.tuple $2 $1 $3 }
 
  
 --CONTROL FLOW
-
 patListElems
   : identifier                    { [$1] }
   | identifier ',' patListElems   { $1 : $3 }
@@ -297,6 +280,34 @@ cases
   : '|' pattern '->' expr        { [P.matchCase $2 $4] }
   | cases '|' pattern '->' expr  { $1 ++ [P.matchCase $3 $5] }
 
+
+many(a) 
+  : a           { [$1] }
+  | many(a) a   { $1 ++ [$2] }
+
+manyOrEmpty(a) 
+  :            { [] }
+  | many(a)    { $1 }
+
+separated(a, separator)
+  : a %shift                            { [$1] }
+  | separated(a, separator) separator a { $1 ++ [$3] }
+
+separatedOrEmpty(a, separator) 
+  :                                { [] }
+  | separated(a, separator) %shift { $1 }
+
+defaultSeparator
+  : ',' { $1 }
+  | ';' { $1 }
+
+trailing(separator)
+  : %shift    { Nothing }
+  | separator { Just $1 }
+
+delimited(start, rule, separator, end) 
+  : start end { [] }
+  | start sep(rule, separator) end { $2 }
 
 {
   

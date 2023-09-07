@@ -62,9 +62,18 @@ tyIdStr :: PT.TypeExpr -> String
 tyIdStr (PT.TIdentifier id) = id
 tyIdStr e                  = error $ "Not type identifier expression:\n" ++ show e
 
+
+
+delimited :: L.RangedToken -> [ParsedData E.Expr] -> L.RangedToken -> ParsedData [E.Expr]
+delimited start list end = Parsed (value list') range' toks
+    where
+        list' = sequence list
+        range' = L.rtRange start <-> L.rtRange end
+        toks = foldl (\toks' parsed -> tokens parsed ++ toks') [start, end] list
+
+
 lexer :: (L.RangedToken -> L.Alex a) -> L.Alex a
 lexer = (=<< L.alexMonadScan) 
-
 
 run :: String -> L.Alex a -> Either String a
 run =  L.runAlex . BS.pack

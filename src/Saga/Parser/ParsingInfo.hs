@@ -163,19 +163,19 @@ lambda params (Parsed body' bRange bToks) rt =
     in Parsed expr (L.rtRange rt <-> bRange) (nub toks)
 
 
-fnApplication :: ParsedData E.Expr -> [ParsedData E.Expr] -> RangedToken -> ParsedData E.Expr
-fnApplication fn args rt =
-    let
-        expr = E.FnApp (value fn) $ fmap value args
-        toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
-    in Parsed expr (range fn <-> L.rtRange rt) (nub toks)
-
-fnApp :: ParsedData E.Expr -> [ParsedData E.Expr] -> ParsedData E.Expr
-fnApp fn args =
+fnApplication :: ParsedData E.Expr -> [ParsedData E.Expr] -> ParsedData E.Expr
+fnApplication fn args =
     let
         expr = E.FnApp (value fn) $ fmap value args
         toks = foldl (\toks' arg -> toks' ++ tokens arg) (tokens fn) args
     in Parsed expr (range fn <-> range (last args)) (nub toks)
+
+bangApplication :: ParsedData E.Expr -> [ParsedData E.Expr] -> RangedToken -> ParsedData E.Expr
+bangApplication fn args rt =
+    let
+        expr = E.FnApp (value fn) $ fmap value args
+        toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
+    in Parsed expr (range fn <-> L.rtRange rt) (nub toks)
 
 infixApplication :: ParsedData E.Expr -> [ParsedData E.Expr] -> ParsedData E.Expr
 infixApplication fn args =
