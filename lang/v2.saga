@@ -29,3 +29,6 @@ let ty
 */
 
 
+let obj = \ a -> {
+    a <- b
+}

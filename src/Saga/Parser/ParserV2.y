@@ -228,8 +228,8 @@ record
   : '{' pairs '}'   { P.record $2 $1 $3 } --TODO:  figure out why the version above fails
 pairs
   :                                 { [] }
-  | identifier ':' expr ';' pairs   { (P.keyValPair $1 $3) : $5 }
-  | identifier ':' expr ';'  %shift          { [P.keyValPair $1 $3] }
+  | identifier ':' expr ',' pairs   { (P.keyValPair $1 $3) : $5 }
+  | identifier ':' expr   %shift          { [P.keyValPair $1 $3] }
 
 list 
   : '[' separatedOrEmpty(expr, ',') ']'           { P.list $2 $1 $3 }
