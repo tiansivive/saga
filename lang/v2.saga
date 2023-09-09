@@ -26,9 +26,47 @@ let ty
             a = Int,
             b = a
     = foo
+
+type Union =
+  | \a => Foo: { stuff: a }
+  | Bar: String
+  | Baz 
+
+  
+
+let try
+  : String -> Promise Int!
+    where Promise implements Monad
+  = \url -> { 
+        val1 <- fetch url!
+        val2 <- fetch url!
+        return val1 + val2
+      }
+
+
+
+let listFunctorImpl
+  : impl Functor: List
+  = { map: \f fa -> someDummyImpl f fa!}
+
+
+
+let fmap
+  : \f a b => (a -> b) -> f a! -> f b! where f implements Functor
+  = \f fa -> match fa
+      | a  -> fa
+      | b  -> f x! |> prepend (fmap f rest!)!
+                  
 */
 
 
-let obj = \ a -> {
-    a <- b
-}
+let proc
+    = \a -> {
+        b d <- bar 
+        match b
+            | [] -> on 
+            | Tagged: {foo: 1, bar: [fst | rest ]} -> on
+            | Foo: Int: x -> x + 1
+             
+               
+    }

@@ -228,9 +228,9 @@ returnStmt expr tok = Parsed (E.Return $ value expr) rng toks
         toks = nub $ tok : tokens expr
 
 
-backcall :: [ParsedData E.Pattern] -> ParsedData E.Expr -> ParsedData E.Statement
-backcall pats expr = [ E.BackCall pats' expr'
-                     | pats' <- sequence pats
+backcall :: [ParsedData E.Expr] -> ParsedData E.Expr -> ParsedData E.Statement
+backcall ids expr = [ E.BackCall ids' expr'
+                     | ids' <- mapM (fmap idStr) ids
                      , expr' <- expr
                      ]
 
@@ -321,6 +321,8 @@ typeClause (Parsed expr' rt ts) bindings =
     in Parsed (PT.TClause expr' bindings') (rt <-> range (last bindings)) (nub toks)
 
 
+typeProtocolImplementation :: ParsedData PT.TypeExpr -> ParsedData PT.TypeExpr -> ParsedData PT.TypeExpr
+typeProtocolImplementation protocol tyExpr = PT.TImplementation <$> fmap tyIdStr protocol <*> tyExpr
 
 
 -- | KINDS

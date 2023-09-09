@@ -192,21 +192,21 @@ expr5
   
   
 expr6
-  : exprAtom { $1 }
+  : exprAtom  { $1 }
   | '{' block '}' { P.block $2 $1 $3 }
   
 block
   : separated(statement, ';') trailing(';') { $1 }
 
 statement
-  : separated(pattern, ',') '<-' expr %shift { P.backcall (fmap P.pattern $1) $3 }
+  : manyOrEmpty(identifier) '<-' expr %shift { P.backcall $1 $3 }
   | expr                  { fmap PE.Procedure $1 }
   | return expr           { P.returnStmt $2 $1 }
   --| letdec                       { fmap PE.Declaration $1 } 
 
 exprAtom 
   : hole                    { $1 }
-  | identifier              { $1 }
+  | identifier %shift             { $1 }
   | term                    { P.term $1 }
   | tuple                   { $1 }
   | list                    { $1 }
@@ -238,34 +238,32 @@ tuple
   : '(' separated(expr, ',') ')'    { P.tuple $2 $1 $3 }
 
  
+cases
+  : '|' pattern '->' expr        { [P.matchCase (P.pattern $2) $4] }
+  | cases '|' pattern '->' expr  { $1 ++ [P.matchCase (P.pattern $3) $5] }
 
 pattern
   : patternAtom                  { $1 }
-  | identifier ':' many(patternAtom)  %shift   { P.Tagged $1 $3 }
+  | identifier ':' many(pattern)  %shift   { P.Tagged $1 $3 }
    
 patternAtom 
   : identifier     %shift                                                      { P.Var $1 }
   | hole              %shift                                                   { P.Hole $1 }
   | term        %shift                                                         { P.Term $ fmap PE.Literal $1   }
   | '(' separated(pattern, ',') trailing(patRest) ')'                   { P.Tuple $2 $3 }
-  --| '[' separatedOrEmpty(pattern, ',') trailing(patRest) ']'            { P.List $2 $3 }
-  --| '{' patRecordKeys trailing(patRest) '}'                              { P.Record $2 $3 }
+  | '[' separatedOrEmpty(pattern, ',') trailing(patRest) ']'            { P.List $2 $3 }
+  | '{' patRecordKeys trailing(patRest) '}'                              { P.Record $2 $3 }
   | '(' pattern ')'                                               { $2 }
 
 patRecordKeys
-  :                               { [] }
-  | identifier                    { [($1, Nothing)] }
-  | identifier ',' patRecordKeys  { ($1, Nothing) : $3 }
+  :                                               { [] }
+  | identifier                                    { [($1, Nothing)] }
+  | identifier ':' pattern                        { [($1, Just $3)] }
+  | identifier ',' patRecordKeys                  { ($1, Nothing) : $3 }
+  | identifier ':' pattern ',' patRecordKeys      { ($1, Just $3) : $5 }
 
 patRest
   : '|' identifier  { $2 }
-
-
-cases
-  : '|' pattern '->' expr        { [P.matchCase (P.pattern $2) $4] }
-  | cases '|' pattern '->' expr  { $1 ++ [P.matchCase (P.pattern $3) $5] }
-
-
 
 
 
@@ -284,20 +282,21 @@ union
 
 typeExpr2
   : typeExpr3 %shift {$1}                               
-  | typeExpr2 '->' typeExpr          { P.typeArrow $1 $3 }                               
+  | typeExpr2 '->' typeExpr3          { P.typeArrow $1 $3 }                               
  
-
 typeExpr3
-  : typeExpr4 { $1 }
-  | typeExpr3 typeExpr4     { P.typeFnApplication $1 [$2] }
-  | typeExpr3 '!'           { P.tyParenthesised $1 $2 $2 } 
+  : typeExpr4                           %shift { $1 }
+  | instance identifier ':' typeExpr    %shift { P.typeProtocolImplementation (P.tyIdentifier $2) $4 }
 
-typeExpr4 
+typeExpr4
   : typeExpr5 { $1 }
+  | typeExpr4 typeExpr5     { P.typeFnApplication $1 [$2] }
+  | typeExpr4 '!'           { P.tyParenthesised $1 $2 $2 } 
+
+typeExpr5 
+  : typeAtom { $1 }
   | '\\' many(identifier) '=>' typeExpr   { P.typeLambda ($2) $4 $1 }
 
-typeExpr5
-  :  typeAtom                              { $1 }
 
 typeAtom
   : number                            { P.number (PT.TLiteral . PL.LInt) $1 }

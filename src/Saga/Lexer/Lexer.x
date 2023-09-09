@@ -123,14 +123,9 @@ tokens :-
     "#"                 { tok $ Operator "#" }
     "@"                 { tok $ Operator "#" }
 
-    "{"                 { handleCurlyBrace }
-    "}"                 { handleCloseCurlyBrace }
-    -- <0> "}"                 { \_ _ -> alexError "Error: unexpected closing }" }
-
-   
-    
-    -- <block> "{"             { nestBlock }
-    -- <block> "}"             { unnestBlock }
+    <0, block> "{"                 { handleCurlyBrace }
+    <0, block> "}"                 { handleCloseCurlyBrace }
+ 
 
     <block> @ident          { identation } 
     <block> .               { skip } 
@@ -244,6 +239,7 @@ handleCurlyBrace inp len = do
     _ -> modify $ \s -> s{blockStack = 0 : blockStack s}
   tok LCurly inp len
 
+
 handleCloseCurlyBrace ::  AlexAction RangedToken
 handleCloseCurlyBrace inp len = do
   state <- get 
@@ -263,17 +259,20 @@ identation input len = do
   state <- get
   let len' = fromIntegral len
   let currentIndent = identLevel state
-  if len' > currentIndent
-    then do 
-      modify $ \s -> s{identLevel = len'}
-      skip input len
-    else if len' < currentIndent
-    then do 
-      modify $ \s -> s{identLevel = identLevel s - len'}
-      tok SemiColon input len
-    else tok SemiColon input len
+  if currentIndent == 0 then do
+    modify $ \s -> s{identLevel = len'}
+    skip input len
+  else if len' > currentIndent then do 
+    modify $ \s -> s{blockStack = 0 : blockStack s, identLevel = len'}
+    alexSetStartCode 0
+    skip input len
+  else if len' < currentIndent then do 
+    let stack' = tail $ blockStack state
+    modify $ \s -> s{ blockStack = stack', identLevel = identLevel s - len' }
+    alexSetStartCode $ head stack'
+    skip input len
+  else tok SemiColon input len
               
-
 
 nestComment, unnestComment :: AlexAction RangedToken
 nestComment input len = do
