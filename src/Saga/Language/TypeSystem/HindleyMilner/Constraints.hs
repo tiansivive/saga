@@ -2,31 +2,35 @@
 module Saga.Language.TypeSystem.HindleyMilner.Constraints where
 
 import           Control.Monad.Except
-import           Control.Monad.Reader                          (MonadReader (local),
-                                                                ReaderT (runReaderT))
-import           Control.Monad.RWS                             (MonadReader (ask),
-                                                                RWST)
-import           Control.Monad.State                           (StateT (runStateT),
-                                                                evalStateT, get,
-                                                                modify, put)
-import           Data.Bifunctor                                (bimap)
-import           Data.Functor                                  ((<&>))
-import           Data.List                                     (delete, groupBy,
-                                                                intersect,
-                                                                partition, (\\))
-import qualified Data.Map                                      as Map
-import           Data.Maybe                                    (fromJust,
-                                                                fromMaybe)
-import qualified Data.Set                                      as Set
+import           Control.Monad.Reader                               (MonadReader (local),
+                                                                     ReaderT (runReaderT))
+import           Control.Monad.RWS                                  (MonadReader (ask),
+                                                                     RWST)
+import           Control.Monad.State                                (StateT (runStateT),
+                                                                     evalStateT,
+                                                                     get,
+                                                                     modify,
+                                                                     put)
+import           Data.Bifunctor                                     (bimap)
+import           Data.Functor                                       ((<&>))
+import           Data.List                                          (delete,
+                                                                     groupBy,
+                                                                     intersect,
+                                                                     partition,
+                                                                     (\\))
+import qualified Data.Map                                           as Map
+import           Data.Maybe                                         (fromJust,
+                                                                     fromMaybe)
+import qualified Data.Set                                           as Set
 import           Debug.Trace
-import           Prelude                                       hiding (EQ)
+import           Prelude                                            hiding (EQ)
+import           Saga.Language.Core.Literals                        (Literal (..))
 import           Saga.Language.TypeSystem.HindleyMilner.Environment hiding
-                                                               (Implements)
+                                                                    (Implements)
 import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
-                                                               (ProtocolID,
-                                                                implementationTy)
-import           Text.Pretty.Simple                            (pShow)
-import Saga.Language.Core.Literals (Literal(..))
+                                                                    (ProtocolID,
+                                                                     implementationTy)
+import           Text.Pretty.Simple                                 (pShow)
 
 -- type Solve = StateT SolveState (Except InferenceError)
 
@@ -111,7 +115,7 @@ s1 `compose` s2 = s `Map.union` s1
 
 
 runSolve :: [IConstraint] -> Either InferenceError (Subst, [ImplConstraint])
-runSolve cs | trace ("Solving: " ++ show cs) False = undefined
+-- runSolve cs | trace ("Solving: " ++ show cs) False = undefined
 runSolve cs =  runExcept $ runReaderT (solver cs) builtInProtocols
 
 
@@ -173,7 +177,7 @@ unify t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch"
 unify t t' = throwError $ UnificationFail t t'
 
 bind :: (MonadError e m, e ~ InferenceError) => Tyvar -> Type -> m Subst
-bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
+-- bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
 bind a t
   | t == TVar a = return nullSubst
   | occursCheck a t = throwError $ InfiniteType a t
@@ -212,7 +216,7 @@ nullSubst = Map.empty
 -- | Implementation Constraints solving
 
 resolve :: [ImplConstraint] -> Solve ()
-resolve cs | trace ("\n\nProtocol Resolution:\n\t" ++ show cs) False = undefined
+-- resolve cs | trace ("\n\nProtocol Resolution:\n\t" ++ show cs) False = undefined
 resolve constraints = do
   env <- ask
   traceM $ "\tGrouped Constraints: " ++ show (groupBy byType constraints)
@@ -244,7 +248,7 @@ resolve constraints = do
 
 
 reduce :: [ImplConstraint] -> Solve [ImplConstraint]
-reduce cs | trace ("\nReducing\n\tImplementation constraint:" ++ show cs) False = undefined
+-- reduce cs | trace ("\nReducing\n\tImplementation constraint:" ++ show cs) False = undefined
 reduce cs = mapM toHNF cs >>= simplify . concat
 
 toHNF :: ImplConstraint -> Solve [ImplConstraint]
@@ -260,7 +264,7 @@ inHNF (ty `IP` p) = hnf ty
        hnf _        = False
 
 byImplementation :: ImplConstraint -> Solve [ImplConstraint]
-byImplementation impl | trace ("\nSearch by Implementation:\n\t" ++ show impl) False = undefined
+-- byImplementation impl | trace ("\nSearch by Implementation:\n\t" ++ show impl) False = undefined
 byImplementation implConstraint@(ty `IP` p)    = do
   env <- ask
   concat <$> sequence [ tryInst impl | impl <- impls env p ]
@@ -274,7 +278,7 @@ byImplementation implConstraint@(ty `IP` p)    = do
       return $ fmap (apply sub . mkIP) cs
 
 unifyImpl :: ImplConstraint -> ImplConstraint -> Solve Subst
-unifyImpl p1 p2 | trace ("\n-------\nUnifying Implementations\n-------\n\t" ++ show p1 ++ "\n\t" ++ show p2 ++ "\n") False = undefined
+-- unifyImpl p1 p2 | trace ("\n-------\nUnifying Implementations\n-------\n\t" ++ show p1 ++ "\n\t" ++ show p2 ++ "\n") False = undefined
 unifyImpl (ty `IP` p) (ty' `IP` p')
   | p == p'   = ty `match` ty'
   | otherwise = throwError $ Fail "protocols differ"
@@ -289,7 +293,7 @@ unifyImpl (ty `IP` p) (ty' `IP` p')
 
 
 simplify   :: [ImplConstraint] -> Solve [ImplConstraint]
-simplify cs | trace ("\nSimplifying\n\tImplementation constraint:" ++ show cs) False = undefined
+-- simplify cs | trace ("\nSimplifying\n\tImplementation constraint:" ++ show cs) False = undefined
 simplify cs = loop [] cs
  where
   loop checked []     = return checked
@@ -300,7 +304,7 @@ simplify cs = loop [] cs
       else loop (ipc: checked) ipcs
 
 entail :: [ImplConstraint] -> ImplConstraint -> Solve Bool
-entail ipcs current | trace ("\nEntailing\n\tCurrent: " ++ show current ++ "\n\tOthers:" ++ show ipcs) False = undefined
+-- entail ipcs current | trace ("\nEntailing\n\tCurrent: " ++ show current ++ "\n\tOthers:" ++ show ipcs) False = undefined
 entail ipcs ipConstraint = do
   protocols <- ask
   baseConstraints <- mapM byBase ipcs
@@ -319,7 +323,7 @@ entail ipcs ipConstraint = do
 
 
 byBase :: ImplConstraint -> Solve [ImplConstraint]
-byBase impl | trace ("\nSearching base constraints of\n\t" ++ show impl) False = undefined
+-- byBase impl | trace ("\nSearching base constraints of\n\t" ++ show impl) False = undefined
 byBase impl@(ty `IP` p) = do
     protocols <- ask
     impls <- sequence [ byBase (ty `IP` base) | base <- sups protocols p ]

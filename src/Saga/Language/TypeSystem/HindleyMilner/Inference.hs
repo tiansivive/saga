@@ -53,24 +53,24 @@ run input = do
 
 runInfer :: Infer Type -> Either InferenceError Scheme
 runInfer m = do
-  traceM "\n\n"
-  traceM "--------------------"
-  traceM "RUNNING INFERENCE"
-  traceM "\n\n"
+  -- traceM "\n\n"
+  -- traceM "--------------------"
+  -- traceM "RUNNING INFERENCE"
+  -- traceM "\n\n"
   (ty, constraints) <- runExcept $ evalRWST m empty initState
-  traceM "\n\n"
-  traceM "--------------------"
-  traceM "SOLVING CONSTRAINTS"
-  traceM $ "Inferred Type: " ++ show ty
-  traceM $ "Emitted Constraints" ++ show constraints
-  traceM "\n\n"
+  -- traceM "\n\n"
+  -- traceM "--------------------"
+  -- traceM "SOLVING CONSTRAINTS"
+  -- traceM $ "Inferred Type: " ++ show ty
+  -- traceM $ "Emitted Constraints" ++ show constraints
+  -- traceM "\n\n"
   (subst, implConstraints) <- runSolve constraints
-  traceM "\n\n"
-  traceM "--------------------"
-  traceM "CLOSING OVER"
-  traceM $ "Subst: " ++ show subst
-  traceM $ "Impl constraints" ++ show implConstraints
-  traceM "\n\n"
+  -- traceM "\n\n"
+  -- traceM "--------------------"
+  -- traceM "CLOSING OVER"
+  -- traceM $ "Subst: " ++ show subst
+  -- traceM $ "Impl constraints" ++ show implConstraints
+  -- traceM "\n\n"
   return $ closeOver implConstraints $ apply subst ty
 
 closeOver :: [ImplConstraint] -> Type -> Scheme
@@ -96,11 +96,11 @@ instance Instantiate Constraint where
 
 
 instantiate :: Scheme -> Infer Type
-instantiate sc | trace ("Instantiating: " ++ show sc) False = undefined
+--instantiate sc | trace ("Instantiating: " ++ show sc) False = undefined
 instantiate (Scheme tvars qualified@(cs :=> t)) = do
   tVars <- mapM (fresh . getKind) vars
   let sub = Map.fromList $ zip vars tVars
-  traceM $ "Zipped: " ++ show sub
+  -- traceM $ "Zipped: " ++ show sub
   tell $ mkIConstraint <$> apply sub cs
   return $ apply sub t
     where
@@ -110,21 +110,21 @@ instantiate (Scheme tvars qualified@(cs :=> t)) = do
 
 
 generalize :: InferenceEnv -> [ImplConstraint] -> Type -> Scheme
-generalize env impls t
-  | trace
-      ( "Generalizing: "
-          ++ show t
-          ++ "\n\tEnv: "
-          ++ show env
-          ++ "\n\tImplementation constraints: "
-          ++ show impls
-          ++ "\n\n\tFTV ty: "
-          ++ show (ftv t)
-          ++ "\n\tFTV env: "
-          ++ show (ftv env)
-      )
-      False =
-      undefined
+-- generalize env impls t
+--   | trace
+--       ( "Generalizing: "
+--           ++ show t
+--           ++ "\n\tEnv: "
+--           ++ show env
+--           ++ "\n\tImplementation constraints: "
+--           ++ show impls
+--           ++ "\n\n\tFTV ty: "
+--           ++ show (ftv t)
+--           ++ "\n\tFTV env: "
+--           ++ show (ftv env)
+--       )
+--       False =
+--       undefined
 generalize env impls t = Scheme [] (fmap mkConstraint impls :=> t)
   where
 
@@ -140,7 +140,7 @@ lookupEnv x = do
 
 
 infer :: Expr -> Infer Type
-infer ex | trace ("Inferring: " ++ show ex) False = undefined
+-- infer ex | trace ("Inferring: " ++ show ex) False = undefined
 infer ex = case ex of
   Identifier x -> lookupEnv x
 
@@ -175,7 +175,6 @@ infer ex = case ex of
     yes' <- infer yes
     no' <- infer no
     emit $ EqCons $ cond' `EQ` TPrimitive TBool
-    -- \| TODO: this should change to a union type when those get implemented
     return $ if yes' == no' then yes' else TUnion [yes', no']
 
 
@@ -208,7 +207,7 @@ generalizeArg (TLiteral lit) = generalize' $ case lit of
 generalizeArg ty = return ty
 
 normalize :: Scheme -> Scheme
-normalize sc | trace ("Normalizing: " ++ show sc) False = undefined
+-- normalize sc | trace ("Normalizing: " ++ show sc) False = undefined
 normalize (Scheme k (cs :=> ty)) = Scheme k (cs' :=> ty')
   where
     ty' = normType ty
