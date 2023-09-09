@@ -261,7 +261,7 @@ identation input@(_, _, str, _) len = do
   let currentIndent = identLevel state
   -- traceM "\nIndentation"
   -- traceM $ "State: " ++ show state
-  -- traceM $ "Current indent: " ++ show len'
+  -- traceM $ "Current indent len: " ++ show len'
   -- traceM $ "Current input: " ++ show (BS.take len str)
 
   if currentIndent == 0 then do
@@ -275,15 +275,14 @@ identation input@(_, _, str, _) len = do
         alexSetStartCode 0
     skip input len
   else if len' < currentIndent then do 
-    let stack' = tail stack
-    let code = head stack'
+    let code = head stack
     if code == block then
       tok SemiColon input len
     else do
-      modify $ \s -> s{ indentStateStack = stack', identLevel = len' }
+      modify $ \s -> s{ indentStateStack = tail stack, identLevel = len' }
       alexSetStartCode code
       skip input len
-  else if head stack == block then 
+  else if head stack == block then do
     tok SemiColon input len
   else skip input len
               

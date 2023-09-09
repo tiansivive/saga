@@ -61,7 +61,6 @@ let fmap
             | [] -> on 
             | Tagged: {foo: 1, bar: [fst | rest ]} -> on
             | Foo: Int: x -> x + 1
-*/
 
 
 let proc
@@ -75,3 +74,18 @@ let proc
         other
         foo    
     }
+
+
+let foo = 
+    { x: 1
+    , y: 2 
+    }
+*/
+
+
+
+data MyType
+  = Foo: Int
+  | Bar: String -> Bool
+  | Baz: \a => custom -> a
+  where custom = String
