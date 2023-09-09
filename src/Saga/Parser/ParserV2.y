@@ -199,7 +199,8 @@ block
   : separated(statement, ';') trailing(';') { $1 }
 
 statement
-  : manyOrEmpty(identifier) '<-' expr %shift { P.backcall $1 $3 }
+  : manyOrEmpty(identifier) '<-' expr   %shift { P.backcall (fmap (P.pattern . P.Var) $1) $3 }
+  | '\\' manyOrEmpty(pattern) '<-' expr %shift { P.backcall (fmap P.pattern $2) $4 }
   | expr                  { fmap PE.Procedure $1 }
   | return expr           { P.returnStmt $2 $1 }
   --| letdec                       { fmap PE.Declaration $1 } 

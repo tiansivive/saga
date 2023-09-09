@@ -38,7 +38,7 @@ data Binding a
 
 data Statement where
   Return      :: Expr -> Statement
-  BackCall    :: [String] -> Expr -> Statement
+  BackCall    :: [Pattern] -> Expr -> Statement
   Declaration :: Declaration -> Statement
   Procedure   :: Expr -> Statement
 
