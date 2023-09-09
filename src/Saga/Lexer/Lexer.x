@@ -230,7 +230,7 @@ trimQuotes str = BS.tail $ BS.take (BS.length str -1) str
 handleCurlyBrace :: AlexAction RangedToken
 handleCurlyBrace inp len = do
   state <- get 
-  traceM $ "\nOpening in state: " ++ show state
+  -- traceM $ "\nOpening in state: " ++ show state
   case lastToken state of
     Just Arrow -> do
       modify $ \s -> s{indentStateStack = block : indentStateStack s}
@@ -243,7 +243,7 @@ handleCloseCurlyBrace ::  AlexAction RangedToken
 handleCloseCurlyBrace inp len = do
   state <- get 
   let stack = indentStateStack state
-  traceM $ "\nClosing in state: " ++ show state
+  -- traceM $ "\nClosing in state: " ++ show state
   if length stack == 1 then
     alexError "Error: unexpected closing }"
   else do
@@ -259,10 +259,10 @@ identation input@(_, _, str, _) len = do
   let stack = indentStateStack state
   let len' = fromIntegral $ BS.length $ pruneIdentation len str
   let currentIndent = identLevel state
-  traceM "\nIndentation"
-  traceM $ "State: " ++ show state
-  traceM $ "Current indent: " ++ show len'
-  traceM $ "Current input: " ++ show (BS.take len str)
+  -- traceM "\nIndentation"
+  -- traceM $ "State: " ++ show state
+  -- traceM $ "Current indent: " ++ show len'
+  -- traceM $ "Current input: " ++ show (BS.take len str)
 
   if currentIndent == 0 then do
     modify $ \s -> s{identLevel = len'}
