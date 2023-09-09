@@ -32,7 +32,6 @@ library
       Saga.Parser.Expr
       Saga.Parser.Literals
       Saga.Parser.Parser
-      Saga.Parser.ParserV2
       Saga.Parser.ParsingInfo
       Saga.Parser.Shared
       Saga.Parser.Types
