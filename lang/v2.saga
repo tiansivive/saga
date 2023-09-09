@@ -66,11 +66,9 @@ let fmap
 
 let proc
     = \a -> {
-        b d <- bar 
-        \Int: blah <- baz
-        match b
-            | [] -> on 
-        foo
-             
-               
+        b d <- bar
+        match a
+            | 1 -> a
+        other
+        foo    
     }

@@ -24,14 +24,13 @@ $ws         = [[\ \t\f\v\r]] -- whitespace char set without newline
 @id   = ($alpha | \_) ($alpha | $digit | \_ | \' | \? )*
 @hole = (\?) ($alpha | \_) ($alpha | $digit | \_ | \' | \? )*
 
-@ident = (\n)+ $ws*
+@ident = (\n) (\n | $ws)* $ws*
 
 tokens :-
 
 
-    <0> $white+          { skip }
-
-
+    $ws+          { skip }
+  
     module               { tok Module }
     import               { tok Import } 
 
@@ -127,8 +126,8 @@ tokens :-
     <0, block> "}"                 { handleCloseCurlyBrace }
  
 
-    <block> @ident          { identation } 
-    <block> .               { skip } 
+    <0, block> @ident          { identation } 
+    -- <block> .               { skip } 
  
 
     -- comments
@@ -168,7 +167,7 @@ instance Show RangedToken where
 data AlexUserState = AlexUserState
   { commentLevel  :: Int
   , identLevel :: Int
-  , blockStack :: [Int]
+  , indentStateStack :: [Int]
   , lastToken :: Maybe Token
   } deriving (Show)
 
@@ -179,7 +178,7 @@ alexInitUserState :: AlexUserState
 alexInitUserState = AlexUserState
     { commentLevel = 0
     , identLevel = 0
-    , blockStack = [0]
+    , indentStateStack = [0]
     , lastToken = Nothing
     }
 
@@ -231,48 +230,66 @@ trimQuotes str = BS.tail $ BS.take (BS.length str -1) str
 handleCurlyBrace :: AlexAction RangedToken
 handleCurlyBrace inp len = do
   state <- get 
-  traceM $ "Opening in state: " ++ show state
+  traceM $ "\nOpening in state: " ++ show state
   case lastToken state of
     Just Arrow -> do
-      modify $ \s -> s{blockStack = block : blockStack s}
+      modify $ \s -> s{indentStateStack = block : indentStateStack s}
       alexSetStartCode block
-    _ -> modify $ \s -> s{blockStack = 0 : blockStack s}
+    _ -> modify $ \s -> s{indentStateStack = 0 : indentStateStack s}
   tok LCurly inp len
 
 
 handleCloseCurlyBrace ::  AlexAction RangedToken
 handleCloseCurlyBrace inp len = do
   state <- get 
-  let stack = blockStack state
-  traceM $ "Closing in state: " ++ show state
+  let stack = indentStateStack state
+  traceM $ "\nClosing in state: " ++ show state
   if length stack == 1 then
     alexError "Error: unexpected closing }"
   else do
     let stack' = tail stack
-    modify $ \s -> s{blockStack = stack' }
+    modify $ \s -> s{indentStateStack = stack' }
     alexSetStartCode $ head stack'
     tok RCurly inp len
 
 
 identation :: AlexAction RangedToken
-identation input len = do
+identation input@(_, _, str, _) len = do
   state <- get
-  let len' = fromIntegral len
+  let stack = indentStateStack state
+  let len' = fromIntegral $ BS.length $ pruneIdentation len str
   let currentIndent = identLevel state
+  traceM "\nIndentation"
+  traceM $ "State: " ++ show state
+  traceM $ "Current indent: " ++ show len'
+  traceM $ "Current input: " ++ show (BS.take len str)
+
   if currentIndent == 0 then do
     modify $ \s -> s{identLevel = len'}
     skip input len
   else if len' > currentIndent then do 
-    modify $ \s -> s{blockStack = 0 : blockStack s, identLevel = len'}
-    alexSetStartCode 0
+    case lastToken state of
+      Just LCurly -> modify $ \s -> s{identLevel = len'}
+      _           -> do
+        modify $ \s -> s{indentStateStack = 0 : stack, identLevel = len'}
+        alexSetStartCode 0
     skip input len
   else if len' < currentIndent then do 
-    let stack' = tail $ blockStack state
-    modify $ \s -> s{ blockStack = stack', identLevel = identLevel s - len' }
-    alexSetStartCode $ head stack'
-    skip input len
-  else tok SemiColon input len
+    let stack' = tail stack
+    let code = head stack'
+    if code == block then
+      tok SemiColon input len
+    else do
+      modify $ \s -> s{ indentStateStack = stack', identLevel = len' }
+      alexSetStartCode code
+      skip input len
+  else if head stack == block then 
+    tok SemiColon input len
+  else skip input len
               
+
+pruneIdentation :: Int64 -> ByteString -> ByteString 
+pruneIdentation len str = BS.takeWhileEnd ((/=) '\n') $ BS.take len str
 
 nestComment, unnestComment :: AlexAction RangedToken
 nestComment input len = do
