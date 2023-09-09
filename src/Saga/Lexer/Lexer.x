@@ -7,7 +7,7 @@ import Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
 
 import Saga.Lexer.Tokens 
-
+import Debug.Trace
 
 }
 -- In the middle, we insert our definitions for the lexer, which will generate the lexemes for our grammar.
@@ -64,12 +64,12 @@ tokens :-
 
  
 
-    <0, block> $digit+             { tokNumber }
-    <0, block> (\"[^\"]*\")        { tokString }
-    <0, block> yes | on  | true    { tokBoolean True }
-    <0, block> no  | off | false   { tokBoolean False }
-    <0, block> @id                 { tokId }
-    <0, block> @hole               { tokHole }
+    <0, block> $digit+             { mkTok (Number . read . BS.unpack) }
+    <0, block> (\"[^\"]*\")        { mkTok (String . trimQuotes) }
+    <0, block> yes | on  | true    { mkTok $ const $ Boolean True }
+    <0, block> no  | off | false   { mkTok $ const $ Boolean False }
+    <0, block> @id                 { mkTok Id  }
+    <0, block> @hole               { mkTok Hole }
     
     <0, block> "("                 { tok LParen }
     <0, block> ")"                 { tok RParen }
@@ -168,7 +168,7 @@ instance Show RangedToken where
 
 -- At the bottom, we may insert more Haskell definitions, such as data structures, auxiliary functions, etc.
 data AlexUserState = AlexUserState
-  { nestLevel     :: Int
+  { nestLevel  :: Int
   , blockLevel :: Int
   , identLevel :: Int
   } deriving (Show)
@@ -206,47 +206,21 @@ mkRange (start, _, str, _) len = Range{start = start, stop = stop}
   where
     stop = BS.foldl' alexMove start $ BS.take len str
 
-tokId :: AlexAction RangedToken
-tokId inp@(_, _, str, _) len =
-  pure RangedToken
-    { rtToken = Id $ BS.take len str
-    , rtRange = mkRange inp len
-    }
 
-tokHole :: AlexAction RangedToken
-tokHole inp@(_, _, str, _) len =
-  pure RangedToken
-    { rtToken = Hole $ BS.take len str
-    , rtRange = mkRange inp len
-    }
 
 tok :: Token -> AlexAction RangedToken
-tok t inp len =
-  pure RangedToken
-    { rtToken = t
-    , rtRange = mkRange inp len
-    }
+tok = mkTok . const
 
-tokNumber :: AlexAction RangedToken
-tokNumber inp@(_, _, str, _) len =
-  pure RangedToken
-    { rtToken = Number $ read $ BS.unpack $ BS.take len str
-    , rtRange = mkRange inp len
-    }
+mkTok :: (ByteString -> Token) -> AlexAction RangedToken
+mkTok cons inp@(_, _, str, _) len = 
+    pure RangedToken
+      { rtToken = cons $ BS.take len str
+      , rtRange = mkRange inp len
+      }
 
-tokString :: AlexAction RangedToken
-tokString inp@(_, _, str, _) len =
-  pure RangedToken
-    { rtToken = String $ BS.tail $ BS.take (len -1) str
-    , rtRange = mkRange inp len
-    }
+trimQuotes :: ByteString -> ByteString
+trimQuotes str = BS.tail $ BS.take (BS.length str -1) str
 
-tokBoolean :: Bool -> AlexAction RangedToken
-tokBoolean bool inp len =
-  pure RangedToken
-    { rtToken = Boolean bool
-    , rtRange = mkRange inp len
-    }
 
 
 nestBlock :: AlexAction RangedToken

@@ -18,6 +18,8 @@ import qualified Saga.Parser.ParsingInfo as P
 
 
 %name parseSagaExpr expr
+%name parseSagaDec dec
+%name parseSagaScript script
 -- %partial parseBlock block
 -- %partial parseStatement statement
 --%partial parseDoNext doNext
@@ -152,27 +154,24 @@ hole
   : HOLE { P.identifier $1 PE.Hole }
 
 
-
-
-
 --EXPRESSIONS
-
 expr 
   : expr1 %shift { $1 }
-  --| expr1 '::' typeAnnotation { $1 }
+  --| expr '::' typeAtom { $1 }
 
 expr1 
   : expr2 %shift { $1 }
-  | expr1 '+' expr2 %shift { P.binaryOp $1 $2 $3 }
-  
- 
+  | expr1 operator expr2 %shift { P.binaryOp $1 $2 $3 }
+
+
+
 expr2 
   : expr3 %shift { $1 }
   | expr2 '`' exprBacktick '`' expr3 %shift { P.infixApplication $3 [$1, $5] }
 
 exprBacktick
   : expr3 { $1 }
-  | exprBacktick '+' expr3 { P.binaryOp $1 $2 $3 }
+  | exprBacktick operator expr3 { P.binaryOp $1 $2 $3 }
 
 expr3
   : expr4 %shift        { $1 }
@@ -188,7 +187,7 @@ expr5
   : expr6 { $1 }
   | if expr then expr else expr { P.controlFlow $1 $2 $4 $6 }
   | match expr cases %shift { P.match $2 $3 }       
-  | '\\' manyOrEmpty(identifier) '->' expr   { P.lambda $2 $4 $1 }
+  | '\\' manyOrEmpty(pattern) '->' expr   { P.lambda (fmap P.pattern $2) $4 $1 }
   | '.' identifier { P.dotLambda $2 } 
   
   
@@ -200,7 +199,7 @@ block
   : separated(statement, ';') trailing(';') { $1 }
 
 statement
-  : identifier '<-' expr  { P.backcall [P.pattern $ P.Var $1] $3 }
+  : separated(pattern, ',') '<-' expr %shift { P.backcall (fmap P.pattern $1) $3 }
   | expr                  { fmap PE.Procedure $1 }
   | return expr           { P.returnStmt $2 $1 }
   --| letdec                       { fmap PE.Declaration $1 } 
@@ -223,64 +222,160 @@ term
 -- record 
 --   : '#' separatedOrEmpty(keyValPair, ';') trailing(';') '#' { P.record $2 $1 $4 }
 --   --| '{' separatedOrEmpty(keyValPair, defaultSeparator) defaultSeparator '}' { P.record $2 $1 $4 }
+-- keyValPair
+--   : identifier ':' expr { P.keyValPair $1 $3 }
 record
   : '{' pairs '}'   { P.record $2 $1 $3 } --TODO:  figure out why the version above fails
-
 pairs
   :                                 { [] }
   | identifier ':' expr ';' pairs   { (P.keyValPair $1 $3) : $5 }
   | identifier ':' expr ';'  %shift          { [P.keyValPair $1 $3] }
-keyValPair
-  : identifier ':' expr { P.keyValPair $1 $3 }
 
 list 
-  : '[' separatedOrEmpty(expr, ',') ']'    { P.list $2 $1 $3 }
+  : '[' separatedOrEmpty(expr, ',') ']'           { P.list $2 $1 $3 }
 
 tuple
   : '(' separated(expr, ',') ')'    { P.tuple $2 $1 $3 }
 
  
---CONTROL FLOW
-patListElems
-  : identifier                    { [$1] }
-  | identifier ',' patListElems   { $1 : $3 }
 
-patTupleElems
-  : ',' identifier                { [$2] }
-  | ',' identifier patTupleElems  { $2 : $3 }
+pattern
+  : patternAtom                  { $1 }
+  | identifier ':' many(patternAtom)  %shift   { P.Tagged $1 $3 }
+   
+patternAtom 
+  : identifier     %shift                                                      { P.Var $1 }
+  | hole              %shift                                                   { P.Hole $1 }
+  | term        %shift                                                         { P.Term $ fmap PE.Literal $1   }
+  | '(' separated(pattern, ',') trailing(patRest) ')'                   { P.Tuple $2 $3 }
+  --| '[' separatedOrEmpty(pattern, ',') trailing(patRest) ']'            { P.List $2 $3 }
+  --| '{' patRecordKeys trailing(patRest) '}'                              { P.Record $2 $3 }
+  | '(' pattern ')'                                               { $2 }
 
 patRecordKeys
   :                               { [] }
-  | identifier                    { [$1] }
-  | identifier ',' patRecordKeys  { $1 : $3 }
+  | identifier                    { [($1, Nothing)] }
+  | identifier ',' patRecordKeys  { ($1, Nothing) : $3 }
 
 patRest
-  :                 { Nothing }
-  | '|' identifier  { Just $2 }
+  : '|' identifier  { $2 }
 
-patData
-  : identifier ':'      %shift  { [$1]}
-  | patData identifier          { $1 ++ [$2] }
-
-pattern 
-  : identifier                          { P.pattern $ P.Var $1 }
-  | term                                { P.pattern $ P.Term $ fmap PE.Literal $1   }
-  | patData                             { P.pattern $ P.Tagged $1 }
-  | '(' identifier patTupleElems ')'    { P.pattern $ P.Tuple ($2 : $3) }
-  | '[' ']'                             { P.pattern $ P.List [] Nothing }
-  | '[' patListElems patRest ']'        { P.pattern $ P.List $2 $3 }
-  | '{' patRecordKeys patRest '}'       { P.pattern $ P.Record $2 $3 }
-  | '(' pattern ')'                     { $2 }
-
-patterns
-  : pattern ','        { [$1] }
-  | patterns pattern   { $1 ++ [$2] }
 
 cases
-  : '|' pattern '->' expr        { [P.matchCase $2 $4] }
-  | cases '|' pattern '->' expr  { $1 ++ [P.matchCase $3 $5] }
+  : '|' pattern '->' expr        { [P.matchCase (P.pattern $2) $4] }
+  | cases '|' pattern '->' expr  { $1 ++ [P.matchCase (P.pattern $3) $5] }
 
 
+
+
+
+-- | TYPES
+typeExpr 
+  : typeExpr1 {$1}
+  | union %shift  { P.typeUnion $1 }
+
+typeExpr1
+  : typeExpr2       %shift         { $1 }
+  | identifier ':' typeExpr        { P.tagged $1 $3 }
+
+union
+  : '|' typeExpr            { [$2] }
+  | union '|' typeExpr     { $1 ++ [$3] }
+
+typeExpr2
+  : typeExpr3 %shift {$1}                               
+  | typeExpr2 '->' typeExpr          { P.typeArrow $1 $3 }                               
+ 
+
+typeExpr3
+  : typeExpr4 { $1 }
+  | typeExpr3 typeExpr4     { P.typeFnApplication $1 [$2] }
+  | typeExpr3 '!'           { P.tyParenthesised $1 $2 $2 } 
+
+typeExpr4 
+  : typeExpr5 { $1 }
+  | '\\' many(identifier) '=>' typeExpr   { P.typeLambda ($2) $4 $1 }
+
+typeExpr5
+  :  typeAtom                              { $1 }
+
+typeAtom
+  : number                            { P.number (PT.TLiteral . PL.LInt) $1 }
+  | boolean                           { P.boolean (PT.TLiteral . PL.LBool) $1 }
+  | string                            { P.string (PT.TLiteral . PL.LString) $1 }
+  | identifier                        { P.tyIdentifier $1 }
+  | '(' typeExpr ')'                  { P.tyParenthesised $2 $1 $3 }
+  | '(' separated(typeExpr, ',') ')'  { P.tyTuple $2 $1 $3 }
+  | '{' tpairs '}'                    { P.tyRecord $2 $1 $3 }
+  
+tpairs
+  :                                     { [] }
+  | identifier ':' typeExpr ',' tpairs  { (P.keyValPair $1 $3) : $5 }
+  | identifier ':' typeExpr             { [P.keyValPair $1 $3] }
+
+
+
+
+
+-- Decs
+script
+  : many(dec) { P.script $1 }
+dec 
+  : letdec                                                                { $1 }
+  | let identifier typeAnnotation kindAnnotation '=' expr where separated(binding, ',')  { P.letdec $2 $3 $4 (P.clause $6 $8) }
+  | data identifier kindAnnotation '=' dataExprs                          { P.dataType $2 $3 $5 [] }
+  | data identifier kindAnnotation '=' dataExprs where separated(tbinding, ',')         { P.dataType $2 $3 $5 $7 }
+  | ty identifier kindAnnotation '=' typeExpr                             { P.typeDef $2 $3 $5 }
+  | ty identifier kindAnnotation '=' typeExpr where separated(tbinding, ',')             { P.typeDef $2 $3 (P.typeClause $5 $7) }
+
+letdec
+  : let identifier typeAnnotation kindAnnotation '=' expr                 { P.letdec $2 $3 $4 $6 }
+
+
+binding
+  : identifier '=' expr   { P.binding $1 $3 }
+
+tbinding
+  : identifier '=' typeExpr         { P.tyBinding P.Id $1 $3 }
+  | identifier implements typeExpr  { P.tyBinding P.Impl $1 $3 }
+  | identifier '|->' typeExpr       { P.tyBinding P.Subtype $1 $3 }
+  | identifier '|' typeExpr         { P.tyBinding P.Refinement $1 $3 }
+
+
+
+typeAnnotation
+  :                                       { Nothing }
+  | ':' typeExpr                          { Just $2 }
+  | ':' typeExpr where separated(tbinding, ',')     { Just $ P.typeClause $2 $4 } 
+  | ':' instance identifier ':' typeExpr  { Just $ P.implementation $3 $5 } 
+
+kindAnnotation
+  : { Nothing }
+  | '::' kindExpr { Just $2 }
+kindExpr
+  : kindExpr '->' kindExpr   { P.kindArrow $1 $3 }
+  | '(' kindExpr ')'                    { $2 }  
+  | identifier                          { P.kindId $1 }
+
+-- Data
+dataExpr
+  : identifier ':' typeExpr { P.dataExpr $1 $3 }
+
+dataExprs
+    : dataExpr { [$1] }
+    | dataExprs '|' dataExpr { $1 ++ [$3] }
+
+
+  
+  -- : if typeExpr then typeExpr else typeExpr { Types.TConditional (L.rtRange $1 <-> info $6) $2 $4 $6 }
+  -- | qualifiers '.' typeExpr                          { Types.Type $ Types.TConstrained $1 [] $3 }
+  -- | qualifiers '.' constraints '=>' typeExpr %shift  { Types.Type $ Types.TConstrained $1 $3 $5 }
+  -- | implements identifier ':' typeExpr %shift { Types.Type (Types.TImplementation $2 $4 []) }
+  -- | with args '=>' implements identifier ':' typeExpr %shift { Types.Type (Types.TImplementation $5 $7 $2) }
+
+
+
+-- UTILITIES
 many(a) 
   : a           { [$1] }
   | many(a) a   { $1 ++ [$2] }
@@ -309,9 +404,33 @@ delimited(start, rule, separator, end)
   : start end { [] }
   | start sep(rule, separator) end { $2 }
 
+operator
+  : '+'           { $1 }
+  | '-'           { $1 }
+  | '*'           { $1 }
+  | '/'           { $1 }
+  | '^'           { $1 }
+  | '||'          { $1 }
+  | '&&'          { $1 }
+  | '=='          { $1 }
+  | '!='          { $1 }
+  | '<'           { $1 }
+  | '>'           { $1 }
+  | '<='          { $1 }
+  | '>='          { $1 }
+  | '|>'          { $1 }
+  | '<|'          { $1 }
+  | '++'          { $1 }
+
 {
   
 runSagaExpr :: String -> Either String (P.ParsedData PE.Expr)
 runSagaExpr input = input `P.run` parseSagaExpr
+
+runSagaDec :: String -> Either String (P.ParsedData PE.Declaration)
+runSagaDec input = input `P.run` parseSagaDec
+
+runSagaScript :: String -> Either String (P.ParsedData PE.Script)
+runSagaScript input = input `P.run` parseSagaScript
 
 }

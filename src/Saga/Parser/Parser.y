@@ -209,36 +209,36 @@ controlFlow
 
 -- PATTERN MATCHING
 
-patListElems
-  : identifier                    { [$1] }
-  | identifier ',' patListElems   { $1 : $3 }
+-- patListElems
+--   : identifier                    { [$1] }
+--   | identifier ',' patListElems   { $1 : $3 }
 
-patTupleElems
-  : ',' identifier                { [$2] }
-  | ',' identifier patTupleElems  { $2 : $3 }
+-- patTupleElems
+--   : ',' identifier                { [$2] }
+--   | ',' identifier patTupleElems  { $2 : $3 }
 
-patRecordKeys
-  :                               { [] }
-  | identifier                    { [$1] }
-  | identifier ',' patRecordKeys  { $1 : $3 }
+-- patRecordKeys
+--   :                               { [] }
+--   | identifier                    { [$1] }
+--   | identifier ',' patRecordKeys  { $1 : $3 }
 
-patRest
-  :                 { Nothing }
-  | '|' identifier  { Just $2 }
+-- patRest
+--   :                 { Nothing }
+--   | '|' identifier  { Just $2 }
 
-patData
-  : identifier ':'      %shift  { [$1]}
-  | patData identifier          { $1 ++ [$2] }
+-- patData
+--   : identifier ':'      %shift  { [$1]}
+--   | patData identifier          { $1 ++ [$2] }
 
-pattern 
-  : identifier                          { P.pattern $ P.Var $1 }
-  | term                                { P.pattern $ P.Term $ fmap PE.Literal $1   }
-  | patData                             { P.pattern $ P.Tagged $1 }
-  | '(' identifier patTupleElems ')'    { P.pattern $ P.Tuple ($2 : $3) }
-  | '[' ']'                             { P.pattern $ P.List [] Nothing }
-  | '[' patListElems patRest ']'        { P.pattern $ P.List $2 $3 }
-  | '{' patRecordKeys patRest '}'       { P.pattern $ P.Record $2 $3 }
-  | '(' pattern ')'                     { $2 }
+-- pattern 
+--   : identifier                          { P.pattern $ P.Var $1 }
+--   | term                                { P.pattern $ P.Term $ fmap PE.Literal $1   }
+--   | patData                             { P.pattern $ P.Tagged $1 }
+--   | '(' identifier patTupleElems ')'    { P.pattern $ P.Tuple ($2 : $3) }
+--   | '[' ']'                             { P.pattern $ P.List [] Nothing }
+--   | '[' patListElems patRest ']'        { P.pattern $ P.List $2 $3 }
+--   | '{' patRecordKeys patRest '}'       { P.pattern $ P.Record $2 $3 }
+--   | '(' pattern ')'                     { $2 }
 
 
 --EXPRESSIONS
@@ -254,16 +254,16 @@ atom
   | tuple                   { $1 }
   | list                    { $1 }
   | record                  { $1 }
-  | '{' block '}'           { P.block $2 $1 $3 }
+  -- | '{' block '}'           { P.block $2 $1 $3 }
   | '(' expr ')'            { P.parenthesised $2 $1 $3 }
  
 
-cases
-  : '|' pattern '->' expr        { [P.matchCase $2 $4] }
-  | cases '|' pattern '->' expr  { $1 ++ [P.matchCase $3 $5] }
+-- cases
+--   : '|' pattern '->' expr        { [P.matchCase $2 $4] }
+--   | cases '|' pattern '->' expr  { $1 ++ [P.matchCase $3 $5] }
 
-matchExpr
-  : match expr cases %shift { P.match $2 $3 }
+-- matchExpr
+--   : match expr cases %shift { P.match $2 $3 }
 
 
 binding
@@ -275,9 +275,9 @@ bindings
 
 expr
   : controlFlow             { $1 }    
-  | matchExpr               { $1 }
+  -- | matchExpr               { $1 }
   | fnApplication           { $1 }
-  | '\\' params '->' expr   { P.lambda $2 $4 $1 }
+  -- | '\\' params '->' expr   { P.lambda $2 $4 $1 }
   | atom      %shift        { $1 }
   | '.' identifier          { P.dotLambda $2 }
   | binaryExpr { $1 }
@@ -304,30 +304,30 @@ binaryExpr
 
 
 -- BLOCKS
-patterns
-  : pattern ','        { [$1] }
-  | patterns pattern   { $1 ++ [$2] }
+-- patterns
+--   : pattern ','        { [$1] }
+--   | patterns pattern   { $1 ++ [$2] }
 
-backcall
-  : identifier '<-' expr            { P.backcall [P.pattern $ P.Var $1] $3 }
-  -- | identifier '<-' expr           { P.backcall $1 $3 }
+-- backcall
+--   : identifier '<-' expr            { P.backcall [P.pattern $ P.Var $1] $3 }
+--   -- | identifier '<-' expr           { P.backcall $1 $3 }
 
--- decStmt
-statement
-  : letdec                       { fmap PE.Declaration $1 } 
-  --| expr  %shift                 { fmap PT.Procedure $1 }
-  | backcall                     { $1 }
+-- -- decStmt
+-- statement
+--   : letdec                       { fmap PE.Declaration $1 } 
+--   --| expr  %shift                 { fmap PT.Procedure $1 }
+--   | backcall                     { $1 }
 
-stmts
-  : statement       { [$1] }
-  | stmts statement { $1 ++ [$2] }
+-- stmts
+--   : statement       { [$1] }
+--   | stmts statement { $1 ++ [$2] }
 
-returnStmt 
-  : return expr                  { P.returnStmt $2 $1 }
+-- returnStmt 
+--   : return expr                  { P.returnStmt $2 $1 }
 
-block
-  : returnStmt        { [$1] }
-  | stmts returnStmt  { $1 ++ [$2] }
+-- block
+--   : returnStmt        { [$1] }
+--   | stmts returnStmt  { $1 ++ [$2] }
 
 
 
@@ -394,7 +394,7 @@ typeExpr
   | union                       %shift    { P.typeUnion $1 }
   | typeExpr '->' typeExpr      %shift    { P.typeArrow $1 $3 }                               
   | '\\' params '=>' typeExpr   %shift    { P.typeLambda $2 $4 $1 }
-  | typeAtom typeArgs '!'                 { P.typeFnApplication $1 $2 $3 }
+  | typeAtom typeArgs '!'                 { P.typeFnApplication $1 $2  }
   
   
 

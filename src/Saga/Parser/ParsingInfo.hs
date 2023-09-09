@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE MonadComprehensions #-}
 
 module Saga.Parser.ParsingInfo where
@@ -20,6 +21,8 @@ import           Data.Functor               ((<&>))
 import           Debug.Trace                (trace)
 
 
+import           Control.Monad              (liftM, liftM3)
+import           Data.Bitraversable         (bimapM)
 import qualified Saga.Parser.Expr           as E
 import qualified Saga.Parser.Literals       as PL
 import           Saga.Parser.Shared         (Expandable (..), ParsedData (..),
@@ -96,37 +99,39 @@ controlFlow rtStart (Parsed cond _ toks) (Parsed true _ toks') (Parsed false end
 
 
 data Pattern a
-    = Var a
+    = Wildcard a
+    | Var a
+    | Hole a
     | Term a
-    | List [a] (Maybe a)
-    | Tuple [a]
-    | Record [a] (Maybe a)
-    | Tagged [a]
+    | Tagged a [Pattern a]
+    | List [Pattern a] (Maybe a)
+    | Tuple [Pattern a]  (Maybe a)
+    | Record [(a, Maybe (Pattern a))] (Maybe a)
+
     deriving (Show, Eq)
 
 pattern :: Pattern (ParsedData E.Expr) -> ParsedData E.Pattern
 --pattern e | trace ("\nBuilding pattern: " ++ show e) False = undefined
-pattern (Var e)  = fmap (E.Id . idStr) e
-pattern (Term e) = fmap (E.Lit . toLit) e
+pattern = \case
+    Wildcard e -> fmap (const E.Wildcard) e
+    Hole e -> fmap (E.PatHole . idStr) e
+    Var e -> fmap (E.Id . idStr) e
+    Term e -> fmap (E.Lit . toLit) e
+    Tagged tag pats -> E.PatData <$> fmap idStr tag <*> transform pats
+    Tuple pats rest -> E.PatTuple <$> transform pats <*> leftover rest
+    List pats rest -> E.PatList <$> transform pats <*> leftover rest
+    Record pats rest -> E.PatRecord <$> keyValPattern pats <*> leftover rest
     where
         toLit (E.Literal t) = t
-        toLit _ = error $ "Unexpected non Literal value in Term pattern: " ++ show e
+        toLit e = error $ "Unexpected non Literal value in Term pattern: " ++ show e
+        leftover rest = fmap idStr <$> sequence rest
+        transform =  mapM pattern
+        keyValPattern :: [(ParsedData E.Expr, Maybe (Pattern (ParsedData E.Expr)))] -> ParsedData [(String, Maybe E.Pattern )]
+        keyValPattern = mapM $ bimapM (fmap idStr) $ mapM pattern
 
-pattern (Tuple vars) = E.PatTuple <$> mapM (fmap idStr) vars
-pattern (List vars rest) = E.PatList <$> vars' <*> rest'
-  where
-        rest' = fmap idStr <$> sequence rest
-        vars' =  mapM (fmap idStr) vars
-pattern (Record vars rest) = E.PatRecord <$> vars' <*> rest'
-    where
-        rest' = fmap idStr <$> sequence rest
-        vars' =  mapM (fmap idStr) vars
 
-pattern (Tagged vars) =
-    [ E.PatData (idStr tag) (fmap idStr dat)
-    | tag <- head vars
-    , dat <- sequence $ tail vars
-    ]
+
+
 
 
 
@@ -135,17 +140,10 @@ matchCase :: ParsedData E.Pattern -> ParsedData E.Expr -> ParsedData E.Case
 matchCase pat expr = [ E.Case p e | p <- pat, e <- expr]
 
 
-
 match :: ParsedData E.Expr -> [ParsedData E.Case] -> ParsedData E.Expr
 --match e cs | trace ("Building match:\n\tExpr: " ++ show e ++ "\n\tCases: " ++ show cs) False = undefined
 match expr cases = [ E.Match e cs | e <- expr, cs <- sequence cases]
 
-
--- assignment :: ParsedData E.Expr -> ParsedData E.Expr -> ParsedData E.Expr
--- assignment id expr = do
---     E.Identifier id' <- id
---     expr' <- expr
---     Parsed (PT.Assign id' expr') (range id <-> range expr) (nub $ tokens id ++ tokens expr)
 
 
 parenthesised :: ParsedData E.Expr -> RangedToken -> RangedToken -> ParsedData E.Expr
@@ -155,12 +153,8 @@ parenthesised expr start end = expr
     }
 
 
-lambda :: [ParsedData E.Expr] -> ParsedData E.Expr -> RangedToken -> ParsedData E.Expr
-lambda params (Parsed body' bRange bToks) rt =
-    let
-        expr = E.Lambda (fmap (idStr . value) params) body'
-        toks = foldl (\toks' param -> toks' ++ tokens param) (rt:bToks) params
-    in Parsed expr (L.rtRange rt <-> bRange) (nub toks)
+lambda :: [ParsedData E.Pattern] -> ParsedData E.Expr -> RangedToken -> ParsedData E.Expr
+lambda params body rt = E.Lambda <$> sequence params <*> body
 
 
 fnApplication :: ParsedData E.Expr -> [ParsedData E.Expr] -> ParsedData E.Expr
@@ -203,7 +197,7 @@ dotLambda expr = fmap (const fn) expr
         obj = "_"
         body = E.FnApp (E.Identifier ".") [E.Identifier obj, value expr]
         -- body = PT.FieldAccess (E.Identifier obj) (idStr $ value expr)
-        fn = E.Lambda [obj] body
+        fn = E.Lambda [E.Id obj] body
 
 
 
@@ -286,13 +280,8 @@ typeLambda params (Parsed body' bRange bToks) rt =
         toks = foldl (\toks' param -> toks' ++ tokens param) (rt:bToks) params
     in Parsed ty (L.rtRange rt <-> bRange) (nub toks)
 
-typeFnApplication :: ParsedData PT.TypeExpr -> [ParsedData PT.TypeExpr] -> RangedToken -> ParsedData PT.TypeExpr
-typeFnApplication fn args rt =
-    let
-        ty = PT.TFnApp (value fn) $ fmap value args
-        toks = foldl (\toks' arg -> toks' ++ tokens arg) (rt: tokens fn) args
-    in Parsed ty (range fn <-> L.rtRange rt) (nub toks)
-
+typeFnApplication :: ParsedData PT.TypeExpr -> [ParsedData PT.TypeExpr] -> ParsedData PT.TypeExpr
+typeFnApplication fn args = PT.TFnApp <$> fn <*> sequence args
 
 
 tyIdentifier :: ParsedData E.Expr -> ParsedData PT.TypeExpr

@@ -33,7 +33,7 @@ parseScriptV2 fp = do
     handle <- openFile fp ReadMode
     parsingH <- openFile "./lang/test.parsing.log" WriteMode
     contents <- hGetContents handle
-    let res = PV2.runSagaExpr contents
+    let res = PV2.runSagaScript contents
     pPrint res
     pHPrint parsingH res
     hClose handle

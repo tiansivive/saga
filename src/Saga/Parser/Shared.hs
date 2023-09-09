@@ -56,6 +56,7 @@ instance Applicative ParsedData where
 
 idStr :: E.Expr -> String
 idStr (E.Identifier id) = id
+idStr (E.Hole id)       = id
 idStr e                 = error $ "Not identifier expression:\n" ++ show e
 
 tyIdStr :: PT.TypeExpr -> String
@@ -73,7 +74,7 @@ delimited start list end = Parsed (value list') range' toks
 
 
 lexer :: (L.RangedToken -> L.Alex a) -> L.Alex a
-lexer = (=<< L.alexMonadScan) 
+lexer = (=<< L.alexMonadScan)
 
 run :: String -> L.Alex a -> Either String a
 run =  L.runAlex . BS.pack

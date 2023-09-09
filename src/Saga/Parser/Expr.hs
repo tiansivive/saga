@@ -19,7 +19,7 @@ data Expr where
   Record :: [(String, Expr)] -> Expr
   IfElse :: Expr -> Expr -> Expr -> Expr
   Match :: Expr -> [Case] -> Expr
-  Lambda :: [String] -> Expr -> Expr
+  Lambda :: [Pattern] -> Expr -> Expr
   FnApp :: Expr -> [Expr] -> Expr
   Clause :: Expr -> [Binding Expr] -> Expr
 
@@ -51,12 +51,14 @@ data Case = Case Pattern Expr
   deriving (Show, Eq)
 
 data Pattern
-    = Id String
+    = Wildcard
+    | Id String
+    | PatHole String
     | Lit Literal
-    | PatTuple [String]
-    | PatList [String] (Maybe String)
-    | PatRecord [String] (Maybe String)
-    | PatData String [String]
+    | PatTuple [Pattern] (Maybe String)
+    | PatList [Pattern] (Maybe String)
+    | PatRecord [(String, Maybe Pattern)] (Maybe String)
+    | PatData String [Pattern]
   deriving (Show, Eq)
 
 
