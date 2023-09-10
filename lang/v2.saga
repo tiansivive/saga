@@ -63,8 +63,41 @@ let fmap
             | Foo: Int: x -> x + 1
 
 
+let try
+    : String -> Promise Int!
+    = \url -> { 
+        val1 <- fetch url!
+        val2 <- fetch url!
+        return val1 + val2
+    }
+
+let foo = 
+    { x: 1
+    , y: 2 
+    }
+
+
+
+data MyType
+  = Foo: Int
+  | Bar: String -> Bool
+  | Baz: \a => custom -> a
+  where custom = String
+
+
+let a = 1
+
+*/
+
+let try
+    : String -> Promise Int!
+    = \url -> 1
+
+
 let proc
+    : String -> Promise Int!
     = \a -> {
+        b d <- bar
         b d <- bar
         match a
             | 1 -> a
@@ -74,18 +107,3 @@ let proc
         other
         foo    
     }
-
-
-let foo = 
-    { x: 1
-    , y: 2 
-    }
-*/
-
-
-
-data MyType
-  = Foo: Int
-  | Bar: String -> Bool
-  | Baz: \a => custom -> a
-  where custom = String

@@ -230,7 +230,7 @@ trimQuotes str = BS.tail $ BS.take (BS.length str -1) str
 handleCurlyBrace :: AlexAction RangedToken
 handleCurlyBrace inp len = do
   state <- get 
-  -- traceM $ "\nOpening in state: " ++ show state
+  traceM $ "\nOpening in state: " ++ show state
   case lastToken state of
     Just Arrow -> do
       modify $ \s -> s{indentStateStack = block : indentStateStack s}
@@ -243,7 +243,7 @@ handleCloseCurlyBrace ::  AlexAction RangedToken
 handleCloseCurlyBrace inp len = do
   state <- get 
   let stack = indentStateStack state
-  -- traceM $ "\nClosing in state: " ++ show state
+  traceM $ "\nClosing in state: " ++ show state
   if length stack == 1 then
     alexError "Error: unexpected closing }"
   else do
@@ -258,31 +258,42 @@ identation input@(_, _, str, _) len = do
   state <- get
   let stack = indentStateStack state
   let len' = fromIntegral $ BS.length $ pruneIdentation len str
-  let currentIndent = identLevel state
-  -- traceM "\nIndentation"
-  -- traceM $ "State: " ++ show state
-  -- traceM $ "Current indent len: " ++ show len'
-  -- traceM $ "Current input: " ++ show (BS.take len str)
+  let stateIndent = identLevel state
+  traceM "\nIndentation"
+  traceM $ "State: " ++ show state
+  traceM $ "Current indent len: " ++ show len'
+  traceM $ "Current input: " ++ show (BS.take len str)
 
-  if currentIndent == 0 then do
-    modify $ \s -> s{identLevel = len'}
-    skip input len
-  else if len' > currentIndent then do 
+  
+  if len' > stateIndent then do 
+    traceM "len > stateIndent "
     case lastToken state of
       Just LCurly -> modify $ \s -> s{identLevel = len'}
       _           -> do
         modify $ \s -> s{indentStateStack = 0 : stack, identLevel = len'}
         alexSetStartCode 0
     skip input len
-  else if len' < currentIndent then do 
-    let code = head stack
-    if code == block then
-      tok SemiColon input len
-    else do
-      modify $ \s -> s{ indentStateStack = tail stack, identLevel = len' }
-      alexSetStartCode code
+  else if stateIndent == 0 then do
+    traceM "state ident == 0"
+    modify $ \s -> s{identLevel = len'}
+    skip input len
+  else if len' < stateIndent then do 
+    traceM "len < stateIndent "
+    let previousCode = head stack
+    if previousCode == block then do -- block state popping is handled by curly braces handling
+      modify $ \s -> s{ identLevel = len' }
       skip input len
+    else do
+      let stack' = tail stack
+      let nextCode = head stack'
+      modify $ \s -> s{ indentStateStack = stack', identLevel = len' }
+      alexSetStartCode nextCode
+      if nextCode == block then
+        tok SemiColon input len
+      else do
+        skip input len
   else if head stack == block then do
+    traceM "code == block"
     tok SemiColon input len
   else skip input len
               

@@ -102,10 +102,5 @@ let try
         val1 <- fetch url!
         val2 <- fetch url!
         return val1 + val2
-      }
-
-
-
-
-let test = f 1!
+        }
 
