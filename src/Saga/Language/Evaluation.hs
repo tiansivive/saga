@@ -68,12 +68,12 @@ eval (Identifier name) =
 --   bindings' <- mapM evalBinding bindings
 --   eval e `scoped` Map.union (Map.fromList bindings')
 
-eval (IfElse cond onTrue onFalse) = do
-  val <- eval cond
-  case val of
-    (VBool True) -> eval onTrue
-    (VBool False) -> eval onFalse
-    _ -> throwError "Could not evaluate non boolean expression as a if condition"
+-- eval (IfElse cond onTrue onFalse) = do
+--   val <- eval cond
+--   case val of
+--     (VBool True) -> eval onTrue
+--     (VBool False) -> eval onFalse
+--     _ -> throwError "Could not evaluate non boolean expression as a if condition"
 
 -- eval (Block exprs) = do
 --   mapM_ eval exprs'

@@ -16,7 +16,7 @@ data Expr where
   List :: [Expr] -> Expr
   Tuple :: [Expr] -> Expr
   Record :: [(String, Expr)] -> Expr
-  IfElse :: Expr -> Expr -> Expr -> Expr
+
   Match :: Expr -> [Case] -> Expr
   Lambda :: [String] -> Expr -> Expr
   FnApp :: Expr -> [Expr] -> Expr
@@ -35,7 +35,6 @@ data Binding a
 
 data Statement where
   Return      :: Expr -> Statement
-  BackCall    :: [Pattern] -> Expr -> Statement
   Declaration :: Declaration -> Statement
   Procedure   :: Expr -> Statement
 

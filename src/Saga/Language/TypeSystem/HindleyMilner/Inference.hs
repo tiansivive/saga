@@ -144,7 +144,6 @@ infer :: Expr -> Infer Type
 infer ex = case ex of
   Identifier x -> lookupEnv x
 
-
   Lambda (param : rest) body -> do
     tVar <- fresh KType
     out' <- infer out `scoped` (Tyvar param KType, Scheme (tvars tVar) ([] :=> tVar))
@@ -169,16 +168,14 @@ infer ex = case ex of
       partial = FnApp fn [a]
       curried = foldl (\f a -> FnApp f [a]) partial as
 
-
-  IfElse cond yes no -> do
+  Match cond cases -> do
     cond' <- infer cond
-    yes' <- infer yes
-    no' <- infer no
+    cases <- mapM inferCase cases
     emit $ EqCons $ cond' `EQ` TPrimitive TBool
-    return $ if yes' == no' then yes' else TUnion [yes', no']
-
-
-
+    return $ TUnion cases
+    where
+      inferCase:: Case -> Infer Type
+      inferCase (Case _ e) = infer e
 
   Tuple elems -> do
     tElems <- mapM infer elems
@@ -188,6 +185,14 @@ infer ex = case ex of
     return $ TRecord tPairs
     where
       infer' = mapM infer
+
+  -- | TODO: Fold the lock instead to capture any defined types in any potential decs
+  Block stmts -> inferStmt $ last stmts
+    where
+      inferStmt (Return expr)                  = infer expr
+      inferStmt (Procedure expr)               = infer expr
+      inferStmt (Declaration (Let _ _ _ expr)) = infer expr
+      inferStmt (Declaration _)                = return TUnit
 
   Literal literal -> return $ TLiteral literal
   ty -> error $ "Inference not implemented yet: " ++ show ty
