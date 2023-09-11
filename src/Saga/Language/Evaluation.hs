@@ -64,9 +64,9 @@ eval (Identifier name) =
         Just val -> return val
         Nothing  -> throwError $ unidentified name
 
-eval (Clause e bindings ) = do
-  bindings' <- mapM evalBinding bindings
-  eval e `scoped` Map.union (Map.fromList bindings')
+-- eval (Clause e bindings ) = do
+--   bindings' <- mapM evalBinding bindings
+--   eval e `scoped` Map.union (Map.fromList bindings')
 
 eval (IfElse cond onTrue onFalse) = do
   val <- eval cond

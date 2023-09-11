@@ -9,6 +9,7 @@ import           REPL.Repl                (repl)
 import qualified Saga.Lexer.Lexer         as L
 import qualified Saga.Parser.Parser       as P
 
+import           Saga.Parser.Desugar      (desugarExpr, desugarScript)
 import           System.Console.Haskeline (defaultSettings, getInputLine,
                                            outputStrLn, runInputT)
 import           System.IO                (IOMode (ReadMode, ReadWriteMode, WriteMode),
@@ -36,7 +37,7 @@ parseScript fp = do
     handle <- openFile fp ReadMode
     parsingH <- openFile "./lang/test.parsing.log" WriteMode
     contents <- hGetContents handle
-    let res = P.runSagaScript contents
+    let res = fmap desugarExpr <$> P.runSagaExpr contents
     pPrint res
     pHPrint parsingH res
     hClose handle

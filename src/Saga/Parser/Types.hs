@@ -2,8 +2,8 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
 module Saga.Parser.Types where
-import           Data.Map             (Map)
-import           Saga.Parser.Literals (Literal)
+import           Data.Map                    (Map)
+import           Saga.Language.Core.Literals (Literal)
 
 
 
@@ -13,7 +13,6 @@ data TypeExpr where
   TETuple :: [TypeExpr] -> TypeExpr
   TERecord :: [(String, TypeExpr)] -> TypeExpr
   TEArrow :: TypeExpr -> TypeExpr -> TypeExpr
-  TParens :: TypeExpr -> TypeExpr
   TConditional :: TypeExpr -> TypeExpr -> TypeExpr -> TypeExpr
   TClause      :: TypeExpr -> [Binding TypeExpr] -> TypeExpr
   TEUnion        :: [TypeExpr] -> TypeExpr

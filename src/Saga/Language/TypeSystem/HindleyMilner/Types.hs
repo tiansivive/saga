@@ -3,18 +3,17 @@
 
 module Saga.Language.TypeSystem.HindleyMilner.Types where
 
-import           Data.Map          (Map)
-import           GHC.Base          ()
-import           Saga.Lexer.Tokens (Token (Qualified))
-import Saga.Language.Core.Literals (Literal)
+import           Data.Map                    (Map)
+import           GHC.Base                    ()
+import           Saga.Language.Core.Literals (Literal)
+import           Saga.Lexer.Tokens           (Token (Qualified))
 
 data TypeExpr where
-  TTerm :: Literal -> TypeExpr
+  TELiteral :: Literal -> TypeExpr
   TIdentifier :: String -> TypeExpr
   TETuple :: [TypeExpr] -> TypeExpr
   TERecord :: [(String, TypeExpr)] -> TypeExpr
   TEArrow :: TypeExpr -> TypeExpr -> TypeExpr
-  TParens :: TypeExpr -> TypeExpr
   TConditional :: TypeExpr -> TypeExpr -> TypeExpr -> TypeExpr
   TClause      :: TypeExpr -> [Binding TypeExpr] -> TypeExpr
   -- TBlock          :: [TypeExpr] -> TypeExpr

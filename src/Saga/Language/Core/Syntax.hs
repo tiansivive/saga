@@ -8,11 +8,11 @@ import           Saga.Language.Core.Literals                  (Literal)
 import qualified Saga.Language.TypeSystem.HindleyMilner.Types as T
 import           Saga.Language.TypeSystem.HindleyMilner.Types hiding (Binding)
 
-
 -- | Term expressions
 data Expr where
   Literal :: Literal -> Expr
   Identifier :: String -> Expr
+  Hole :: String -> Expr
   List :: [Expr] -> Expr
   Tuple :: [Expr] -> Expr
   Record :: [(String, Expr)] -> Expr
@@ -20,10 +20,9 @@ data Expr where
   Match :: Expr -> [Case] -> Expr
   Lambda :: [String] -> Expr -> Expr
   FnApp :: Expr -> [Expr] -> Expr
-  Clause :: Expr -> [Binding Expr] -> Expr
 
   Block :: [Statement] -> Expr
-  Parens :: Expr -> Expr
+
   --FieldAccess :: Expr -> String -> Expr
 deriving instance Show Expr
 deriving instance Eq Expr
@@ -49,12 +48,14 @@ data Case = Case Pattern Expr
   deriving (Show, Eq)
 
 data Pattern
-    = Id String
+    = Wildcard
+    | Id String
+    | PatHole String
     | Lit Literal
-    | PatTuple [String]
-    | PatList [String] (Maybe String)
-    | PatRecord [String] (Maybe String)
-    | PatData String [String]
+    | PatTuple [Pattern] (Maybe String)
+    | PatList [Pattern] (Maybe String)
+    | PatRecord [(String, Maybe Pattern)] (Maybe String)
+    | PatData String [Pattern]
   deriving (Show, Eq)
 
 type DataExpr = (String, TypeExpr)

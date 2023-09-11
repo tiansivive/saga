@@ -3,11 +3,9 @@
 
 module Saga.Parser.Expr where
 
-
-
-import           Saga.Parser.Literals (Literal)
-import qualified Saga.Parser.Types    as T
-import           Saga.Parser.Types    hiding (Binding)
+import           Saga.Language.Core.Literals (Literal)
+import qualified Saga.Parser.Types           as T
+import           Saga.Parser.Types           hiding (Binding)
 
 
 data Expr where
@@ -24,7 +22,7 @@ data Expr where
   Clause :: Expr -> [Binding Expr] -> Expr
 
   Block :: [Statement] -> Expr
-  Parens :: Expr -> Expr
+
 
 deriving instance Show Expr
 deriving instance Eq Expr

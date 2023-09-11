@@ -87,11 +87,7 @@ data MyType
 
 let a = 1
 
-*/
 
-let try
-    : String -> Promise Int!
-    = \url -> 1
 
 
 let proc
@@ -107,3 +103,7 @@ let proc
         other
         foo    
     }
+    : String -> Promise Int!
+*/
+
+\(Data: one) two -> one + two

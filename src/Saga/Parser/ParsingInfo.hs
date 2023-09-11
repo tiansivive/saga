@@ -3,31 +3,31 @@
 
 module Saga.Parser.ParsingInfo where
 
-import qualified Saga.Lexer.Lexer           as L
-import qualified Saga.Lexer.Tokens          as T
+import qualified Saga.Lexer.Lexer            as L
+import qualified Saga.Lexer.Tokens           as T
 
 
-import           Data.ByteString.Lazy.Char8 (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as BS
+import           Data.ByteString.Lazy.Char8  (ByteString)
+import qualified Data.ByteString.Lazy.Char8  as BS
 
-import           Data.Char                  (isLower)
-import           Data.List                  (nub)
-import           Data.Maybe                 (Maybe (..), fromJust)
-import           Data.Monoid                (First (..))
+import           Data.Char                   (isLower)
+import           Data.List                   (nub)
+import           Data.Maybe                  (Maybe (..), fromJust)
+import           Data.Monoid                 (First (..))
 
-import           Saga.Lexer.Lexer           (RangedToken (rtToken))
+import           Saga.Lexer.Lexer            (RangedToken (rtToken))
 
-import           Data.Functor               ((<&>))
-import           Debug.Trace                (trace)
+import           Data.Functor                ((<&>))
+import           Debug.Trace                 (trace)
 
 
-import           Control.Monad              (liftM, liftM3)
-import           Data.Bitraversable         (bimapM)
-import qualified Saga.Parser.Expr           as E
-import qualified Saga.Parser.Literals       as PL
-import           Saga.Parser.Shared         (Expandable (..), ParsedData (..),
-                                             idStr, tyIdStr)
-import qualified Saga.Parser.Types          as PT
+import           Control.Monad               (liftM, liftM3)
+import           Data.Bitraversable          (bimapM)
+import qualified Saga.Language.Core.Literals as PL
+import qualified Saga.Parser.Expr            as E
+import           Saga.Parser.Shared          (Expandable (..), ParsedData (..),
+                                              idStr, tyIdStr)
+import qualified Saga.Parser.Types           as PT
 
 
 
@@ -261,7 +261,7 @@ tyTuple elems start end =  Parsed tuple' range' toks
 
 tyParenthesised :: ParsedData PT.TypeExpr -> RangedToken -> RangedToken -> ParsedData PT.TypeExpr
 tyParenthesised expr@(Parsed val range _) start end = expr
-    { value = PT.TParens val
+    { value = val
     , range = L.rtRange start <-> L.rtRange end
     }
 
