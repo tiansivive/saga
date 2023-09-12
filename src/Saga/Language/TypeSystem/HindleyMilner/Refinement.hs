@@ -1,32 +1,35 @@
 {-# LANGUAGE LambdaCase #-}
 
 
-module Saga.AST.TypeSystem.HindleyMilner.Refinement where
+module Saga.Language.TypeSystem.HindleyMilner.Refinement where
 
 import           Control.Monad.Except
-import           Control.Monad.State.Lazy                      (MonadState,
-                                                                State,
-                                                                evalState,
-                                                                evalStateT,
-                                                                replicateM)
-import           Control.Monad.Trans.Except                    (ExceptT,
-                                                                runExceptT)
+import           Control.Monad.State.Lazy                           (MonadState,
+                                                                     State,
+                                                                     evalState,
+                                                                     evalStateT,
+                                                                     replicateM)
+import           Control.Monad.Trans.Except                         (ExceptT,
+                                                                     runExceptT)
 
-import           Data.Functor                                  ((<&>))
+import           Data.Functor                                       ((<&>))
 
-import qualified Data.Map                                      as Map
-import qualified Data.Set                                      as Set
-import           Debug.Trace                                   (trace, traceM)
+import qualified Data.Map                                           as Map
+import qualified Data.Set                                           as Set
+import           Debug.Trace                                        (trace,
+                                                                     traceM)
 
-import           Saga.AST.TypeSystem.HindleyMilner.Types
+import           Saga.Language.TypeSystem.HindleyMilner.Types
 
-import           Control.Monad.Trans.Reader                    (ReaderT (runReaderT),
-                                                                ask, local)
-import           Control.Monad.Trans.State                     (StateT)
-import           Data.Bifunctor                                (first)
-import           Prelude                                       hiding (lookup)
-import           Saga.AST.TypeSystem.HindleyMilner.Environment (scoped)
-import           Saga.Parser.ParsingInfo                       hiding (return)
+import           Control.Monad.Trans.Reader                         (ReaderT (runReaderT),
+                                                                     ask, local)
+import           Control.Monad.Trans.State                          (StateT)
+import           Data.Bifunctor                                     (first)
+import           Prelude                                            hiding
+                                                                    (lookup)
+import           Saga.Language.TypeSystem.HindleyMilner.Environment (scoped)
+import           Saga.Parser.ParsingInfo                            hiding
+                                                                    (return)
 
 
 type RefinementEnv = Map.Map String Type
@@ -72,9 +75,8 @@ refine a | trace ("refining: " ++ show a) False = undefined
 -- refine (TBlock [])                    = return TUnit
 -- refine (TBlock tyExps)                = refine $ last tyExps
 -- refine (TReturn tyExp)                = refine tyExp
-refine (TTerm term) = return $ TLiteral term
+refine (TELiteral term) = return $ TLiteral term
 refine (TIdentifier id) = lookup id
-refine (TParens tyExp) = refine tyExp
 refine (TETuple tyExps) = mapM refine tyExps <&> TTuple
 refine (TERecord pairs) = mapM (mapM refine) pairs <&> TRecord
 refine (TEArrow input output) = do

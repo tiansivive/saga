@@ -6,10 +6,8 @@ import Control.Monad (when)
 import Data.ByteString.Lazy.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
 
-
-
 import Saga.Lexer.Tokens 
-
+import Debug.Trace
 
 }
 -- In the middle, we insert our definitions for the lexer, which will generate the lexemes for our grammar.
@@ -24,114 +22,121 @@ $backslash  = [\\]
 $ws         = [[\ \t\f\v\r]] -- whitespace char set without newline
 
 @id   = ($alpha | \_) ($alpha | $digit | \_ | \' | \? )*
+@hole = (\?) ($alpha | \_) ($alpha | $digit | \_ | \' | \? )*
+
+@ident = (\n) (\n | $ws)* $ws*
 
 tokens :-
 
 
-    <0> $white+                    { skip }
-    --<0> $nl+                    { tok Newline }
+    $ws+          { skip }
+  
+    module               { tok Module }
+    import               { tok Import } 
 
-    <0> module                            { tok Module }
-    <0> import                            { tok Import } 
 
-
-    <0> let                  { tok Let }
-    <0> with                 { tok With }
-    <0> where                { tok Where }
-    <0> in                   { tok In }
-    <0> as                   { tok As }
-    <0> if                   { tok If }
-    <0> then                 { tok Then }
-    <0> else                 { tok Else }
-    <0> unless               { tok Unless }
-    <0> match                { tok Match }
-    <0> return               { tok Return }
+    let                  { tok Let }
+    with                 { tok With }
+    where                { tok Where }
+    in                   { tok In }
+    as                   { tok As }
+    if                   { tok If }
+    then                 { tok Then }
+    else                 { tok Else }
+    unless               { tok Unless }
+    match                { tok Match }
+    <block> return       { tok Return }
     
-    <0> data                 { tok Data }
+    data                 { tok Data }
 
-    <0> type                 { tok Type }
-    <0> forall               { tok Forall }
+    type                 { tok Type }
+    forall               { tok Forall }
 
-    <0> exists               { tok Exists }
+    exists               { tok Exists }
 
-    <0> alias                { tok Alias }
-    <0> protocol             { tok Protocol }
-    <0> implements           { tok Implements }
-    <0> implementation       { tok Implements }
-    <0> impl                 { tok Instance }
-    <0> instance             { tok Instance }
+    alias                { tok Alias }
+    protocol             { tok Protocol }
+    implements           { tok Implements }
+    implementation       { tok Implements }
+    impl                 { tok Instance }
+    instance             { tok Instance }
 
  
 
-    <0> $digit+             { tokNumber }
-    <0> (\"[^\"]*\")        { tokString }
-    <0> yes | on  | true    { tokBoolean True }
-    <0> no  | off | false   { tokBoolean False }
-    <0> @id                 { tokId }
+    $digit+             { mkTok (Number . read . BS.unpack) }
+    (\"[^\"]*\")        { mkTok (String . trimQuotes) }
+    yes | on  | true    { mkTok $ const $ Boolean True }
+    no  | off | false   { mkTok $ const $ Boolean False }
+    @id                 { mkTok Id  }
+    @hole               { mkTok Hole }
     
-    <0> "("                 { tok LParen }
-    <0> ")"                 { tok RParen }
-    <0> "["                 { tok LBrack }
-    <0> "]"                 { tok RBrack }
-    <0> "{"                 { tok LCurly }
-    <0> "}"                 { tok RCurly }
-
-    <0> ":"                 { tok Colon }
-    <0> ";"                 { tok SemiColon }
-    <0> ","                 { tok Comma }
-    <0> "->"                { tok Arrow }
-    <0> "<-"                { tok BackArrow }
-    <0> "=>"                { tok FatArrow }
-    <0> "|->"               { tok PipeArrow }
-    <0> "="                 { tok Equals }
-    <0> "|"                 { tok Pipe }
-    <0> "."                 { tok Dot }
-    <0> "::"                 { tok Section }
-    <0> $backslash          { tok BackSlash }
-
-    <0> "+"                 { tok $ Operator "+" }
-    <0> "-"                 { tok $ Operator "-" }
-    <0> "*"                 { tok $ Operator "*" }
-    <0> "/"                 { tok $ Operator "/" }
-    <0> "%"                 { tok $ Operator "%" }
-    <0> "^"                 { tok $ Operator "^" }
-
-    <0> "++"                { tok $ Operator "++" }
-
-    <0> "<"                 { tok $ Operator "<" }
-    <0> "<="                { tok $ Operator "<=" }
-    <0> ">"                 { tok $ Operator ">" }
-    <0> ">="                { tok $ Operator ">=" }
-
-    <0> "||"                { tok $ Operator "||" }
-    <0> "&&"                { tok $ Operator "&&" }
-    <0> "!"                 { tok $ Operator "!" }
-    
-    <0> "=="                { tok $ Operator "==" }
-    <0> "!="                { tok $ Operator "!=" }
-
-    <0> ">>"                { tok $ Operator ">>" }
-    <0> "<<"                { tok $ Operator "<<" }
-    
-    <0> "|>"                { tok $ Operator "|>" }
-    <0> "<|"                { tok $ Operator "<|" }
-
-    <0> "$"                 { tok $ Operator "$" }
-    <0> "#"                 { tok $ Operator "#" }
-    <0> "@"                 { tok $ Operator "#" }
-
+    "("                 { tok LParen }
+    ")"                 { tok RParen }
+    "["                 { tok LBrack }
+    "]"                 { tok RBrack }
     
 
+    ":"                 { tok Colon }
+    ";"                 { tok SemiColon }
+    ","                 { tok Comma }
+    "->"                { tok Arrow }
+    <block> "<-"        { tok BackArrow }
+    "=>"                { tok FatArrow }
+    "|->"               { tok PipeArrow }
+    "="                 { tok Equals }
+    "|"                 { tok Pipe }
+    "."                 { tok Dot }
+    "`"                 { tok Backtick }
+    "::"                { tok Section }
+    $backslash          { tok BackSlash }
+
+    "+"                 { tok $ Operator "+" }
+    "-"                 { tok $ Operator "-" }
+    "*"                 { tok $ Operator "*" }
+    "/"                 { tok $ Operator "/" }
+    "%"                 { tok $ Operator "%" }
+    "^"                 { tok $ Operator "^" }
+
+    "++"                { tok $ Operator "++" }
+
+    "<"                 { tok $ Operator "<" }
+    "<="                { tok $ Operator "<=" }
+    ">"                 { tok $ Operator ">" }
+    ">="                { tok $ Operator ">=" }
+
+    "||"                { tok $ Operator "||" }
+    "&&"                { tok $ Operator "&&" }
+    "!"                 { tok $ Operator "!" }
+    
+    "=="                { tok $ Operator "==" }
+    "!="                { tok $ Operator "!=" }
+
+    ">>"                { tok $ Operator ">>" }
+    "<<"                { tok $ Operator "<<" }
+    
+    "|>"                { tok $ Operator "|>" }
+    "<|"                { tok $ Operator "<|" }
 
 
+    "$"                 { tok $ Operator "$" }
+    "#"                 { tok $ Operator "#" }
+    "@"                 { tok $ Operator "#" }
+
+    <0, block> "{"                 { handleCurlyBrace }
+    <0, block> "}"                 { handleCloseCurlyBrace }
+ 
+
+    <0, block> @ident          { identation } 
+    -- <block> .               { skip } 
+ 
 
     -- comments
-    <0>       "/*" { nestComment `andBegin` comment }
-    <0>       "*/" { \_ _ -> alexError "Error: unexpected closing comment" }
-    <comment> "/*" { nestComment }
-    <comment> "*/" { unnestComment }
-    <comment> .    ;
-    <comment> $nl  ;
+    <0, block> "/*" { nestComment `andBegin` comment }
+    <0, block> "*/" { \_ _ -> alexError "Error: unexpected closing comment" }
+    <comment>   "/*" { nestComment }
+    <comment>   "*/" { unnestComment }
+    <comment>   .    ;
+    <comment>   $nl  ;
 
 
 {
@@ -147,27 +152,34 @@ data RangedToken = RangedToken
   , rtRange :: Range
   }
 
--- | faking Eq isntances so we dont get problems with the Expr and Type Eq 
--- | TODO: this definitely needs to change!!!!!
 instance Eq Range where
-  r1 == r2 = True
+  r1 == r2 = start r1 == start r2 && stop r1 == stop r2
 
 instance Eq RangedToken where 
-  rt1 == rt2 = True
+  rt1 == rt2 = rtToken rt1 == rtToken rt2 && rtRange rt1 == rtRange rt2
 
 instance Show Range where
-  show _ = ""
+  show (Range start stop) = "| " ++ show start ++ " <-> " ++ show stop ++ " |"
 instance Show RangedToken where
-  show t =  show $ rtToken t
+  show t = show $ rtToken t
 
 -- At the bottom, we may insert more Haskell definitions, such as data structures, auxiliary functions, etc.
 data AlexUserState = AlexUserState
-  { nestLevel :: Int
-  }
+  { commentLevel  :: Int
+  , identLevel :: Int
+  , indentStateStack :: [Int]
+  , lastToken :: Maybe Token
+  } deriving (Show)
+
+
+
 
 alexInitUserState :: AlexUserState
 alexInitUserState = AlexUserState
-    { nestLevel = 0
+    { commentLevel = 0
+    , identLevel = 0
+    , indentStateStack = [0]
+    , lastToken = Nothing
     }
 
 get :: Alex AlexUserState
@@ -178,6 +190,7 @@ put s' = Alex $ \s -> Right (s{alex_ust = s'}, ())
 
 modify :: (AlexUserState -> AlexUserState) -> Alex ()
 modify f = Alex $ \s -> Right (s{alex_ust = f (alex_ust s)}, ())
+
 
 alexEOF :: Alex RangedToken
 alexEOF = do
@@ -193,50 +206,110 @@ mkRange (start, _, str, _) len = Range{start = start, stop = stop}
   where
     stop = BS.foldl' alexMove start $ BS.take len str
 
-tokId :: AlexAction RangedToken
-tokId inp@(_, _, str, _) len =
-  pure RangedToken
-    { rtToken = Id $ BS.take len str
-    , rtRange = mkRange inp len
-    }
+
 
 tok :: Token -> AlexAction RangedToken
-tok t inp len =
-  pure RangedToken
-    { rtToken = t
-    , rtRange = mkRange inp len
-    }
+tok = mkTok . const
 
-tokNumber :: AlexAction RangedToken
-tokNumber inp@(_, _, str, _) len =
-  pure RangedToken
-    { rtToken = Number $ read $ BS.unpack $ BS.take len str
-    , rtRange = mkRange inp len
-    }
+mkTok :: (ByteString -> Token) -> AlexAction RangedToken
+mkTok cons inp@(_, _, str, _) len = do
+  current <- alexGetStartCode
+  if current == comment then 
+    skip inp len
+  else do
+    let tok = cons $ BS.take len str
+    modify $ \s -> s{lastToken = Just tok }
+    pure RangedToken
+      { rtToken = tok
+      , rtRange = mkRange inp len
+      }
 
-tokString :: AlexAction RangedToken
-tokString inp@(_, _, str, _) len =
-  pure RangedToken
-    { rtToken = String $ BS.tail $ BS.take (len -1) str
-    , rtRange = mkRange inp len
-    }
+trimQuotes :: ByteString -> ByteString
+trimQuotes str = BS.tail $ BS.take (BS.length str -1) str
 
-tokBoolean :: Bool -> AlexAction RangedToken
-tokBoolean bool inp len =
-  pure RangedToken
-    { rtToken = Boolean bool
-    , rtRange = mkRange inp len
-    }
+handleCurlyBrace :: AlexAction RangedToken
+handleCurlyBrace inp len = do
+  state <- get 
+  -- traceM $ "\nOpening in state: " ++ show state
+  case lastToken state of
+    Just Arrow -> do
+      modify $ \s -> s{indentStateStack = block : indentStateStack s}
+      alexSetStartCode block
+    _ -> modify $ \s -> s{indentStateStack = 0 : indentStateStack s}
+  tok LCurly inp len
 
+
+handleCloseCurlyBrace ::  AlexAction RangedToken
+handleCloseCurlyBrace inp len = do
+  state <- get 
+  let stack = indentStateStack state
+  -- traceM $ "\nClosing in state: " ++ show state
+  if length stack == 1 then
+    alexError "Error: unexpected closing }"
+  else do
+    let stack' = tail stack
+    modify $ \s -> s{indentStateStack = stack' }
+    alexSetStartCode $ head stack'
+    tok RCurly inp len
+
+
+identation :: AlexAction RangedToken
+identation input@(_, _, str, _) len = do
+  state <- get
+  let stack = indentStateStack state
+  let len' = fromIntegral $ BS.length $ pruneIdentation len str
+  let stateIndent = identLevel state
+  -- traceM "\nIndentation"
+  -- traceM $ "State: " ++ show state
+  -- traceM $ "Current indent len: " ++ show len'
+  -- traceM $ "Current input: " ++ show (BS.take len str)
+
+  
+  if len' > stateIndent then do 
+    -- traceM "len > stateIndent "
+    case lastToken state of
+      Just LCurly -> modify $ \s -> s{identLevel = len'}
+      _           -> do
+        modify $ \s -> s{indentStateStack = 0 : stack, identLevel = len'}
+        alexSetStartCode 0
+    skip input len
+  else if stateIndent == 0 then do
+    -- traceM "state ident == 0"
+    modify $ \s -> s{identLevel = len'}
+    skip input len
+  else if len' < stateIndent then do 
+    -- traceM "len < stateIndent "
+    let previousCode = head stack
+    if previousCode == block then do -- block state popping is handled by curly braces handling
+      modify $ \s -> s{ identLevel = len' }
+      skip input len
+    else do
+      let stack' = tail stack
+      let nextCode = head stack'
+      modify $ \s -> s{ indentStateStack = stack', identLevel = len' }
+      alexSetStartCode nextCode
+      if nextCode == block then
+        tok SemiColon input len
+      else do
+        skip input len
+  else if head stack == block then do
+    -- traceM "code == block"
+    tok SemiColon input len
+  else skip input len
+              
+
+pruneIdentation :: Int64 -> ByteString -> ByteString 
+pruneIdentation len str = BS.takeWhileEnd ((/=) '\n') $ BS.take len str
 
 nestComment, unnestComment :: AlexAction RangedToken
 nestComment input len = do
-  modify $ \s -> s{nestLevel = nestLevel s + 1}
+  modify $ \s -> s{commentLevel = commentLevel s + 1}
+  state <- get
   skip input len
 unnestComment input len = do
   state <- get
-  let level = nestLevel state - 1
-  put state{nestLevel = level}
+  let level = commentLevel state - 1
+  put state{commentLevel = level}
   when (level == 0) $
     alexSetStartCode 0
   skip input len

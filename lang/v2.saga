@@ -1,0 +1,111 @@
+
+
+
+let overload
+    : \f a => 
+    | One: Int    -> (Tag: String ) -> f Int!    
+    | Two: Bool   -> a              -> f String! 
+    | Foo: String -> a              -> f Bool!   
+    | Bar: Int    -> Int            -> f Int!    
+    
+    where 
+        f implements Functor
+  
+    
+    = \fn -> match fn
+        | One: i str -> of <| length str! + i
+        | Two: b a   -> of <|
+            if b then show a!
+            else "None!"
+        | Foo: str a -> of <| str ++ show a!
+        | Bar: i j   -> of <| i + j
+
+let ty
+    : a -> b
+        where 
+            a = Int,
+            b = a
+    = foo
+
+type Union =
+  | \a => Foo: { stuff: a }
+  | Bar: String
+  | Baz 
+
+  
+
+let try
+  : String -> Promise Int!
+    where Promise implements Monad
+  = \url -> { 
+        val1 <- fetch url!
+        val2 <- fetch url!
+        return val1 + val2
+      }
+
+
+
+let listFunctorImpl
+  : impl Functor: List
+  = { map: \f fa -> someDummyImpl f fa!}
+
+
+
+let fmap
+  : \f a b => (a -> b) -> f a! -> f b! where f implements Functor
+  = \f fa -> match fa
+      | a  -> fa
+      | b  -> f x! |> prepend (fmap f rest!)!
+                  
+        match b
+            | [] -> on 
+            | Tagged: {foo: 1, bar: [fst | rest ]} -> on
+            | Foo: Int: x -> x + 1
+
+
+let try
+    : String -> Promise Int!
+    = \url -> { 
+        val1 <- fetch url!
+        val2 <- fetch url!
+        return val1 + val2
+    }
+
+let foo = 
+    { x: 1
+    , y: 2 
+    }
+
+
+
+data MyType
+  = Foo: Int
+  | Bar: String -> Bool
+  | Baz: \a => custom -> a
+  where custom = String
+
+
+let a = 1
+
+
+
+
+
+let proc
+    : String -> Promise Int!
+    = \a -> {
+        b d <- bar
+        b d <- bar
+        match a
+            | 1 -> a
+            | [] -> on 
+            | Tagged: {foo: 1, bar: [fst | rest ]} -> on
+            | Foo: Int: x -> x + 1
+        other
+        foo    
+    }
+  
+
+let fn
+    : Data Int -> Int -> Int
+    = \(Data: one) two -> one + two

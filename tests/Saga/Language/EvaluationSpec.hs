@@ -1,10 +1,12 @@
 
 
-module Saga.AST.EvaluationSpec where
+module Saga.Language.EvaluationSpec where
 
 import Test.Hspec
-import qualified Saga.AST.Evaluation as E
-import qualified Saga.AST.TypeSystem.HindleyMilner.Types as HM
+import qualified Saga.Language.Evaluation as E
+
+import qualified Saga.Language.Core.Syntax as Expr
+import qualified Saga.Language.Core.Literals as L
 
 import qualified Data.Map as Map
 
@@ -20,7 +22,7 @@ spec :: Spec
 spec = do
   describe "Literal terms" $ do
     it "can evaluate literal ints" $ do
-      let e = HM.Term $ HM.LInt 1
+      let e = Expr.Literal $ L.LInt 1
       (run $ E.eval e) `shouldBe` E.VInt 1
 
 

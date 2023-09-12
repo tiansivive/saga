@@ -1,4 +1,4 @@
-module Saga.AST.SubtypingSpec where
+module Saga.Language.SubtypingSpec where
 
 import           Test.Hspec
 

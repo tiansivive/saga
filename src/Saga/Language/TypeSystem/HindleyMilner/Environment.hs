@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Saga.AST.TypeSystem.HindleyMilner.Environment where
+module Saga.Language.TypeSystem.HindleyMilner.Environment where
 
 import           Control.Monad.Except
 import           Control.Monad.State.Lazy                hiding (get, modify)
@@ -9,8 +9,8 @@ import           Control.Monad.Trans.RWS                 (RWST, get, local,
                                                           modify, tell)
 import qualified Data.Map                                as Map
 import           Prelude                                 hiding (EQ)
-import qualified Saga.AST.TypeSystem.HindleyMilner.Types as T
-import           Saga.AST.TypeSystem.HindleyMilner.Types hiding (Implements,
+import qualified Saga.Language.TypeSystem.HindleyMilner.Types as T
+import           Saga.Language.TypeSystem.HindleyMilner.Types hiding (Implements,
                                                           ProtocolID)
 import           Saga.Lexer.Tokens                       (Token (Qualified))
 

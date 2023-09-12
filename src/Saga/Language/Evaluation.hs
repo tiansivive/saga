@@ -2,28 +2,27 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 
-module Saga.AST.Evaluation where
+module Saga.Language.Evaluation where
 
 
-import           Data.ByteString.Lazy.Char8              (ByteString)
-import qualified Data.ByteString.Lazy.Char8              as BS
-import qualified Data.Map                                as Map
+import           Data.ByteString.Lazy.Char8  (ByteString)
+import qualified Data.ByteString.Lazy.Char8  as BS
+import qualified Data.Map                    as Map
 
-import           Control.Monad.Except                    (ExceptT,
-                                                          MonadError (throwError),
-                                                          runExcept)
-import           Control.Monad.Reader                    (MonadReader (ask),
-                                                          ReaderT (runReaderT),
-                                                          asks)
+import           Control.Monad.Except        (ExceptT, MonadError (throwError),
+                                              runExcept)
+import           Control.Monad.Reader        (MonadReader (ask),
+                                              ReaderT (runReaderT), asks)
 import           Control.Monad.State.Lazy
-import           Control.Monad.Trans.Except              (Except)
-import           Data.List                               (find, findIndex)
-import           Data.Maybe                              (fromJust, fromMaybe)
-import           Debug.Trace                             (traceM)
-import           Saga.AST.TypeSystem.HindleyMilner.Types (Binding (..),
-                                                          Declaration (..),
-                                                          Expr (..), Term (..))
-import           Saga.Utils.Utils                        hiding (fromMaybe)
+import           Control.Monad.Trans.Except  (Except)
+import           Data.List                   (find, findIndex)
+import           Data.Maybe                  (fromJust, fromMaybe)
+import           Debug.Trace                 (traceM)
+
+import           Saga.Language.Core.Literals (Literal (..))
+import           Saga.Language.Core.Syntax   (Binding (Bind), Declaration (..),
+                                              Expr (..))
+import           Saga.Utils.Utils            hiding (fromMaybe)
 
 
 
@@ -54,23 +53,7 @@ unidentified :: String -> String
 unidentified id =  "Undefined identifier \"" <> id <> "\""
 
 eval :: Expr -> Evaluated Value
-eval (Term l) = evalLiteral l
-eval (Parens e) = eval e
-
--- eval (FieldAccess _  expr path) = do
---     VRecord pairs <- eval expr
---     eval' pairs path
---       where
---         find' :: String -> [(String, Value a)] -> Evaluated a
---         find' id pairs
---           | Just (_ , val) <- find (\(name, _) -> name == id) pairs = return val
---           | otherwise = lift $ Left $ "Could not find property " <> id
-
---         eval' pairs [id] = find' id pairs
---         eval' pairs (id:rest) = do
---           VRecord pairs' <- find' id pairs
---           eval' pairs' rest
-
+eval (Literal l) = evalLiteral l
 
 eval (Identifier name) =
     if name `elem` builtInEnv then
@@ -81,23 +64,16 @@ eval (Identifier name) =
         Just val -> return val
         Nothing  -> throwError $ unidentified name
 
--- eval (Assign name e )  = do
---       val <- eval e
---       modify $ Map.insert name val
---       return val
+-- eval (Clause e bindings ) = do
+--   bindings' <- mapM evalBinding bindings
+--   eval e `scoped` Map.union (Map.fromList bindings')
 
-eval (Clause e bindings ) = do
-  bindings' <- mapM evalBinding bindings
-  eval e `scoped` Map.union (Map.fromList bindings')
-
-
-
-eval (IfElse cond onTrue onFalse) = do
-  val <- eval cond
-  case val of
-    (VBool True) -> eval onTrue
-    (VBool False) -> eval onFalse
-    _ -> throwError "Could not evaluate non boolean expression as a if condition"
+-- eval (IfElse cond onTrue onFalse) = do
+--   val <- eval cond
+--   case val of
+--     (VBool True) -> eval onTrue
+--     (VBool False) -> eval onFalse
+--     _ -> throwError "Could not evaluate non boolean expression as a if condition"
 
 -- eval (Block exprs) = do
 --   mapM_ eval exprs'
@@ -156,7 +132,7 @@ eval (FnApp fnExpr argExprs) = do
 
 
 
-evalLiteral :: Term -> Evaluated Value
+evalLiteral :: Literal -> Evaluated Value
 evalLiteral (LInt int)    = return $ VInt int
 evalLiteral (LBool bool)  = return $ VBool bool
 evalLiteral (LString str) = return $ VString str
@@ -177,13 +153,10 @@ evalLiteral (LString str) = return $ VString str
 
 evalBinding :: Binding Expr -> Evaluated (String, Value)
 evalBinding (Bind id expr) = sequence (id, eval expr)
-evalBinding _              = throwError "Wrong binding expression. Can only bind terms to identifiers"
-
 
 evalDeclaration :: Declaration -> Evaluated (String, Value)
 evalDeclaration (Let name _ _ expr) = sequence (name, eval expr)
 evalDeclaration _                   = throwError "Tried to evaluate non let declaration"
-
 
 runEvaluated :: Expr -> Except String Value
 runEvaluated e = runReaderT (eval e) Map.empty
