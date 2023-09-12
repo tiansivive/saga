@@ -89,7 +89,6 @@ data Constraint
 data Kind
   = KType
   | KArrow Kind Kind
-  | KConstraint
   | KProtocol
   | KVar String
     deriving (Show, Eq, Ord)

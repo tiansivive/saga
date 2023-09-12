@@ -37,7 +37,8 @@ import           Saga.Language.TypeSystem.HindleyMilner.Environment
 import qualified Saga.Language.TypeSystem.HindleyMilner.Types       as T
 import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
                                                                     (Implements)
-import           Saga.Parser.Desugar                                (desugar)
+
+import           Saga.Parser.Desugar
 import           Saga.Parser.Parser                                 (runSagaExpr)
 import           Saga.Parser.Shared                                 hiding
                                                                     (Record,
@@ -48,7 +49,7 @@ import           Saga.Parser.Shared                                 hiding
 run :: String -> Either String Scheme
 run input = do
   Parsed expr _ _ <- runSagaExpr input
-  show `first` runInfer (infer $ desugar expr)
+  show `first` runInfer (infer $ desugarExpr expr)
 
 
 runInfer :: Infer Type -> Either InferenceError Scheme

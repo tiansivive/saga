@@ -1,6 +1,6 @@
 
 
-/*
+
 let overload
     : \f a => 
     | One: Int    -> (Tag: String ) -> f Int!    
@@ -90,6 +90,7 @@ let a = 1
 
 
 
+
 let proc
     : String -> Promise Int!
     = \a -> {
@@ -103,7 +104,8 @@ let proc
         other
         foo    
     }
-    : String -> Promise Int!
-*/
+  
 
-\(Data: one) two -> one + two
+let fn
+    : Data Int -> Int -> Int
+    = \(Data: one) two -> one + two

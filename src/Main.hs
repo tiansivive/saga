@@ -37,7 +37,7 @@ parseScript fp = do
     handle <- openFile fp ReadMode
     parsingH <- openFile "./lang/test.parsing.log" WriteMode
     contents <- hGetContents handle
-    let res = fmap desugarExpr <$> P.runSagaExpr contents
+    let res = fmap desugarScript <$> P.runSagaScript contents
     pPrint res
     pHPrint parsingH res
     hClose handle

@@ -16,7 +16,7 @@ import           Control.Monad.Except                              (ExceptT)
 import           Control.Monad.State                               (StateT)
 import           Debug.Trace                                       (traceM)
 import           Saga.Language.Core.Syntax                         (Expr)
-import           Saga.Parser.Desugar                               (desugar)
+import           Saga.Parser.Desugar
 import           Saga.Parser.ParsingInfo                           hiding (Term)
 import           Saga.Parser.Shared                                (ParsedData (..))
 import           System.Console.Haskeline                          (defaultSettings,
@@ -85,7 +85,8 @@ repl = runInputT defaultSettings $ repl' Map.empty
 
             where
 
-                desugared = (fmap . fmap) desugar
+                desugaredExpr = (fmap . fmap) desugarExpr
+                desugaredTyExpr = (fmap . fmap) desugarTypeExpr
                 evalExpr line = case result of
                     Left e -> do { pPrint e; repl' env }
                     Right val -> do
@@ -93,7 +94,7 @@ repl = runInputT defaultSettings $ repl' Map.empty
                         repl' env
                     where
                         result = do
-                            Parsed expr _ _ <- desugared P.runSagaExpr line
+                            Parsed expr _ _ <- desugaredExpr $ P.runSagaExpr line
                             E.run (Just env) (E.eval expr)
 
                 evalDec var expr = case result of
@@ -103,14 +104,14 @@ repl = runInputT defaultSettings $ repl' Map.empty
                         repl' $ Map.insert var val env
                     where
                         result = do
-                            Parsed e _ _ <- desugared P.runSagaExpr expr
+                            Parsed e _ _ <- desugaredExpr $ P.runSagaExpr expr
                             E.run (Just env) (E.eval e)
 
 
                 typecheck expr ty = let
                         parsed = do
-                            Parsed expr' _ _ <- desugared P.runSagaExpr expr
-                            Parsed tyExpr' _ _ <- desugared P.runSagaType ty
+                            Parsed expr' _ _ <- desugaredExpr $ P.runSagaExpr expr
+                            Parsed tyExpr' _ _ <- desugaredTyExpr $ P.runSagaType ty
                             ty' <- HMR.run tyExpr'
                             (bool, constraints) <- HMC.run expr' ty'
                             return (expr', ty', bool, constraints)

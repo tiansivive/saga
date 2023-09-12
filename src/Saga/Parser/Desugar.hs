@@ -10,8 +10,7 @@ import qualified Saga.Language.TypeSystem.HindleyMilner.Types as CoreTy
 import qualified Saga.Parser.Expr                             as Parser
 import qualified Saga.Parser.Types                            as ParserTy
 
-desugar :: a -> b
-desugar a = unsafeCoerce a
+
 
 desugarExpr :: Parser.Expr -> Core.Expr
 desugarExpr (Parser.Literal lit) = Core.Literal lit
@@ -20,7 +19,7 @@ desugarExpr (Parser.Hole id) = Core.Hole id
 desugarExpr (Parser.List list) = Core.List $ fmap desugarExpr list
 desugarExpr (Parser.Tuple tuple) = Core.Tuple $ fmap desugarExpr tuple
 desugarExpr (Parser.Record pairs) = Core.Record $ fmap desugarExpr <$> pairs
-desugarExpr (Parser.IfElse cond true false) = Core.Match (desugarExpr cond) [Core.Case true' (desugar true), Core.Case false' (desugarExpr false) ]
+desugarExpr (Parser.IfElse cond true false) = Core.Match (desugarExpr cond) [Core.Case true' (desugarExpr true), Core.Case false' (desugarExpr false) ]
 desugarExpr (Parser.Match expr cases) = Core.Match (desugarExpr expr) (fmap desugarCase cases)
 desugarExpr (Parser.Clause expr bindings) = desugarExpr $ Parser.Block $ stmts ++ [return']
     where
@@ -96,14 +95,22 @@ desugarTypeExpr (ParserTy.TLambda params tyExpr)   = CoreTy.TLambda params (desu
 desugarTypeExpr (ParserTy.TFnApp tyFn tyArgs)   = CoreTy.TFnApp (desugarTypeExpr tyFn) (fmap desugarTypeExpr tyArgs)
 
 
+desugarKind :: ParserTy.Kind -> CoreTy.Kind
+desugarKind ParserTy.KType = CoreTy.KType
+desugarKind ParserTy.KProtocol = CoreTy.KProtocol
+desugarKind (ParserTy.KVar id) = CoreTy.KVar id
+desugarKind (ParserTy.KArrow inK outK) = CoreTy.KArrow (desugarKind inK) (desugarKind outK)
 
-desugarKind = desugar
-desugarDataExpr = desugar
-desugarTyBinding :: a -> b
-desugarTyBinding = desugar
-            -- z where x = y
--- is equivalent to:
--- (\x -> z) y
+
+desugarDataExpr:: Parser.DataExpr -> Core.DataExpr
+desugarDataExpr = fmap desugarTypeExpr
+
+desugarTyBinding :: ParserTy.Binding ParserTy.TypeExpr -> CoreTy.Binding CoreTy.TypeExpr
+desugarTyBinding (ParserTy.Bind id tyExpr) = CoreTy.Bind id (desugarTypeExpr tyExpr)
+desugarTyBinding (ParserTy.ImplBind id protocol) = CoreTy.ImplBind id protocol
+desugarTyBinding (ParserTy.SubtypeBind id tyExpr) = CoreTy.SubtypeBind id (desugarTypeExpr tyExpr)
+desugarTyBinding (ParserTy.RefineBind id tyExpr) = CoreTy.RefineBind id (desugarTypeExpr tyExpr)
+
 true', false' :: Core.Pattern
 true' = Core.Lit (Core.LBool True)
 false' = Core.Lit (Core.LBool False)
