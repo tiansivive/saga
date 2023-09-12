@@ -56,6 +56,7 @@ inferScript fp = do
     handle <- openFile fp ReadMode
     parsingH <- openFile "./lang/test.parsing.log" WriteMode
     contents <- hGetContents handle
+    pPrint $ fmap desugarExpr <$> P.runSagaExpr contents
     let res = run contents
     pPrint res
     pHPrint parsingH res

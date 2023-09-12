@@ -105,7 +105,10 @@ let fn
 */
 
 
-\foo bar baz -> (foo, bar, { one: foo, two: bar, three: baz + 1 })
+\baz -> {
+    a <- baz
+    return a + 1
+}
 
 
 
