@@ -93,8 +93,7 @@ instance Substitutable IConstraint where
 
 instance Substitutable ImplConstraint where
   --apply s ip | trace ("Applying IP constraint sub\n\t" ++ show s ++ "\n\t" ++ show ip) False = undefined
-  apply s  (t `IP` p) =  trace ("\tResult: " ++ show res) res
-    where res = apply s t `IP` p
+  apply s  (t `IP` p) = apply s t `IP` p
 
   ftv (t `IP` p) = ftv  t
 instance Substitutable Equality where
@@ -123,9 +122,9 @@ runSolve cs =  runExcept $ runReaderT (solver cs) builtInProtocols
 solver :: [IConstraint] -> Solve (Subst, [ImplConstraint])
 solver constraints = do
   let eqs' = eqs constraints
-  traceM $ "EQs: " ++ show eqs'
+  --traceM $ "EQs: " ++ show eqs'
   sub <- unification nullSubst eqs'
-  traceM $ "\nMGU:\n\t" ++ show sub
+  --traceM $ "\nMGU:\n\t" ++ show sub
   is <- reduce $ apply sub $ impls constraints
   resolve is
   return (sub, is)
@@ -138,7 +137,7 @@ solver constraints = do
 
 
 unification :: Subst -> [Equality] -> Solve Subst
-unification s cs | trace ("\nUnification:" ++ "\n\tUnifier: " ++ show s ++ "\n\tConstraints: " ++ show cs) False = undefined
+--unification s cs | trace ("\nUnification:" ++ "\n\tUnifier: " ++ show s ++ "\n\tConstraints: " ++ show cs) False = undefined
 unification s [] = return s
 unification s (e:es) | t1 `EQ` t2 <- e = do
   sub <- unify t1 t2
@@ -219,8 +218,8 @@ resolve :: [ImplConstraint] -> Solve ()
 -- resolve cs | trace ("\n\nProtocol Resolution:\n\t" ++ show cs) False = undefined
 resolve constraints = do
   env <- ask
-  traceM $ "\tGrouped Constraints: " ++ show (groupBy byType constraints)
-  traceM $ "\tGrouped Implementations: " ++ show (groupBy byType' (impls env))
+  --traceM $ "\tGrouped Constraints: " ++ show (groupBy byType constraints)
+  --traceM $ "\tGrouped Implementations: " ++ show (groupBy byType' (impls env))
   forM_ constraintGroups findImplementingType
 
   where
@@ -308,7 +307,7 @@ entail :: [ImplConstraint] -> ImplConstraint -> Solve Bool
 entail ipcs ipConstraint = do
   protocols <- ask
   baseConstraints <- mapM byBase ipcs
-  traceM $ "Checking by base constraints:\n\t" ++ show baseConstraints
+  --traceM $ "Checking by base constraints:\n\t" ++ show baseConstraints
   if any (ipConstraint `elem`) baseConstraints
     then return True
     else checkImpls
@@ -316,9 +315,9 @@ entail ipcs ipConstraint = do
   where
     checkImpls = do
       constraints <- byImplementation ipConstraint
-      traceM $ "Checking by implementations:\n\t" ++ show constraints
+      --traceM $ "Checking by implementations:\n\t" ++ show constraints
       entailments <- mapM (entail ipcs) constraints
-      traceM $ "Entailments:\n\t" ++ show entailments
+      --traceM $ "Entailments:\n\t" ++ show entailments
       return (not (null entailments) && and entailments)
 
 
@@ -328,7 +327,7 @@ byBase impl@(ty `IP` p) = do
     protocols <- ask
     impls <- sequence [ byBase (ty `IP` base) | base <- sups protocols p ]
     let all = impl : concat impls
-    traceM $ "Found:\n\t" ++ show all
+    --traceM $ "Found:\n\t" ++ show all
     return all
     where
       sups env id = maybe [] supers $ Map.lookup id env

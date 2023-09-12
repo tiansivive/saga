@@ -187,13 +187,24 @@ infer ex = case ex of
     where
       infer' = mapM infer
 
-  -- | TODO: Fold the lock instead to capture any defined types in any potential decs
-  Block stmts -> inferStmt $ last stmts
+
+  Block stmts -> infer' stmts
     where
-      inferStmt (Return expr)                  = infer expr
-      inferStmt (Procedure expr)               = infer expr
-      inferStmt (Declaration (Let _ _ _ expr)) = infer expr
-      inferStmt (Declaration _)                = return TUnit
+
+      infer' [] = return TUnit
+      infer' (stmt : rest) = case stmt of
+        Return expr                   -> infer expr
+        Declaration (Let id _ _ expr) -> do
+          tVar <- fresh KType
+          infer' rest `scoped` (Tyvar id KType, Scheme (tvars tVar) ([] :=> tVar))
+        _ -> infer' rest
+
+      inferStmt (Return expr)                        = infer expr
+      inferStmt (Procedure expr)                     = infer expr
+      inferStmt (Declaration (Let id tyExpr _ expr)) = infer expr
+      inferStmt (Declaration _)                      = return TUnit
+      tvars (TVar v) = [v]
+
 
   Literal literal -> return $ TLiteral literal
   ty -> error $ "Inference not implemented yet: " ++ show ty
@@ -213,7 +224,7 @@ generalizeArg (TLiteral lit) = generalize' $ case lit of
 generalizeArg ty = return ty
 
 normalize :: Scheme -> Scheme
--- normalize sc | trace ("Normalizing: " ++ show sc) False = undefined
+normalize sc | trace ("Normalizing: " ++ show sc) False = undefined
 normalize (Scheme k (cs :=> ty)) = Scheme k (cs' :=> ty')
   where
     ty' = normType ty
@@ -222,11 +233,13 @@ normalize (Scheme k (cs :=> ty)) = Scheme k (cs' :=> ty')
 
     fv (TVar a)       = [a]
     fv (a `TArrow` b) = fv a ++ fv b
-    fv _              = []
+
 
     normConstraint (t `T.Implements` p) = normType t `T.Implements` p
 
     normType (a `TArrow` b) = normType a `TArrow` normType b
+    normType (TTuple tys) = TTuple $ fmap normType tys
+    normType (TRecord pairs) = TRecord $ fmap (fmap normType) pairs
     normType (TVar v) = case lookup v ord of
       Just x  -> TVar $ Tyvar x $ kind v
       Nothing -> error "type variable not in signature"

@@ -4,17 +4,24 @@
 module Main (main) where
 
 
-import           REPL.Repl                (repl)
+import           REPL.Repl                                        (repl)
 
-import qualified Saga.Lexer.Lexer         as L
-import qualified Saga.Parser.Parser       as P
+import qualified Saga.Lexer.Lexer                                 as L
+import qualified Saga.Parser.Parser                               as P
 
-import           Saga.Parser.Desugar      (desugarExpr, desugarScript)
-import           System.Console.Haskeline (defaultSettings, getInputLine,
-                                           outputStrLn, runInputT)
-import           System.IO                (IOMode (ReadMode, ReadWriteMode, WriteMode),
-                                           hClose, hGetContents, openFile)
-import           Text.Pretty.Simple       (pHPrint, pPrint)
+import           Saga.Language.TypeSystem.HindleyMilner.Inference (run)
+import           Saga.Parser.Desugar                              (desugarExpr,
+                                                                   desugarScript)
+import           System.Console.Haskeline                         (defaultSettings,
+                                                                   getInputLine,
+                                                                   outputStrLn,
+                                                                   runInputT)
+import           System.IO                                        (IOMode (ReadMode, ReadWriteMode, WriteMode),
+                                                                   hClose,
+                                                                   hGetContents,
+                                                                   openFile)
+import           Text.Pretty.Simple                               (pHPrint,
+                                                                   pPrint)
 
 
 
@@ -38,6 +45,18 @@ parseScript fp = do
     parsingH <- openFile "./lang/test.parsing.log" WriteMode
     contents <- hGetContents handle
     let res = fmap desugarScript <$> P.runSagaScript contents
+    pPrint res
+    pHPrint parsingH res
+    hClose handle
+    hClose parsingH
+    putStrLn "Bye!"
+
+inferScript :: FilePath -> IO ()
+inferScript fp = do
+    handle <- openFile fp ReadMode
+    parsingH <- openFile "./lang/test.parsing.log" WriteMode
+    contents <- hGetContents handle
+    let res = run contents
     pPrint res
     pHPrint parsingH res
     hClose handle
