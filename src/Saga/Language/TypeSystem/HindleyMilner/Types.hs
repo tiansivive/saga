@@ -9,36 +9,42 @@ import           Saga.Language.Core.Literals (Literal)
 import           Saga.Lexer.Tokens           (Token (Qualified))
 
 data TypeExpr where
-  TELiteral :: Literal -> TypeExpr
-  TIdentifier :: String -> TypeExpr
-  TETuple :: [TypeExpr] -> TypeExpr
-  TERecord :: [(String, TypeExpr)] -> TypeExpr
-  TEArrow :: TypeExpr -> TypeExpr -> TypeExpr
-  TConditional :: TypeExpr -> TypeExpr -> TypeExpr -> TypeExpr
-  TClause      :: TypeExpr -> [Binding TypeExpr] -> TypeExpr
-  -- TBlock          :: [TypeExpr] -> TypeExpr
-  -- TReturn         :: TypeExpr -> TypeExpr
-  TEUnion        :: [TypeExpr] -> TypeExpr
-  TTagged       :: String -> TypeExpr -> TypeExpr
-  TLambda :: [String] -> TypeExpr -> TypeExpr
-  TFnApp :: TypeExpr -> [TypeExpr] -> TypeExpr
-  TImplementation :: ProtocolId -> TypeExpr -> TypeExpr
-  TQuantified :: Quantifier -> TypeExpr -> TypeExpr
-  TConstraint :: [Constraint] -> TypeExpr -> TypeExpr
+  TAtom             :: Type -> TypeExpr
+  TIdentifier       :: String -> TypeExpr
+  TConditional      :: TypeExpr -> TypeExpr -> TypeExpr -> TypeExpr
+  TClause           :: TypeExpr -> [Binding TypeExpr] -> TypeExpr
+  TTagged           :: String -> TypeExpr -> TypeExpr
+
+  TLambda           :: [String] -> TypeExpr -> TypeExpr
+  TFnApp            :: TypeExpr -> [TypeExpr] -> TypeExpr
+
+  TImplementation   :: ProtocolId -> TypeExpr -> TypeExpr
+  TQualified        :: Qualified TypeExpr -> TypeExpr
+
 
 
 data Binding a
   = Bind String a
-  | ImplBind String String
+  | ImplBind TypeExpr ProtocolId
   | SubtypeBind String a
   | RefineBind String a
   deriving (Show, Eq)
 
+data Qualified t = (:=>) { constraints :: [Constraint], item:: t } --, mode :: Mode, multiplicity :: Multiplicity }
+  deriving (Show, Eq)
+infixr 0 :=>
 
+
+data Constraint
+  = Type `Implements` String
+  -- | Extends Type Type
+  deriving (Show, Eq)
+
+type ProtocolId = String
 
 data Type where
   TLiteral :: Literal -> Type
-  TPrimitive :: BuiltInType -> Type
+  TPrimitive :: PrimitiveType -> Type
   TTuple :: [Type] -> Type
   TRecord :: [(String, Type)] -> Type
   TUnion :: [Type] -> Type
@@ -47,44 +53,26 @@ data Type where
   TClosure :: [String] -> TypeExpr -> Map String Type -> Type
   TApplied :: Type -> Type -> Type
   TVar :: Tyvar -> Type
-  -- TConstrained :: [Constraint] -> Type -> Type
-  -- TProtocol         :: TypeExpr -> Type
-  -- TImplementation   :: TypeExpr -> [RequiredImplId] -> Type
-  TQualified :: Qualified Type -> Type
-  TUnit :: Type
+  TVoid :: Type
 
-type ProtocolId = String
 data Tycon = Tycon String Kind deriving ( Eq)
 data Tyvar = Tyvar String Kind deriving ( Eq, Ord)
 instance Show Tyvar where
   show (Tyvar s _) = s
 instance Show Tycon where
   show (Tycon s _) = s
-data BuiltInType
+data PrimitiveType
   = TBool
   | TInt
   | TString
   deriving (Show, Eq)
 
+infixr 5 `TArrow`
 
 deriving instance Show TypeExpr
 deriving instance Eq TypeExpr
 deriving instance Show Type
 deriving instance Eq Type
-
-
-
-infixr 5 `TArrow`
-infixr 0 :=>
-data Qualified t = (:=>) { constraints :: [Constraint], ty:: t } --, mode :: Mode, multiplicity :: Multiplicity }
-  deriving (Show, Eq)
-
-data Constraint
-  = Type `Implements` String
-  -- | Extends Type Type
-  deriving (Show, Eq)
-
-
 
 data Kind
   = KType

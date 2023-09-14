@@ -4,32 +4,29 @@
 module Saga.Language.TypeSystem.HindleyMilner.Refinement where
 
 import           Control.Monad.Except
-import           Control.Monad.State.Lazy                           (MonadState,
-                                                                     State,
-                                                                     evalState,
-                                                                     evalStateT,
-                                                                     replicateM)
-import           Control.Monad.Trans.Except                         (ExceptT,
-                                                                     runExceptT)
+import           Control.Monad.State.Lazy                     (MonadState,
+                                                               State, evalState,
+                                                               evalStateT,
+                                                               replicateM)
+import           Control.Monad.Trans.Except                   (ExceptT,
+                                                               runExceptT)
 
-import           Data.Functor                                       ((<&>))
+import           Data.Functor                                 ((<&>))
 
-import qualified Data.Map                                           as Map
-import qualified Data.Set                                           as Set
-import           Debug.Trace                                        (trace,
-                                                                     traceM)
+import qualified Data.Map                                     as Map
+import qualified Data.Set                                     as Set
+import           Debug.Trace                                  (trace, traceM)
 
 import           Saga.Language.TypeSystem.HindleyMilner.Types
 
-import           Control.Monad.Trans.Reader                         (ReaderT (runReaderT),
-                                                                     ask, local)
-import           Control.Monad.Trans.State                          (StateT)
-import           Data.Bifunctor                                     (first)
-import           Prelude                                            hiding
-                                                                    (lookup)
-import           Saga.Language.TypeSystem.HindleyMilner.Environment (scoped)
-import           Saga.Parser.ParsingInfo                            hiding
-                                                                    (return)
+import           Control.Monad.Trans.Reader                   (ReaderT (runReaderT),
+                                                               ask, local)
+import           Control.Monad.Trans.State                    (StateT)
+import           Data.Bifunctor                               (first)
+import           Prelude                                      hiding (lookup)
+
+import           Saga.Parser.ParsingInfo                      hiding (return)
+
 
 
 type RefinementEnv = Map.Map String Type
@@ -75,37 +72,35 @@ refine a | trace ("refining: " ++ show a) False = undefined
 -- refine (TBlock [])                    = return TUnit
 -- refine (TBlock tyExps)                = refine $ last tyExps
 -- refine (TReturn tyExp)                = refine tyExp
-refine (TELiteral term) = return $ TLiteral term
+refine (TAtom ty) = return ty
 refine (TIdentifier id) = lookup id
-refine (TETuple tyExps) = mapM refine tyExps <&> TTuple
-refine (TERecord pairs) = mapM (mapM refine) pairs <&> TRecord
-refine (TEArrow input output) = do
-  in' <- refine input
-  out' <- refine output
-  return $ in' `TArrow` out'
-refine (TConditional cond true false) = refine $ TEUnion [true, false] -- assumes same return type, will change with union types
-refine (TEUnion tyExprs) = TUnion <$> mapM refine tyExprs
-refine (TClause tyExpr bindings) = do
+refine (TConditional cond true false) = TUnion <$> mapM refine [true, false]
+refine (TClause tyExpr bindings)      = do
     env <- ask
     env' <- foldM extend env bindings
-    env'' <- foldM constrainImpls env' bindings
+    te <- foldM constrainImpls tyExpr bindings
 
-    let scoped = local (env'' `Map.union`)
+    let scoped = local (env' `Map.union`)
+    scoped $ refine te
 
     scoped $ refine tyExpr
 
       where
         extend env binding = case binding of
-          Bind id tyExpr' -> refine tyExpr' <&> Map.insert id <*> return env
+          Bind id tyExpr' -> do
+            ty' <- refine tyExpr'
+            return $ Map.insert id ty' env
           _               -> return env
 
-        constrainImpls :: RefinementEnv -> Binding TypeExpr -> Refined RefinementEnv
-        constrainImpls env binding = case binding of
-          ImplBind id protocol -> Map.alterF (\case
-              Just ty' -> return $ Just $ TQualified ([ty' `Implements` protocol] :=> ty')
-              Nothing -> throwError $ UnboundIdentifier id $ "When trying to implement protocol: " ++ protocol
-            ) id env
-          _ -> return env
+        constrainImpls :: TypeExpr -> Binding TypeExpr -> Refined TypeExpr
+        constrainImpls tyExpr' binding = case binding of
+          ImplBind (TQualified (cs :=> tyExpr'')) protocol -> do
+            ty <- refine tyExpr''
+            return $ TQualified $ ty `Implements` protocol : cs :=> tyExpr''
+          ImplBind tyExpr'' protocol -> do
+            ty <- refine tyExpr''
+            return $ TQualified $ [ty `Implements` protocol] :=> tyExpr''
+          _ -> return tyExpr'
 
 
 refine (TLambda params body) = ask <&> TClosure params body
@@ -113,8 +108,6 @@ refine (TFnApp fnExpr argExprs) = do
   fn <- refine fnExpr
   args <- mapM refine argExprs
 
---   traceM $ "Fn Expression: " <> show fn
---   traceM $ "Fn Args: " <> show args
   case (fn, args) of
     (t@(TData tycon), args) -> return $ foldl TApplied t args
     (TClosure params closure env, args) -> apply closure params args
@@ -137,6 +130,9 @@ refine (TFnApp fnExpr argExprs) = do
             scoped $ apply tyExpr params args
 
         apply _ [] (a: args) = throwError $ TooManyArguments fnExpr argExprs
+
+refine (TQualified (cs :=> typeExpr)) = refine typeExpr
+
 
 
 

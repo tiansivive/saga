@@ -102,13 +102,16 @@ let proc
 let fn
     : Data Int -> Int -> Int
     = \(Data: one) two -> one + two
-*/
 
 
 \baz -> {
     a <- baz
     return a + 1
 }
+*/
+
+
+\foo -> foo + 1
 
 
 

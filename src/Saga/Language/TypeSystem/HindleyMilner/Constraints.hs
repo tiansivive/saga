@@ -27,6 +27,7 @@ import           Prelude                                            hiding (EQ)
 import           Saga.Language.Core.Literals                        (Literal (..))
 import           Saga.Language.TypeSystem.HindleyMilner.Environment hiding
                                                                     (Implements)
+import           Saga.Language.TypeSystem.HindleyMilner.Lib
 import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
                                                                     (ProtocolID,
                                                                      implementationTy)
@@ -66,6 +67,23 @@ instance Substitutable Type where
   ftv (TVar id)       = Set.singleton id
   ftv (t `TArrow` t') = ftv t `Set.union` ftv t'
   ftv _               = Set.empty
+
+instance Substitutable TypeExpr where
+  --apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
+  apply s (TAtom ty) = TAtom $ apply s ty
+  apply s (TLambda params tyExpr) = TLambda params $ apply s tyExpr
+  apply s (TQualified (cs :=> ty)) = TQualified (cs' :=> ty')
+    where
+      ty' = apply s ty
+      cs' = apply s <$> cs
+  apply _ t  = t
+
+  ftv (TAtom ty) = ftv ty
+  ftv (TLambda _ tyExpr) = ftv tyExpr
+  ftv (TQualified (cs :=> ty)) = cs' `Set.difference` ty'
+    where
+      cs' = ftv cs
+      ty' = ftv ty
 
 instance Substitutable Scheme where
   --apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
@@ -390,13 +408,23 @@ instance HasKind Tyvar where
 
 instance HasKind Tycon where
   kind (Tycon _ k) = k
+instance HasKind TypeExpr where
+  kind (TAtom ty) = kind ty
+  kind (TTagged tag ty) = kind ty
+  kind (TClause ty binds) = kind ty
+  kind (TImplementation pid ty) = KProtocol
+  kind (TLambda params body) = kind body
+  kind (TIdentifier ty) = error "still need to implement kind inference for TIdentifier"
+  kind (TFnApp fn args) = error "still need to implement kind inference for TFnApp"
+  kind (TConditional {}) = error "still need to implement kind inference for TConditional"
+  kind (TQualified (cs :=> ty )) = kind ty
 
 instance HasKind Type where
   kind (TData cons) = kind cons
   kind (TVar u)     = kind u
   kind (TApplied f _) = case kind f of
     (KArrow _ k) -> k
-  kind (TClosure t _ _) = error "Trying to get kind of TClosure: Kind Inference not yet implemented"
+  kind (TClosure t tyExpr _) = kind tyExpr
   kind _ = KType
   --   (KArrow _ k) -> k
 

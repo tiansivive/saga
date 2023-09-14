@@ -38,6 +38,7 @@ import qualified Saga.Language.TypeSystem.HindleyMilner.Types       as T
 import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
                                                                     (Implements)
 
+import           Saga.Language.TypeSystem.HindleyMilner.Shared
 import           Saga.Parser.Desugar
 import           Saga.Parser.Parser                                 (runSagaExpr)
 import           Saga.Parser.Shared                                 hiding
@@ -45,6 +46,8 @@ import           Saga.Parser.Shared                                 hiding
                                                                      Term,
                                                                      Tuple,
                                                                      return)
+
+import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as Refine
 
 run :: String -> Either String Scheme
 run input = do
@@ -77,23 +80,23 @@ runInfer m = do
 closeOver :: [ImplConstraint] -> Type -> Scheme
 closeOver cs = normalize . generalize empty cs
 
-class Instantiate t where
-  inst :: [Type] -> t -> t
+-- class Instantiate t where
+--   inst :: [Type] -> t -> t
 
-instance Instantiate Type where
-  -- inst ts (TAp l r) = TAp (inst ts l) (inst ts r)
-  -- inst ts (TGen n)  = ts !! n
-  inst ts (TQualified (cs :=> t)) = TQualified (inst ts cs :=> inst ts t)
-  inst ts t                       = t
+-- instance Instantiate Type where
+--   -- inst ts (TAp l r) = TAp (inst ts l) (inst ts r)
+--   -- inst ts (TGen n)  = ts !! n
+--   inst ts (TQualified (cs :=> t)) = TQualified (inst ts cs :=> inst ts t)
+--   inst ts t                       = t
 
-instance Instantiate a => Instantiate [a] where
-  inst ts = map (inst ts)
+-- instance Instantiate a => Instantiate [a] where
+--   inst ts = map (inst ts)
 
--- instance Instantiate t => Instantiate (Qualified t) where
---   inst ts (cs :=> t) = inst ts cs :=> inst ts t
+-- -- instance Instantiate t => Instantiate (Qualified t) where
+-- --   inst ts (cs :=> t) = inst ts cs :=> inst ts t
 
-instance Instantiate Constraint where
-  inst ts (t `T.Implements` p) = inst ts t `T.Implements` p
+-- instance Instantiate Constraint where
+--   inst ts (t `T.Implements` p) = inst ts t `T.Implements` p
 
 
 instantiate :: Scheme -> Infer Type
@@ -136,7 +139,9 @@ lookupEnv :: String -> Infer Type
 lookupEnv x = do
   (Env vars aliases) <- ask
   case Map.lookup x aliases <|> Map.lookup (Tyvar x KType) vars of
-    Just sc -> instantiate sc
+    Just tyExpr -> case Refine.run tyExpr of
+      Right ty -> return ty
+      Left err -> throwError $ Fail err
     Nothing -> throwError $ UnboundVariable (show x)
 
 
@@ -147,7 +152,7 @@ infer ex = case ex of
 
   Lambda (param : rest) body -> do
     tVar <- fresh KType
-    out' <- infer out `scoped` (Tyvar param KType, Scheme (tvars tVar) ([] :=> tVar))
+    out' <- infer out `scoped` (Tyvar param KType, TAtom tVar)
     return $ tVar `TArrow` out'
     where
       tvars (TVar v) = [v]
@@ -191,18 +196,18 @@ infer ex = case ex of
   Block stmts -> infer' stmts
     where
 
-      infer' [] = return TUnit
+      infer' [] = return TVoid
       infer' (stmt : rest) = case stmt of
         Return expr                   -> infer expr
         Declaration (Let id _ _ expr) -> do
           tVar <- fresh KType
-          infer' rest `scoped` (Tyvar id KType, Scheme (tvars tVar) ([] :=> tVar))
+          infer' rest `scoped` (Tyvar id KType, TAtom tVar)
         _ -> infer' rest
 
       inferStmt (Return expr)                        = infer expr
       inferStmt (Procedure expr)                     = infer expr
       inferStmt (Declaration (Let id tyExpr _ expr)) = infer expr
-      inferStmt (Declaration _)                      = return TUnit
+      inferStmt (Declaration _)                      = return TVoid
       tvars (TVar v) = [v]
 
 

@@ -24,7 +24,9 @@ library
       Saga.Language.TypeSystem.HindleyMilner.Constraints
       Saga.Language.TypeSystem.HindleyMilner.Environment
       Saga.Language.TypeSystem.HindleyMilner.Inference
+      Saga.Language.TypeSystem.HindleyMilner.Lib
       Saga.Language.TypeSystem.HindleyMilner.Refinement
+      Saga.Language.TypeSystem.HindleyMilner.Shared
       Saga.Language.TypeSystem.HindleyMilner.Types
       Saga.Lexer.Lexer
       Saga.Lexer.Tokens

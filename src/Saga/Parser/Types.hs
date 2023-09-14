@@ -24,7 +24,7 @@ data TypeExpr where
 
 data Binding a
   = Bind String a
-  | ImplBind String String
+  | ImplBind TypeExpr String
   | SubtypeBind String a
   | RefineBind String a
   deriving (Show, Eq)
