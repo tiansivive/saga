@@ -138,8 +138,13 @@ generalize :: InferenceEnv -> [ImplConstraint] -> Type -> TypeExpr
 --       )
 --       False =
 --       undefined
-generalize env impls t = TQualified $ fmap mkConstraint impls :=> TAtom t
+generalize env impls t
+  | Set.size tvars == 0 && null impls = TAtom t
+  | Set.size tvars == 0               = TQualified $ fmap mkConstraint impls :=> TAtom t
+  | otherwise                         = TQualified $ fmap mkConstraint impls :=> TLambda params (TAtom t)
   where
+    tvars = ftv t
+    params = Set.toList tvars <&> \(Tyvar v _) -> v
     mkConstraint (ty `IP` p) = ty `T.Implements` p
 
 
