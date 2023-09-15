@@ -1,4 +1,5 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs             #-}
 module Saga.Language.TypeSystem.HindleyMilner.Constraints where
 
 import           Control.Monad.Except
@@ -27,6 +28,7 @@ import           Prelude                                            hiding (EQ)
 import           Saga.Language.Core.Literals                        (Literal (..))
 import           Saga.Language.TypeSystem.HindleyMilner.Environment hiding
                                                                     (Implements)
+import           Saga.Language.TypeSystem.HindleyMilner.Lib
 import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
                                                                     (ProtocolID,
                                                                      implementationTy)
@@ -46,12 +48,13 @@ class Substitutable a where
   apply :: Subst -> a -> a
   ftv :: a -> Set.Set UnificationVar
 
-instance (Substitutable a) => Substitutable [a] where
+instance (Substitutable a, Functor f, Foldable f) => Substitutable (f a) where
   apply = fmap . apply
 
   ftv = foldl union Set.empty
     where
       union set x = Set.union (ftv x) set
+
 
 instance Substitutable Type where
   --apply s t | trace ("Applying type sub\n\t" ++ show s ++ "\n\t" ++ show t) False = undefined
@@ -60,12 +63,38 @@ instance Substitutable Type where
     where
       in' = apply s inTy
       out' = apply s outTy
-  --   apply s (TConstrained cs ty) = apply s ty
+
   apply _ ty = ty
 
-  ftv (TVar id)       = Set.singleton id
-  ftv (t `TArrow` t') = ftv t `Set.union` ftv t'
-  ftv _               = Set.empty
+  ftv (TVar id)                = Set.singleton id
+  ftv (TTuple elems)           = ftv elems
+  ftv (TRecord pairs)          = ftv pairs
+  ftv (TUnion tys)             = ftv tys
+  ftv (cons `TApplied` arg)    = ftv cons `Set.union` ftv arg
+  ftv (t `TArrow` t')          = ftv t `Set.union` ftv t'
+  ftv (TClosure params body _) = ftv body
+  ftv _                        = Set.empty
+
+instance Substitutable TypeExpr where
+  apply s t | trace ("Applying typeExpr sub: " ++ show s ++ " to " ++ show t) False = undefined
+  apply s (TAtom ty) = TAtom $ apply s ty
+  apply s (TLambda params tyExpr) = TLambda (subStrVar s <$> params) $ apply s tyExpr
+    where
+      subStrVar sub str = case Map.lookup (Tyvar str KType) sub of
+        Nothing                   -> str
+        Just (TVar (Tyvar id _ )) -> id
+  apply s (TQualified (cs :=> ty)) = TQualified (cs' :=> ty')
+    where
+      ty' = apply s ty
+      cs' = apply s <$> cs
+  apply _ t  = t
+
+  ftv (TAtom ty) = ftv ty
+  ftv (TLambda _ tyExpr) = ftv tyExpr
+  ftv (TQualified (cs :=> ty)) =  cs' `Set.union` ty'
+    where
+      cs' = ftv cs
+      ty' = ftv ty
 
 instance Substitutable Scheme where
   --apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
@@ -93,8 +122,7 @@ instance Substitutable IConstraint where
 
 instance Substitutable ImplConstraint where
   --apply s ip | trace ("Applying IP constraint sub\n\t" ++ show s ++ "\n\t" ++ show ip) False = undefined
-  apply s  (t `IP` p) =  trace ("\tResult: " ++ show res) res
-    where res = apply s t `IP` p
+  apply s  (t `IP` p) = apply s t `IP` p
 
   ftv (t `IP` p) = ftv  t
 instance Substitutable Equality where
@@ -123,9 +151,9 @@ runSolve cs =  runExcept $ runReaderT (solver cs) builtInProtocols
 solver :: [IConstraint] -> Solve (Subst, [ImplConstraint])
 solver constraints = do
   let eqs' = eqs constraints
-  traceM $ "EQs: " ++ show eqs'
+  --traceM $ "EQs: " ++ show eqs'
   sub <- unification nullSubst eqs'
-  traceM $ "\nMGU:\n\t" ++ show sub
+  --traceM $ "\nMGU:\n\t" ++ show sub
   is <- reduce $ apply sub $ impls constraints
   resolve is
   return (sub, is)
@@ -138,7 +166,7 @@ solver constraints = do
 
 
 unification :: Subst -> [Equality] -> Solve Subst
-unification s cs | trace ("\nUnification:" ++ "\n\tUnifier: " ++ show s ++ "\n\tConstraints: " ++ show cs) False = undefined
+--unification s cs | trace ("\nUnification:" ++ "\n\tUnifier: " ++ show s ++ "\n\tConstraints: " ++ show cs) False = undefined
 unification s [] = return s
 unification s (e:es) | t1 `EQ` t2 <- e = do
   sub <- unify t1 t2
@@ -219,8 +247,8 @@ resolve :: [ImplConstraint] -> Solve ()
 -- resolve cs | trace ("\n\nProtocol Resolution:\n\t" ++ show cs) False = undefined
 resolve constraints = do
   env <- ask
-  traceM $ "\tGrouped Constraints: " ++ show (groupBy byType constraints)
-  traceM $ "\tGrouped Implementations: " ++ show (groupBy byType' (impls env))
+  --traceM $ "\tGrouped Constraints: " ++ show (groupBy byType constraints)
+  --traceM $ "\tGrouped Implementations: " ++ show (groupBy byType' (impls env))
   forM_ constraintGroups findImplementingType
 
   where
@@ -308,7 +336,7 @@ entail :: [ImplConstraint] -> ImplConstraint -> Solve Bool
 entail ipcs ipConstraint = do
   protocols <- ask
   baseConstraints <- mapM byBase ipcs
-  traceM $ "Checking by base constraints:\n\t" ++ show baseConstraints
+  --traceM $ "Checking by base constraints:\n\t" ++ show baseConstraints
   if any (ipConstraint `elem`) baseConstraints
     then return True
     else checkImpls
@@ -316,9 +344,9 @@ entail ipcs ipConstraint = do
   where
     checkImpls = do
       constraints <- byImplementation ipConstraint
-      traceM $ "Checking by implementations:\n\t" ++ show constraints
+      --traceM $ "Checking by implementations:\n\t" ++ show constraints
       entailments <- mapM (entail ipcs) constraints
-      traceM $ "Entailments:\n\t" ++ show entailments
+      --traceM $ "Entailments:\n\t" ++ show entailments
       return (not (null entailments) && and entailments)
 
 
@@ -328,7 +356,7 @@ byBase impl@(ty `IP` p) = do
     protocols <- ask
     impls <- sequence [ byBase (ty `IP` base) | base <- sups protocols p ]
     let all = impl : concat impls
-    traceM $ "Found:\n\t" ++ show all
+    --traceM $ "Found:\n\t" ++ show all
     return all
     where
       sups env id = maybe [] supers $ Map.lookup id env
@@ -391,13 +419,23 @@ instance HasKind Tyvar where
 
 instance HasKind Tycon where
   kind (Tycon _ k) = k
+instance HasKind TypeExpr where
+  kind (TAtom ty) = kind ty
+  kind (TTagged tag ty) = kind ty
+  kind (TClause ty binds) = kind ty
+  kind (TImplementation pid ty) = KProtocol
+  kind (TLambda params body) = kind body
+  kind (TIdentifier ty) = error "still need to implement kind inference for TIdentifier"
+  kind (TFnApp fn args) = error "still need to implement kind inference for TFnApp"
+  kind (TConditional {}) = error "still need to implement kind inference for TConditional"
+  kind (TQualified (cs :=> ty )) = kind ty
 
 instance HasKind Type where
   kind (TData cons) = kind cons
   kind (TVar u)     = kind u
   kind (TApplied f _) = case kind f of
     (KArrow _ k) -> k
-  kind (TClosure t _ _) = error "Trying to get kind of TClosure: Kind Inference not yet implemented"
+  kind (TClosure t tyExpr _) = kind tyExpr
   kind _ = KType
   --   (KArrow _ k) -> k
 

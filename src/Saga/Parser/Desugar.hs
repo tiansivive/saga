@@ -81,18 +81,18 @@ desugarScript :: Parser.Script -> Core.Script
 desugarScript (Parser.Script decs) = Core.Script (fmap desugarDec decs)
 
 desugarTypeExpr :: ParserTy.TypeExpr -> CoreTy.TypeExpr
-desugarTypeExpr (ParserTy.TIdentifier id) = CoreTy.TIdentifier id
-desugarTypeExpr (ParserTy.TLiteral lit)   = CoreTy.TELiteral lit
-desugarTypeExpr (ParserTy.TETuple t)   = CoreTy.TETuple (fmap desugarTypeExpr t)
-desugarTypeExpr (ParserTy.TERecord pairs)   = CoreTy.TERecord (fmap desugarTypeExpr <$> pairs)
-desugarTypeExpr (ParserTy.TEArrow input out)   = CoreTy.TEArrow (desugarTypeExpr input) (desugarTypeExpr out)
-desugarTypeExpr (ParserTy.TConditional cond true false)   = CoreTy.TConditional (desugarTypeExpr cond)  (desugarTypeExpr true)  (desugarTypeExpr false)
-desugarTypeExpr (ParserTy.TEUnion union)   = CoreTy.TEUnion (fmap desugarTypeExpr union)
-desugarTypeExpr (ParserTy.TTagged tag tyExpr)   = CoreTy.TTagged tag (desugarTypeExpr tyExpr)
-desugarTypeExpr (ParserTy.TClause tyExpr bindings)   = CoreTy.TClause (desugarTypeExpr tyExpr) (fmap desugarTyBinding bindings)
-desugarTypeExpr (ParserTy.TImplementation protocol tyExpr)   = CoreTy.TImplementation protocol (desugarTypeExpr tyExpr)
-desugarTypeExpr (ParserTy.TLambda params tyExpr)   = CoreTy.TLambda params (desugarTypeExpr tyExpr)
-desugarTypeExpr (ParserTy.TFnApp tyFn tyArgs)   = CoreTy.TFnApp (desugarTypeExpr tyFn) (fmap desugarTypeExpr tyArgs)
+desugarTypeExpr (ParserTy.TIdentifier id)                   = CoreTy.TIdentifier id
+desugarTypeExpr (ParserTy.TLiteral lit)                     = CoreTy.TAtom $ CoreTy.TLiteral lit
+-- desugarTypeExpr (ParserTy.TETuple t)                        = CoreTy.TAtom $ CoreTy.TTuple (fmap desugarTypeExpr t)
+-- desugarTypeExpr (ParserTy.TERecord pairs)                   = CoreTy.TAtom $ CoreTy.TRecord (fmap desugarTypeExpr <$> pairs)
+-- desugarTypeExpr (ParserTy.TEArrow input out)                = CoreTy.TAtom $ CoreTy.TArrow (desugarTypeExpr input) (desugarTypeExpr out)
+-- desugarTypeExpr (ParserTy.TConditional cond true false)     = CoreTy.TConditional (desugarTypeExpr cond)  (desugarTypeExpr true)  (desugarTypeExpr false)
+-- desugarTypeExpr (ParserTy.TEUnion union)                    = CoreTy.TAtom $  CoreTy.TUnion (fmap desugarTypeExpr union)
+desugarTypeExpr (ParserTy.TTagged tag tyExpr)               = CoreTy.TTagged tag (desugarTypeExpr tyExpr)
+desugarTypeExpr (ParserTy.TClause tyExpr bindings)          = CoreTy.TClause (desugarTypeExpr tyExpr) (fmap desugarTyBinding bindings)
+desugarTypeExpr (ParserTy.TImplementation protocol tyExpr)  = CoreTy.TImplementation protocol (desugarTypeExpr tyExpr)
+desugarTypeExpr (ParserTy.TLambda params tyExpr)            = CoreTy.TLambda params (desugarTypeExpr tyExpr)
+desugarTypeExpr (ParserTy.TFnApp tyFn tyArgs)               = CoreTy.TFnApp (desugarTypeExpr tyFn) (fmap desugarTypeExpr tyArgs)
 
 
 desugarKind :: ParserTy.Kind -> CoreTy.Kind
@@ -107,7 +107,7 @@ desugarDataExpr = fmap desugarTypeExpr
 
 desugarTyBinding :: ParserTy.Binding ParserTy.TypeExpr -> CoreTy.Binding CoreTy.TypeExpr
 desugarTyBinding (ParserTy.Bind id tyExpr) = CoreTy.Bind id (desugarTypeExpr tyExpr)
-desugarTyBinding (ParserTy.ImplBind id protocol) = CoreTy.ImplBind id protocol
+desugarTyBinding (ParserTy.ImplBind id protocol) = CoreTy.ImplBind (desugarTypeExpr id) protocol
 desugarTyBinding (ParserTy.SubtypeBind id tyExpr) = CoreTy.SubtypeBind id (desugarTypeExpr tyExpr)
 desugarTyBinding (ParserTy.RefineBind id tyExpr) = CoreTy.RefineBind id (desugarTypeExpr tyExpr)
 

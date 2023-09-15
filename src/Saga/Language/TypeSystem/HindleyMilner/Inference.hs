@@ -38,6 +38,7 @@ import qualified Saga.Language.TypeSystem.HindleyMilner.Types       as T
 import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
                                                                     (Implements)
 
+import           Saga.Language.TypeSystem.HindleyMilner.Shared
 import           Saga.Parser.Desugar
 import           Saga.Parser.Parser                                 (runSagaExpr)
 import           Saga.Parser.Shared                                 hiding
@@ -46,13 +47,17 @@ import           Saga.Parser.Shared                                 hiding
                                                                      Tuple,
                                                                      return)
 
-run :: String -> Either String Scheme
+import           Saga.Language.TypeSystem.HindleyMilner.Lib         (listConstructor)
+import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as Refine
+
+
+run :: String -> Either String TypeExpr
 run input = do
   Parsed expr _ _ <- runSagaExpr input
   show `first` runInfer (infer $ desugarExpr expr)
 
 
-runInfer :: Infer Type -> Either InferenceError Scheme
+runInfer :: Infer Type -> Either InferenceError TypeExpr
 runInfer m = do
   -- traceM "\n\n"
   -- traceM "--------------------"
@@ -74,49 +79,56 @@ runInfer m = do
   -- traceM "\n\n"
   return $ closeOver implConstraints $ apply subst ty
 
-closeOver :: [ImplConstraint] -> Type -> Scheme
+closeOver :: [ImplConstraint] -> Type -> TypeExpr
 closeOver cs = normalize . generalize empty cs
 
-class Instantiate t where
-  inst :: [Type] -> t -> t
+class Instantiate a where
+  instantiate :: a -> Infer Type
+
+-- instance (Instantiate a, Functor f) => Instantiate (f a) where
+--   instantiate = mapM instantiate
 
 instance Instantiate Type where
-  -- inst ts (TAp l r) = TAp (inst ts l) (inst ts r)
-  -- inst ts (TGen n)  = ts !! n
-  inst ts (TQualified (cs :=> t)) = TQualified (inst ts cs :=> inst ts t)
-  inst ts t                       = t
 
-instance Instantiate a => Instantiate [a] where
-  inst ts = map (inst ts)
+  instantiate (TClosure _ body _) = instantiate body
+  instantiate (TApplied cons arg) = TApplied <$> instantiate cons <*> instantiate arg
+  instantiate (TUnion tys) = TUnion <$> mapM instantiate tys
+  instantiate (TTuple tys) = TTuple <$> mapM instantiate tys
+  instantiate (TRecord pairs) = TRecord <$> mapM (mapM instantiate) pairs
+  instantiate (TArrow inTy outTy) = TArrow <$> instantiate inTy <*> instantiate outTy
+  instantiate ty = return ty
 
--- instance Instantiate t => Instantiate (Qualified t) where
---   inst ts (cs :=> t) = inst ts cs :=> inst ts t
+instance Instantiate TypeExpr where
+  instantiate te | trace ("\n\n------------\nInstantiating: " ++ show te) False = undefined
+  instantiate (TQualified (cs :=> te)) = do
+    tVars <- mapM (fresh . getKind) vars
+    let sub = Map.fromList $ zip vars tVars
+    let te' = apply sub te
 
-instance Instantiate Constraint where
-  inst ts (t `T.Implements` p) = inst ts t `T.Implements` p
+    -- traceM $ "\nZipped:\t" ++ show sub
+    -- traceM $ "\nSubbed type expression:\t" ++ show te'
+    tell $ mkIConstraint <$> apply sub cs
 
-
-instantiate :: Scheme -> Infer Type
---instantiate sc | trace ("Instantiating: " ++ show sc) False = undefined
-instantiate (Scheme tvars qualified@(cs :=> t)) = do
-  tVars <- mapM (fresh . getKind) vars
-  let sub = Map.fromList $ zip vars tVars
-  -- traceM $ "Zipped: " ++ show sub
-  tell $ mkIConstraint <$> apply sub cs
-  return $ apply sub t
+    instantiate te'
     where
       getKind (Tyvar v k) = k
       vars = Set.toList $ ftv cs
 
 
+  instantiate tyExpr = case Refine.run tyExpr of
+    Right (TClosure _ body _ ) -> instantiate body
+    Right ty                   -> return ty
+    Left err                   -> throwError $ Fail err
+instance Instantiate Constraint where
+  instantiate (t `T.Implements` p) = instantiate $ t `T.Implements` p
 
-generalize :: InferenceEnv -> [ImplConstraint] -> Type -> Scheme
+
+
+generalize :: InferenceEnv -> [ImplConstraint] -> Type -> TypeExpr
 -- generalize env impls t
 --   | trace
 --       ( "Generalizing: "
 --           ++ show t
---           ++ "\n\tEnv: "
---           ++ show env
 --           ++ "\n\tImplementation constraints: "
 --           ++ show impls
 --           ++ "\n\n\tFTV ty: "
@@ -126,9 +138,8 @@ generalize :: InferenceEnv -> [ImplConstraint] -> Type -> Scheme
 --       )
 --       False =
 --       undefined
-generalize env impls t = Scheme [] (fmap mkConstraint impls :=> t)
+generalize env impls t = TQualified $ fmap mkConstraint impls :=> TAtom t
   where
-
     mkConstraint (ty `IP` p) = ty `T.Implements` p
 
 
@@ -136,8 +147,8 @@ lookupEnv :: String -> Infer Type
 lookupEnv x = do
   (Env vars aliases) <- ask
   case Map.lookup x aliases <|> Map.lookup (Tyvar x KType) vars of
-    Just sc -> instantiate sc
-    Nothing -> throwError $ UnboundVariable (show x)
+    Just tyExpr -> instantiate tyExpr
+    Nothing     -> throwError $ UnboundVariable (show x)
 
 
 infer :: Expr -> Infer Type
@@ -147,7 +158,7 @@ infer ex = case ex of
 
   Lambda (param : rest) body -> do
     tVar <- fresh KType
-    out' <- infer out `scoped` (Tyvar param KType, Scheme (tvars tVar) ([] :=> tVar))
+    out' <- infer out `scoped` (Tyvar param KType, TAtom tVar)
     return $ tVar `TArrow` out'
     where
       tvars (TVar v) = [v]
@@ -186,14 +197,33 @@ infer ex = case ex of
     return $ TRecord tPairs
     where
       infer' = mapM infer
+  List [] -> do
+    var <- fresh KType
+    return $ TApplied listConstructor var
+  List elems -> do
+    tys <- mapM infer elems
+    let ty = head tys
+    if all (ty ==) tys then
+      return $ TApplied listConstructor ty
+    else throwError $ Fail "Inferred different element types in a List"
 
-  -- | TODO: Fold the lock instead to capture any defined types in any potential decs
-  Block stmts -> inferStmt $ last stmts
+  Block stmts -> infer' stmts
     where
-      inferStmt (Return expr)                  = infer expr
-      inferStmt (Procedure expr)               = infer expr
-      inferStmt (Declaration (Let _ _ _ expr)) = infer expr
-      inferStmt (Declaration _)                = return TUnit
+
+      infer' [] = return TVoid
+      infer' (stmt : rest) = case stmt of
+        Return expr                   -> infer expr
+        Declaration (Let id _ _ expr) -> do
+          tVar <- fresh KType
+          infer' rest `scoped` (Tyvar id KType, TAtom tVar)
+        _ -> infer' rest
+
+      inferStmt (Return expr)                        = infer expr
+      inferStmt (Procedure expr)                     = infer expr
+      inferStmt (Declaration (Let id tyExpr _ expr)) = infer expr
+      inferStmt (Declaration _)                      = return TVoid
+      tvars (TVar v) = [v]
+
 
   Literal literal -> return $ TLiteral literal
   ty -> error $ "Inference not implemented yet: " ++ show ty
@@ -212,24 +242,30 @@ generalizeArg (TLiteral lit) = generalize' $ case lit of
 
 generalizeArg ty = return ty
 
-normalize :: Scheme -> Scheme
--- normalize sc | trace ("Normalizing: " ++ show sc) False = undefined
-normalize (Scheme k (cs :=> ty)) = Scheme k (cs' :=> ty')
-  where
-    ty' = normType ty
-    cs' = normConstraint <$> cs
-    ord = zip (nub $ fv ty) letters
+normalize :: TypeExpr -> TypeExpr
+-- normalize sc | trace ("\n\nNormalizing: " ++ show sc) False = undefined
+normalize tyExpr = case tyExpr of
+  (TQualified (cs :=> tyExpr')) -> TQualified $ (normConstraint <$> cs) :=> normalize tyExpr'
+  (TAtom ty)                    -> TAtom $ normType ty
+  (TLambda params tyExpr')       -> TLambda (fmap norm' params) (normalize tyExpr')
+  (TTagged tag tyExpr')          -> TTagged tag $ normalize tyExpr'
+  _ -> tyExpr
 
-    fv (TVar a)       = [a]
-    fv (a `TArrow` b) = fv a ++ fv b
-    fv _              = []
+  where
+    ord = zip tvars letters
+    tvars = nub (Set.toList $ ftv tyExpr) <&> \(Tyvar v _) -> v
+    norm' x = fromMaybe x (lookup x ord)
+
+    normType (TTuple tys)        = TTuple $ fmap normType tys
+    normType (TUnion tys)        = TUnion $ fmap normType tys
+    normType (TRecord pairs)     = TRecord $ fmap (fmap normType) pairs
+    normType (TData cons)        = TData $ normCons cons
+    normType (TApplied cons arg) = normType cons `TApplied` normType arg
+    normType (a `TArrow` b)      = normType a `TArrow` normType b
+    normType (TVar (Tyvar v k))  = TVar $ Tyvar (norm' v) k
+    normType t                   = t
 
     normConstraint (t `T.Implements` p) = normType t `T.Implements` p
 
-    normType (a `TArrow` b) = normType a `TArrow` normType b
-    normType (TVar v) = case lookup v ord of
-      Just x  -> TVar $ Tyvar x $ kind v
-      Nothing -> error "type variable not in signature"
-    normType t = t
-
+    normCons (Tycon x k) = Tycon (norm' x) k
 

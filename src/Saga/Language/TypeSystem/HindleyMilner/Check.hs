@@ -24,17 +24,16 @@ import           Saga.Language.TypeSystem.HindleyMilner.Environment (IConstraint
                                                                      Infer,
                                                                      InferenceEnv,
                                                                      InferenceError,
-                                                                     Scheme,
-                                                                     builtInProtocols,
-                                                                     empty,
-                                                                     initState)
+                                                                     Scheme)
+
 import           Saga.Language.TypeSystem.HindleyMilner.Inference   (closeOver,
                                                                      infer)
-import           Saga.Language.TypeSystem.HindleyMilner.Types       (BuiltInType (..),
+import           Saga.Language.TypeSystem.HindleyMilner.Types       (PrimitiveType (..),
                                                                      Type (..),
                                                                      Tyvar)
 
 import           Saga.Language.Core.Syntax
+import           Saga.Language.TypeSystem.HindleyMilner.Shared
 
 
 

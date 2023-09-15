@@ -1,5 +1,5 @@
 
-
+/*
 
 let overload
     : \f a => 
@@ -84,13 +84,6 @@ data MyType
   | Baz: \a => custom -> a
   where custom = String
 
-
-let a = 1
-
-
-
-
-
 let proc
     : String -> Promise Int!
     = \a -> {
@@ -109,3 +102,17 @@ let proc
 let fn
     : Data Int -> Int -> Int
     = \(Data: one) two -> one + two
+
+
+\baz -> {
+    a <- baz
+    return a + 1
+}
+*/
+
+
+\foo -> foo + 1
+
+
+
+

@@ -304,7 +304,7 @@ data BindingType = Id | Impl | Subtype | Refinement
 tyBinding:: BindingType -> ParsedData E.Expr -> ParsedData PT.TypeExpr -> ParsedData (PT.Binding PT.TypeExpr)
 tyBinding bindType id expr = case bindType of
     Id         -> Parsed (PT.Bind id' expr') range' toks
-    Impl       -> Parsed (PT.ImplBind id' (tyIdStr expr')) range' toks
+    Impl       -> Parsed (PT.ImplBind (PT.TIdentifier id') (tyIdStr expr')) range' toks
     Subtype    -> Parsed (PT.SubtypeBind id' expr') range' toks
     Refinement -> Parsed (PT.RefineBind id' expr') range' toks
     where
