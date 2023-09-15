@@ -1,4 +1,5 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs             #-}
 module Saga.Language.TypeSystem.HindleyMilner.Constraints where
 
 import           Control.Monad.Except
@@ -47,12 +48,13 @@ class Substitutable a where
   apply :: Subst -> a -> a
   ftv :: a -> Set.Set UnificationVar
 
-instance (Substitutable a) => Substitutable [a] where
+instance (Substitutable a, Functor f, Foldable f) => Substitutable (f a) where
   apply = fmap . apply
 
   ftv = foldl union Set.empty
     where
       union set x = Set.union (ftv x) set
+
 
 instance Substitutable Type where
   --apply s t | trace ("Applying type sub\n\t" ++ show s ++ "\n\t" ++ show t) False = undefined
@@ -61,17 +63,26 @@ instance Substitutable Type where
     where
       in' = apply s inTy
       out' = apply s outTy
-  --   apply s (TConstrained cs ty) = apply s ty
+
   apply _ ty = ty
 
-  ftv (TVar id)       = Set.singleton id
-  ftv (t `TArrow` t') = ftv t `Set.union` ftv t'
-  ftv _               = Set.empty
+  ftv (TVar id)                = Set.singleton id
+  ftv (TTuple elems)           = ftv elems
+  ftv (TRecord pairs)          = ftv pairs
+  ftv (TUnion tys)             = ftv tys
+  ftv (cons `TApplied` arg)    = ftv cons `Set.union` ftv arg
+  ftv (t `TArrow` t')          = ftv t `Set.union` ftv t'
+  ftv (TClosure params body _) = ftv body
+  ftv _                        = Set.empty
 
 instance Substitutable TypeExpr where
-  --apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
+  apply s t | trace ("Applying typeExpr sub: " ++ show s ++ " to " ++ show t) False = undefined
   apply s (TAtom ty) = TAtom $ apply s ty
-  apply s (TLambda params tyExpr) = TLambda params $ apply s tyExpr
+  apply s (TLambda params tyExpr) = TLambda (subStrVar s <$> params) $ apply s tyExpr
+    where
+      subStrVar sub str = case Map.lookup (Tyvar str KType) sub of
+        Nothing                   -> str
+        Just (TVar (Tyvar id _ )) -> id
   apply s (TQualified (cs :=> ty)) = TQualified (cs' :=> ty')
     where
       ty' = apply s ty
@@ -80,7 +91,7 @@ instance Substitutable TypeExpr where
 
   ftv (TAtom ty) = ftv ty
   ftv (TLambda _ tyExpr) = ftv tyExpr
-  ftv (TQualified (cs :=> ty)) = cs' `Set.difference` ty'
+  ftv (TQualified (cs :=> ty)) =  cs' `Set.union` ty'
     where
       cs' = ftv cs
       ty' = ftv ty

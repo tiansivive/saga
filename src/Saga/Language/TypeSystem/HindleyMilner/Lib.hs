@@ -57,3 +57,17 @@ stdProtocols =
     "MonadPlus"
   ]
     ++ numProtocols
+
+
+builtInTypes :: Map.Map String Type
+builtInTypes = Map.fromList
+  [ ("Int", TPrimitive TInt)
+  , ("Bool", TPrimitive TBool)
+  , ("String", TPrimitive TString)
+  , ("List", listConstructor)
+  , ("Function", fnConstructor)
+  ]
+
+listConstructor, fnConstructor :: Type
+listConstructor = TData $ Tycon "List" (KArrow KType KType)
+fnConstructor = TData $ Tycon "Function" (KArrow KType (KArrow KType KType))

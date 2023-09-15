@@ -18,8 +18,6 @@ initState :: InferenceState
 initState = IST {count = 0}
 
 
-
-
 builtInFns :: Map.Map Alias TypeExpr
 builtInFns =
   Map.fromList
@@ -32,18 +30,6 @@ builtInFns =
       var = "a"
       tvar = TVar $ Tyvar var KType
       binaryNumTypeExpr = TQualified $ [tvar `T.Implements` "Num"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` tvar))
-
--- builtInFns :: Map.Map Alias Scheme
--- builtInFns =
---   Map.fromList
---     [ ("+", Scheme [var] ([tvar `T.Implements` "Num"] :=> tvar `TArrow` (tvar `TArrow` tvar))),
---       ("-", Scheme [var] ([tvar `T.Implements` "Num"] :=> tvar `TArrow` (tvar `TArrow` tvar))),
---       ("*", Scheme [var] ([tvar `T.Implements` "Num"] :=> tvar `TArrow` (tvar `TArrow` tvar))),
---       ("/", Scheme [var] ([tvar `T.Implements` "Num"] :=> tvar `TArrow` (tvar `TArrow` tvar)))
---     ]
---     where
---       var = Tyvar "a" KType
---       tvar = TVar var
 
 
 union :: InferenceEnv -> InferenceEnv -> InferenceEnv

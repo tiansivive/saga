@@ -25,6 +25,7 @@ import           Control.Monad.Trans.State                    (StateT)
 import           Data.Bifunctor                               (first)
 import           Prelude                                      hiding (lookup)
 
+import           Saga.Language.TypeSystem.HindleyMilner.Lib
 import           Saga.Parser.ParsingInfo                      hiding (return)
 
 
@@ -47,16 +48,6 @@ run :: TypeExpr -> Either String Type
 run tyExpr = show `first` runExcept (runReaderT (refine tyExpr) builtInTypes)
 
 
-builtInTypes :: RefinementEnv
-builtInTypes = Map.fromList
-  [ ("Int", TPrimitive TInt)
-  , ("Bool", TPrimitive TBool)
-  , ("String", TPrimitive TString)
-  , ("List", TData (Tycon "List" (KArrow KType KType)))
-  , ("Function", TData (Tycon "Function" (KArrow KType (KArrow KType KType))))
-  ]
-
-
 
 lookup :: String -> Refined Type
 lookup id = do
@@ -67,11 +58,6 @@ lookup id = do
 
 refine :: TypeExpr -> Refined Type
 refine a | trace ("refining: " ++ show a) False = undefined
--- refine (Type ty)                      = return ty
--- refine (TClause _ tyExp)              = refine tyExp
--- refine (TBlock [])                    = return TUnit
--- refine (TBlock tyExps)                = refine $ last tyExps
--- refine (TReturn tyExp)                = refine tyExp
 refine (TAtom ty) = return ty
 refine (TIdentifier id) = lookup id
 refine (TConditional cond true false) = TUnion <$> mapM refine [true, false]
