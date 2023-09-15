@@ -111,7 +111,9 @@ let fn
 */
 
 
-\foo -> foo + 1
+let check 
+    : Int -> Int -> Int
+    = \x y -> x + y
 
 
 

@@ -47,6 +47,9 @@ data RefinementError
 run :: TypeExpr -> Either String Type
 run tyExpr = show `first` runExcept (runReaderT (refine tyExpr) builtInTypes)
 
+runIn :: RefinementEnv ->  TypeExpr -> Either String Type
+runIn env tyExpr = show `first` runExcept (runReaderT (refine tyExpr) (builtInTypes `Map.union` env))
+
 
 
 lookup :: String -> Refined Type

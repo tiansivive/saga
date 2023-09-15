@@ -63,6 +63,6 @@ type ProtocolID = String
 type Implementation = Qualified ImplConstraint
 type Method = (Name, TypeExpr)
 
-newtype InferenceState = IST {count :: Int}
+newtype InferenceState = IST {count :: Int} deriving (Show)
 
 data Scheme = Scheme [Tyvar] (Qualified Type) deriving (Show, Eq)

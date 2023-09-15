@@ -13,6 +13,7 @@ import           Control.Monad.State                                (StateT (run
                                                                      modify,
                                                                      put)
 import           Data.Bifunctor                                     (bimap)
+import           Data.Either                                        (fromRight)
 import           Data.Functor                                       ((<&>))
 import           Data.List                                          (delete,
                                                                      groupBy,
@@ -29,11 +30,11 @@ import           Saga.Language.Core.Literals                        (Literal (..
 import           Saga.Language.TypeSystem.HindleyMilner.Environment hiding
                                                                     (Implements)
 import           Saga.Language.TypeSystem.HindleyMilner.Lib
+import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as Refine
 import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
                                                                     (ProtocolID,
                                                                      implementationTy)
 import           Text.Pretty.Simple                                 (pShow)
-
 -- type Solve = StateT SolveState (Except InferenceError)
 
 type Solve = ReaderT ProtocolEnv (Except InferenceError)
@@ -179,6 +180,16 @@ unification s (e:es) | t1 `EQ` t2 <- e = do
 
 unify :: (MonadError e m, e ~ InferenceError) => Type -> Type -> m Subst
 --unify t1 t2 | trace ("Unifying:\n\t" ++ show t1 ++ "\n\t" ++ show t2) False = undefined
+
+unify (TLiteral a) (TLiteral b) | a == b = return nullSubst
+unify (TPrimitive a) (TPrimitive b) | a == b = return nullSubst
+unify (TData lCons) (TData rCons) | lCons == rCons = return nullSubst
+unify sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
+unify lit@(TLiteral _) prim@(TPrimitive _) = lit `isSubtype` prim
+unify (TTuple as) (TTuple bs) = do
+  ss <- zipWithM unify as bs
+  return $ foldl compose nullSubst ss
+
 unify (il `TArrow` ol) (ir `TArrow` or) = do
   sub <- unify il ir
   s <- apply sub ol `unify` apply sub or
@@ -188,21 +199,21 @@ unify (TApplied f t) (TApplied f' t') = do
   s <- apply sub t `unify` apply sub t'
   return $ s `compose` sub
 
-unify (TData lCons) (TData rCons) | lCons == rCons = return nullSubst
 unify (TVar a) t = bind a t
 unify t (TVar a) = bind a t
-unify (TPrimitive a) (TPrimitive b) | a == b = return nullSubst
-unify (TLiteral a) (TLiteral b) | a == b = return nullSubst
-unify (TTuple as) (TTuple bs) = do
-  ss <- zipWithM unify as bs
-  return $ foldl compose nullSubst ss
-
-unify sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
-unify lit@(TLiteral _) prim@(TPrimitive _) = lit `isSubtype` prim
-
 
 unify t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch"
-unify t t' = throwError $ UnificationFail t t'
+unify t1 t2 = case (t1, t2) of
+  (t@(TClosure {}), t') -> refine t `unify` t'
+  (t, t'@(TClosure {})) -> t `unify` refine t'
+  _                     -> throwError $ UnificationFail t1 t2
+  where
+    refine (TClosure params tyExpr env) = fromRight err $ Refine.runIn (env `Map.union` env') tyExpr
+      where
+        tvars = fmap (`Tyvar` KType) params
+        env'  = Map.fromList $ zip params (fmap TVar tvars)
+        err   = error "Failed to refine TClosure while unifying"
+
 
 bind :: (MonadError e m, e ~ InferenceError) => Tyvar -> Type -> m Subst
 -- bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
@@ -242,7 +253,6 @@ nullSubst = Map.empty
 
 
 -- | Implementation Constraints solving
-
 resolve :: [ImplConstraint] -> Solve ()
 -- resolve cs | trace ("\n\nProtocol Resolution:\n\t" ++ show cs) False = undefined
 resolve constraints = do
@@ -273,8 +283,6 @@ resolve constraints = do
     any' = flip any
 
 
-
-
 reduce :: [ImplConstraint] -> Solve [ImplConstraint]
 -- reduce cs | trace ("\nReducing\n\tImplementation constraint:" ++ show cs) False = undefined
 reduce cs = mapM toHNF cs >>= simplify . concat
@@ -297,7 +305,6 @@ byImplementation implConstraint@(ty `IP` p)    = do
   env <- ask
   concat <$> sequence [ tryInst impl | impl <- impls env p ]
 
-
   where
     mkIP (ty `Implements` p) = ty `IP` p
     impls env id = maybe [] implementations $ Map.lookup id env
@@ -319,10 +326,9 @@ unifyImpl (ty `IP` p) (ty' `IP` p')
     match t1 t2             = throwError $ Fail "types do not match"
 
 
-
 simplify   :: [ImplConstraint] -> Solve [ImplConstraint]
 -- simplify cs | trace ("\nSimplifying\n\tImplementation constraint:" ++ show cs) False = undefined
-simplify cs = loop [] cs
+simplify = loop []
  where
   loop checked []     = return checked
   loop checked (ipc:ipcs) = do

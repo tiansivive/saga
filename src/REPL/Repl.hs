@@ -1,29 +1,31 @@
 module REPL.Repl where
 
 
-import qualified Saga.Language.Evaluation                          as E
-import qualified Saga.Language.TypeSystem.HindleyMilner.Check      as HMC
+import qualified Saga.Language.Evaluation                           as E
+import qualified Saga.Language.TypeSystem.HindleyMilner.Check       as HMC
 
-import qualified Saga.Language.TypeSystem.HindleyMilner.Inference  as HMI
-import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement as HMR
+import qualified Saga.Language.TypeSystem.HindleyMilner.Inference   as HMI
+import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as HMR
 
-import qualified Saga.Parser.Parser                                as P
+import qualified Saga.Parser.Parser                                 as P
 
-import           Data.Map                                          (Map)
-import qualified Data.Map                                          as Map
+import           Data.Map                                           (Map)
+import qualified Data.Map                                           as Map
 
-import           Control.Monad.Except                              (ExceptT)
-import           Control.Monad.State                               (StateT)
-import           Debug.Trace                                       (traceM)
-import           Saga.Language.Core.Syntax                         (Expr)
+import           Control.Monad.Except                               (ExceptT)
+import           Control.Monad.State                                (StateT)
+import           Debug.Trace                                        (traceM)
+import           Saga.Language.Core.Syntax                          (Expr)
+import           Saga.Language.TypeSystem.HindleyMilner.Constraints (nullSubst)
 import           Saga.Parser.Desugar
-import           Saga.Parser.ParsingInfo                           hiding (Term)
-import           Saga.Parser.Shared                                (ParsedData (..))
-import           System.Console.Haskeline                          (defaultSettings,
-                                                                    getInputLine,
-                                                                    outputStrLn,
-                                                                    runInputT)
-import           Text.Pretty.Simple                                (pPrint)
+import           Saga.Parser.ParsingInfo                            hiding
+                                                                    (Term)
+import           Saga.Parser.Shared                                 (ParsedData (..))
+import           System.Console.Haskeline                           (defaultSettings,
+                                                                     getInputLine,
+                                                                     outputStrLn,
+                                                                     runInputT)
+import           Text.Pretty.Simple                                 (pPrint)
 
 
 data Sort = Type | Kind | Term
@@ -113,19 +115,21 @@ repl = runInputT defaultSettings $ repl' Map.empty
                             Parsed expr' _ _ <- desugaredExpr $ P.runSagaExpr expr
                             Parsed tyExpr' _ _ <- desugaredTyExpr $ P.runSagaType ty
                             ty' <- HMR.run tyExpr'
-                            (bool, constraints) <- HMC.run expr' ty'
-                            return (expr', ty', bool, constraints)
+                            (sub, st, constraints) <- HMC.check expr' ty'
+                            return (expr', ty', sub, st, constraints)
                     in case parsed of
                         Left e -> pPrint e
-                        Right (expr', ty', bool, constraints) -> do
+                        Right (expr', ty', sub, st, constraints) -> do
                             outputStrLn "\nExpression:"
                             pPrint expr'
                             outputStrLn "\nType:"
                             pPrint ty'
                             outputStrLn "\nConstraints:"
                             pPrint constraints
-                            outputStrLn "\nTypecheck:"
-                            pPrint bool
+                            outputStrLn "\nState:"
+                            pPrint st
+                            outputStrLn "\nSubstitution:"
+                            pPrint sub
 
                 parseTerm input = do
                     case P.runSagaExpr input of
