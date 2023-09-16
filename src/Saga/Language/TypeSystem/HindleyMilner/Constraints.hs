@@ -90,12 +90,24 @@ instance Substitutable TypeExpr where
       cs' = apply s <$> cs
   apply _ t  = t
 
-  ftv (TAtom ty) = ftv ty
-  ftv (TLambda _ tyExpr) = ftv tyExpr
-  ftv (TQualified (cs :=> ty)) =  cs' `Set.union` ty'
+  ftv (TAtom ty)                = ftv ty
+  ftv (TLambda _ tyExpr)        = ftv tyExpr
+  ftv (TComposite comp)         = ftv comp
+  ftv (TQualified (cs :=> ty))  = cs' `Set.union` ty'
     where
       cs' = ftv cs
       ty' = ftv ty
+  ftv (TIdentifier id)          = Set.singleton $ Tyvar id KType
+instance Substitutable CompositeExpr where
+  apply s (TEUnion tys)      = TEUnion $ apply s tys
+  apply s (TETuple tys)      = TETuple $ apply s tys
+  apply s (TERecord pairs)   = TERecord $ fmap (fmap (apply s)) pairs
+  apply s (TEArrow in' out') =  apply s in' `TEArrow` apply s out'
+
+  ftv (TETuple elems)  = ftv elems
+  ftv (TERecord pairs) = ftv pairs
+  ftv (TEUnion tys)    = ftv tys
+  ftv (t `TEArrow` t') = ftv t `Set.union` ftv t'
 
 instance Substitutable Scheme where
   --apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
