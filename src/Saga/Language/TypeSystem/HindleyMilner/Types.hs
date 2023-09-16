@@ -10,6 +10,7 @@ import           Saga.Lexer.Tokens           (Token (Qualified))
 
 data TypeExpr where
   TAtom             :: Type -> TypeExpr
+  TComposite        :: CompositeExpr -> TypeExpr
   TIdentifier       :: String -> TypeExpr
   TConditional      :: TypeExpr -> TypeExpr -> TypeExpr -> TypeExpr
   TClause           :: TypeExpr -> [Binding TypeExpr] -> TypeExpr
@@ -22,6 +23,11 @@ data TypeExpr where
   TQualified        :: Qualified TypeExpr -> TypeExpr
 
 
+data CompositeExpr where
+  TEUnion   :: [TypeExpr] -> CompositeExpr
+  TETuple   :: [TypeExpr] -> CompositeExpr
+  TERecord  :: [(String, TypeExpr)] -> CompositeExpr
+  TEArrow   :: TypeExpr -> TypeExpr -> CompositeExpr
 
 data Binding a
   = Bind String a
@@ -71,6 +77,8 @@ infixr 5 `TArrow`
 
 deriving instance Show TypeExpr
 deriving instance Eq TypeExpr
+deriving instance Show CompositeExpr
+deriving instance Eq CompositeExpr
 deriving instance Show Type
 deriving instance Eq Type
 

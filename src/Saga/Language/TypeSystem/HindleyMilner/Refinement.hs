@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+
 
 
 module Saga.Language.TypeSystem.HindleyMilner.Refinement where
@@ -28,11 +28,7 @@ import           Prelude                                      hiding (lookup)
 import           Saga.Language.TypeSystem.HindleyMilner.Lib
 import           Saga.Parser.ParsingInfo                      hiding (return)
 
-
-
 type RefinementEnv = Map.Map String Type
-
-
 type Refined = ReaderT RefinementEnv (Except RefinementError)
 
 data RefinementError
@@ -40,8 +36,6 @@ data RefinementError
     | UnboundIdentifier String String
     | TooManyArguments TypeExpr [TypeExpr]
   deriving (Show)
-
-
 
 
 run :: TypeExpr -> Either String Type
@@ -63,6 +57,12 @@ refine :: TypeExpr -> Refined Type
 refine a | trace ("refining: " ++ show a) False = undefined
 refine (TAtom ty) = return ty
 refine (TIdentifier id) = lookup id
+refine (TComposite (TEUnion types)) = TUnion <$> mapM refine types
+refine (TComposite (TETuple types)) = TTuple <$> mapM refine types
+refine (TComposite (TERecord pairs)) = TRecord <$> mapM (mapM refine) pairs
+refine (TComposite (TEArrow in' out')) = TArrow <$> refine in' <*> refine out'
+
+
 refine (TConditional cond true false) = TUnion <$> mapM refine [true, false]
 refine (TClause tyExpr bindings)      = do
     env <- ask

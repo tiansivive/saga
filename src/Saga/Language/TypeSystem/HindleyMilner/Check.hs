@@ -67,8 +67,7 @@ check :: Expr -> Type -> Either String (Subst, InferenceState, [IConstraint])
 check expr ty = do
     tyExpr <- show `first` runInfer (infer expr)
     inferred <- Refine.run tyExpr
-    show `first` runExcept (runRWST ( inferred `matches` (TPrimitive TInt `TArrow` TPrimitive TInt)) empty initState)
-    -- inferred `matches` ty
+    show `first` runExcept (runRWST ( inferred `matches` ty) empty initState)
 
 
 -- | TODO: Need to have different unification rules here between type literals and primitives

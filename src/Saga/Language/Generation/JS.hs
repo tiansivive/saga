@@ -1,3 +1,6 @@
+{-# LANGUAGE FlexibleInstances #-}
+
+
 module Saga.Language.Generation.JS where
 import           Control.Monad.State
 import           Data.List                                         (intercalate)

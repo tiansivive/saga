@@ -427,15 +427,25 @@ instance HasKind Tycon where
   kind (Tycon _ k) = k
 instance HasKind TypeExpr where
   kind (TAtom ty) = kind ty
+  kind (TComposite composite) = kind composite
   kind (TTagged tag ty) = kind ty
   kind (TClause ty binds) = kind ty
   kind (TImplementation pid ty) = KProtocol
-  kind (TLambda params body) = kind body
+  kind (TLambda params body) = foldr (KArrow . KVar) (kind body) params
   kind (TIdentifier ty) = error "still need to implement kind inference for TIdentifier"
   kind (TFnApp fn args) = error "still need to implement kind inference for TFnApp"
   kind (TConditional {}) = error "still need to implement kind inference for TConditional"
   kind (TQualified (cs :=> ty )) = kind ty
 
+instance HasKind CompositeExpr where
+  kind (TEUnion tys) =
+      if all (== k) (fmap kind tys) then
+        k
+      else error "Mismatching kinds in type union"
+      where k =  kind $ head tys
+  kind (TERecord {}) = KType -- TODO: Is this correct? what happens when a key's value is a type lambda?
+  kind (TETuple {}) = KType -- TODO: Same here. KType seems correct, but how and when to enforce it?
+  kind (TEArrow {}) = KType -- TODO: This probably can be investigated by looking into rank-N types
 instance HasKind Type where
   kind (TData cons) = kind cons
   kind (TVar u)     = kind u

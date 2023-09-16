@@ -83,11 +83,11 @@ desugarScript (Parser.Script decs) = Core.Script (fmap desugarDec decs)
 desugarTypeExpr :: ParserTy.TypeExpr -> CoreTy.TypeExpr
 desugarTypeExpr (ParserTy.TIdentifier id)                   = CoreTy.TIdentifier id
 desugarTypeExpr (ParserTy.TLiteral lit)                     = CoreTy.TAtom $ CoreTy.TLiteral lit
--- desugarTypeExpr (ParserTy.TETuple t)                        = CoreTy.TAtom $ CoreTy.TTuple (fmap desugarTypeExpr t)
--- desugarTypeExpr (ParserTy.TERecord pairs)                   = CoreTy.TAtom $ CoreTy.TRecord (fmap desugarTypeExpr <$> pairs)
--- desugarTypeExpr (ParserTy.TEArrow input out)                = CoreTy.TAtom $ CoreTy.TArrow (desugarTypeExpr input) (desugarTypeExpr out)
--- desugarTypeExpr (ParserTy.TConditional cond true false)     = CoreTy.TConditional (desugarTypeExpr cond)  (desugarTypeExpr true)  (desugarTypeExpr false)
--- desugarTypeExpr (ParserTy.TEUnion union)                    = CoreTy.TAtom $  CoreTy.TUnion (fmap desugarTypeExpr union)
+desugarTypeExpr (ParserTy.TETuple t)                        = CoreTy.TComposite $ CoreTy.TETuple (fmap desugarTypeExpr t)
+desugarTypeExpr (ParserTy.TERecord pairs)                   = CoreTy.TComposite $ CoreTy.TERecord (fmap desugarTypeExpr <$> pairs)
+desugarTypeExpr (ParserTy.TEArrow input out)                = CoreTy.TComposite $ CoreTy.TEArrow (desugarTypeExpr input) (desugarTypeExpr out)
+desugarTypeExpr (ParserTy.TEUnion union)                    = CoreTy.TComposite $ CoreTy.TEUnion (fmap desugarTypeExpr union)
+desugarTypeExpr (ParserTy.TConditional cond true false)     = CoreTy.TConditional (desugarTypeExpr cond)  (desugarTypeExpr true)  (desugarTypeExpr false)
 desugarTypeExpr (ParserTy.TTagged tag tyExpr)               = CoreTy.TTagged tag (desugarTypeExpr tyExpr)
 desugarTypeExpr (ParserTy.TClause tyExpr bindings)          = CoreTy.TClause (desugarTypeExpr tyExpr) (fmap desugarTyBinding bindings)
 desugarTypeExpr (ParserTy.TImplementation protocol tyExpr)  = CoreTy.TImplementation protocol (desugarTypeExpr tyExpr)
