@@ -20,6 +20,7 @@ library
       Saga.Language.Core.Literals
       Saga.Language.Core.Syntax
       Saga.Language.Evaluation
+      Saga.Language.Generation.JS
       Saga.Language.TypeSystem.HindleyMilner.Check
       Saga.Language.TypeSystem.HindleyMilner.Constraints
       Saga.Language.TypeSystem.HindleyMilner.Environment
