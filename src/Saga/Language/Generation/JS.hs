@@ -20,7 +20,7 @@ class Generator a where
 
 instance Generator Expr where
     generate (Literal lit)   = generate lit
-    generate (Identifier id) = id
+    generate (Identifier id) = generate id
     generate (List exprs) = "[" ++ code exprs ++ "]"
         where code = intercalate "," . fmap generate
     generate (Tuple exprs) = "[" ++ code exprs ++ "]"
@@ -33,6 +33,11 @@ instance Generator Expr where
     generate (FnApp fn args) = generate fn ++ "(" ++ intercalate "," (fmap generate args)  ++ ")"
     generate (Block stmts) = "(() => {" ++ intercalate ";\n" (fmap generate stmts) ++  "})()"
 
+instance Generator Literal where
+    generate (LInt int)    = show int
+    generate (LString str) = "\"" ++ str ++ "\""
+    generate (LBool True)  = "true"
+    generate (LBool False) = "false"
 
 instance Generator Statement where
     generate (Return expr)     = "return " ++ generate expr
@@ -60,8 +65,24 @@ instance Generator DataExpr where
     generate (_, tyExpr) = error "No code generation implemented yet for this type of TypeExpr:\n" ++ show tyExpr
 
 
-instance Generator Literal where
-    generate (LInt int)    = show int
-    generate (LString str) = "\"" ++ str ++ "\""
-    generate (LBool True)  = "true"
-    generate (LBool False) = "false"
+instance Generator Script where
+    generate (Script decs) = intercalate "\n\n" $ fmap generate decs
+
+instance Generator String where
+    generate "+"  = "Core.add"
+    generate "-"  = "Core.subtract"
+    generate "/"  = "Core.divide"
+    generate "*"  = "Core.multiply"
+    generate "||" = "Core.or"
+    generate "&&" = "Core.and"
+    generate "<"  = "Core.lt"
+    generate ">"  = "Core.gt"
+    generate "<=" = "Core.gte"
+    generate ">=" = "Core.gte"
+    generate "==" = "Core.eq"
+    generate "!=" = "Core.!eq"
+    generate "|>" = "Core.pipeRight"
+    generate "<|" = "Core.pipeLeft"
+    generate "++" = "Core.concat"
+    generate "."  = "Core.fieldAccess"
+    generate id   = id

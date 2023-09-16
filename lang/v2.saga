@@ -113,7 +113,7 @@ let fn
 
 let check 
     : Int -> Int -> Int
-    = \x y -> x + y
+    = \foo bar -> update (.one) bar
 
 
 

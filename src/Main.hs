@@ -9,9 +9,12 @@ import           REPL.Repl                                        (repl)
 import qualified Saga.Lexer.Lexer                                 as L
 import qualified Saga.Parser.Parser                               as P
 
+import           Saga.Language.Generation.JS                      (Generator (generate))
 import           Saga.Language.TypeSystem.HindleyMilner.Inference (run)
 import           Saga.Parser.Desugar                              (desugarExpr,
                                                                    desugarScript)
+import           Saga.Parser.ParsingInfo                          (script)
+import           Saga.Parser.Shared                               (ParsedData (Parsed))
 import           System.Console.Haskeline                         (defaultSettings,
                                                                    getInputLine,
                                                                    outputStrLn,
@@ -32,11 +35,6 @@ main :: IO ()
 main = do
     putStrLn "Starting Saga..."
     repl
-
-
-
-
-
 
 
 parseScript :: FilePath -> IO ()
@@ -71,6 +69,22 @@ lexScript fp = do
     contents <- hGetContents handle
     pPrint (L.scanMany contents)
     hClose handle
+    putStrLn "Bye!"
+
+
+genScript :: FilePath -> IO ()
+genScript fp = do
+    handle <- openFile fp ReadMode
+    parsingH <- openFile "./lang/test.parsing.log" WriteMode
+    contents <- hGetContents handle
+    let res = fmap desugarScript <$> P.runSagaScript contents
+    let output = case res of
+            Left err                  -> err
+            Right (Parsed script _ _) -> generate script
+    pPrint output
+    pHPrint parsingH output
+    hClose handle
+    hClose parsingH
     putStrLn "Bye!"
 
 
