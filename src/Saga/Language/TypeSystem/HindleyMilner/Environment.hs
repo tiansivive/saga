@@ -24,9 +24,10 @@ import           Saga.Lexer.Tokens                             (Token (Qualified
 
 type Saga t a = RWST () Accumulator CompilerState t a
 data CompilerState = Saga 
-  { protocols:: [Protocol]
-  , types:: Map.Map String TypeExpr
-  , kinds:: Map.Map String Kind 
+  { protocols :: [Protocol]
+  , values    :: Map.Map String TypeExpr
+  , types     :: Map.Map String TypeExpr
+  , kinds     :: Map.Map String Kind 
   } deriving (Show)
 
 data Accumulator = Acc

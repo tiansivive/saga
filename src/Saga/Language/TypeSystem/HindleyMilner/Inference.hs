@@ -103,8 +103,8 @@ runInfer env m = do
 
 
 
-closeOver :: [ImplConstraint] -> Type -> TypeExpr
-closeOver cs = normalize . generalize empty cs
+closeOver ::  [ImplConstraint] -> Type -> TypeExpr
+closeOver cs = normalize . generalize cs
 
 class Instantiate a where
   instantiate :: a -> Infer Type
@@ -150,7 +150,7 @@ instance Instantiate Constraint where
 
 
 
-generalize :: InferenceEnv -> [ImplConstraint] -> Type -> TypeExpr
+generalize :: [ImplConstraint] -> Type -> TypeExpr
 -- generalize env impls t
 --   | trace
 --       ( "Generalizing: "
@@ -164,7 +164,7 @@ generalize :: InferenceEnv -> [ImplConstraint] -> Type -> TypeExpr
 --       )
 --       False =
 --       undefined
-generalize env impls t
+generalize impls t
   | Set.size tvars == 0 && null impls = TAtom t
   | Set.size tvars == 0               = TQualified $ fmap mkConstraint impls :=> TAtom t
   | otherwise                         = TQualified $ fmap mkConstraint impls :=> TLambda params (TAtom t)
@@ -176,9 +176,9 @@ generalize env impls t
 
 lookupEnv :: String -> Infer Type
 lookupEnv x = do
-  Saga {types} <- ask
+  Saga { values } <- ask
   IST { unification } <- get
-  case Map.lookup x types <|> lookup' x unification of
+  case Map.lookup x values <|> lookup' x unification of
     Just tyExpr -> instantiate tyExpr
     Nothing     -> throwError $ UnboundVariable (show x)
 

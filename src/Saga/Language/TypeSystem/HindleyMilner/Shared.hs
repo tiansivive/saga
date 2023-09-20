@@ -10,24 +10,8 @@ import           Control.Monad.RWS
 
 
 
-empty :: InferenceEnv
-empty = Env Map.empty builtInFns
 
 
-
-
-builtInFns :: Map.Map Alias TypeExpr
-builtInFns =
-  Map.fromList
-    [ ("+", binaryNumTypeExpr),
-      ("-", binaryNumTypeExpr),
-      ("*", binaryNumTypeExpr),
-      ("/", binaryNumTypeExpr)
-    ]
-    where
-      var = "a"
-      tvar = TVar $ Tyvar var KType
-      binaryNumTypeExpr = TQualified $ [tvar `T.Implements` "Num"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` tvar))
 
 
 

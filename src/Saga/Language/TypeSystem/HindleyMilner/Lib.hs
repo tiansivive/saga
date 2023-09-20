@@ -3,6 +3,7 @@ module Saga.Language.TypeSystem.HindleyMilner.Lib where
 import           Data.Functor                                       ((<&>))
 import qualified Data.Map                                           as Map
 import           Saga.Language.TypeSystem.HindleyMilner.Environment
+import qualified Saga.Language.TypeSystem.HindleyMilner.Types       as T
 import           Saga.Language.TypeSystem.HindleyMilner.Types
 
 
@@ -118,9 +119,25 @@ listConstructor = TData $ Tycon "List" (KArrow KType KType)
 fnConstructor = TData $ Tycon "Function" (KArrow KType (KArrow KType KType))
 
 
+builtInFns :: Map.Map Alias TypeExpr
+builtInFns =
+  Map.fromList
+    [ ("+", binaryNumTypeExpr),
+      ("-", binaryNumTypeExpr),
+      ("*", binaryNumTypeExpr),
+      ("/", binaryNumTypeExpr),
+      ("++", appendFn)
+    ]
+    where
+      var = "a"
+      tvar = TVar $ Tyvar var KType
+      binaryNumTypeExpr = TQualified $ [tvar `T.Implements` "Num"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` tvar))
+      appendFn = TQualified $ [tvar `T.Implements` "Semigroup"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` tvar))
+
+
 
 defaultEnv :: CompilerState
-defaultEnv = Saga { types = builtInTypes, kinds = Map.empty, protocols = [numProtocol, isStringProtocol, functorProtocol, semigroupProtocol] }
+defaultEnv = Saga { values = builtInFns, types = builtInTypes, kinds = Map.empty, protocols = [numProtocol, isStringProtocol, functorProtocol, semigroupProtocol] }
 
 startWriter :: Accumulator
 startWriter = Acc { logs = [], warnings = [], errors = [] }

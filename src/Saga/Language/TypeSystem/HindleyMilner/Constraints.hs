@@ -341,7 +341,7 @@ byImplementation implConstraint@(ty `IP` p)    = do
       return $ fmap (apply sub . mkIP) cs
 
 unifyImpl :: ImplConstraint -> ImplConstraint -> Solve Subst
--- unifyImpl p1 p2 | trace ("\n-------\nUnifying Implementations\n-------\n\t" ++ show p1 ++ "\n\t" ++ show p2 ++ "\n") False = undefined
+unifyImpl p1 p2 | trace ("\n-------\nUnifying Implementations\n-------\n\t" ++ show p1 ++ "\n\t" ++ show p2 ++ "\n") False = undefined
 unifyImpl (ty `IP` p) (ty' `IP` p')
   | p == p'   = ty `match` ty'
   | otherwise = throwError $ Fail "protocols differ"
