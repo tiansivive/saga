@@ -125,7 +125,7 @@ instance Instantiate Type where
 instance Instantiate TypeExpr where
   instantiate te | trace ("\n\n------------\nInstantiating: " ++ show te) False = undefined
   instantiate (TQualified (cs :=> te)) = do
-    tVars <- mapM (fresh . getKind) vars
+    tVars <- mapM (fmap TVar . fresh . getKind) vars
     let sub = Map.fromList $ zip vars tVars
     let te' = apply sub te
 
@@ -192,15 +192,15 @@ infer ex = case ex of
 
   Lambda (param : rest) body -> do
     tVar <- fresh KType
-    out' <- infer out `scoped` (param, Tyvar param KType)
-    return $ tVar `TArrow` out'
+    out' <- infer out `scoped` (param, tVar)
+    return $ TVar tVar `TArrow` out'
     where
       tvars (TVar v) = [v]
       out = case rest of
         [] -> body
         _  -> Lambda rest body
   FnApp fn [arg] -> do
-    out <- fresh KType
+    out <- TVar <$> fresh KType
     fnTy <- infer fn
     argTy <- infer arg
     genArg <- generalizeArg argTy
@@ -232,7 +232,7 @@ infer ex = case ex of
     where
       infer' = mapM infer
   List [] -> do
-    var <- fresh KType
+    var <- TVar <$> fresh KType
     return $ TApplied listConstructor var
   List elems -> do
     tys <- mapM infer elems
@@ -249,7 +249,7 @@ infer ex = case ex of
         Return expr                   -> infer expr
         Declaration (Let id _ _ expr) -> do
           tVar <- fresh KType
-          infer' rest `scoped` (id, Tyvar id KType)
+          infer' rest `scoped` (id, tVar)
         _ -> infer' rest
 
       inferStmt (Return expr)                        = infer expr
@@ -269,7 +269,7 @@ generalizeArg (TLiteral lit) = generalize' $ case lit of
     LInt _    -> ("Num", TInt)
     where
       generalize' (protocol, t) = do
-        tVar <- fresh KType
+        tVar <- TVar <$> fresh KType
         emit $ ImplCons $ tVar `IP` protocol
         return tVar
 
@@ -310,12 +310,12 @@ initState = IST {tvars = 0, kvars = 0, unification = Map.empty }
 emit :: IConstraint -> Infer ()
 emit = tell . pure
 
-fresh :: Kind -> Infer Type
+fresh :: Kind -> Infer Tyvar
 fresh k = do
   modify $ \s -> s {tvars = tvars s + 1}
   s <- get
   let v = "t" ++ show ([1 ..] !! tvars s)
-  return $ TVar $ Tyvar v k
+  return $ Tyvar v k
 
 freshKind :: Infer Kind
 freshKind = do
