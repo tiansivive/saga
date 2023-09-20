@@ -8,14 +8,12 @@ import           Saga.Language.TypeSystem.HindleyMilner.Types
 import           Control.Monad.RWS
 
 
-emit :: IConstraint -> Infer ()
-emit = tell . pure
+
 
 empty :: InferenceEnv
 empty = Env Map.empty builtInFns
 
-initState :: InferenceState
-initState = IST {count = 0}
+
 
 
 builtInFns :: Map.Map Alias TypeExpr
@@ -32,27 +30,13 @@ builtInFns =
       binaryNumTypeExpr = TQualified $ [tvar `T.Implements` "Num"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` tvar))
 
 
-union :: InferenceEnv -> InferenceEnv -> InferenceEnv
-(Env unifier aliases) `union` (Env unifier' aliases') =
-  Env
-    { unificationVars = Map.union unifier unifier',
-      aliases = Map.union aliases aliases'
-    }
 
 extend :: InferenceEnv -> (UnificationVar, TypeExpr) -> InferenceEnv
 extend e@(Env unifier aliases) (var, tyExpr) = e {unificationVars = Map.insert var tyExpr unifier}
 
-scoped :: Infer a -> (UnificationVar, TypeExpr) -> Infer a
-scoped m (var, tyExpr) = do
-  let scoped' = local $ \env -> env `extend` (var, tyExpr)
-  scoped' m
 
-fresh :: Kind -> Infer Type
-fresh k = do
-  modify $ \s -> s {count = count s + 1}
-  s <- get
-  let v = "t" ++ show ([1 ..] !! count s)
-  return $ TVar $ Tyvar v k
+
+
 
 letters :: [String]
 letters = [1 ..] >>= flip replicateM ['α' .. 'ω']

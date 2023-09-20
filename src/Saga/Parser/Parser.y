@@ -270,7 +270,7 @@ union
 
 typeExpr2
   : typeExpr3                                  %shift { $1 }                               
-  | typeExpr2 '->' typeExpr3                          { P.typeArrow $1 $3 }                               
+  | typeExpr3 '->' typeExpr                           { P.typeArrow $1 $3 }                               
  
 typeExpr3
   : typeExpr4                                  %shift { $1 }

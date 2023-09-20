@@ -114,9 +114,8 @@ repl = runInputT defaultSettings $ repl' Map.empty
                         parsed = do
                             Parsed expr' _ _ <- desugaredExpr $ P.runSagaExpr expr
                             Parsed tyExpr' _ _ <- desugaredTyExpr $ P.runSagaType ty
-                            ty' <- HMR.run tyExpr'
-                            (res, st, constraints) <- HMC.check expr' ty'
-                            return (expr', ty', res, st, constraints)
+                            (res, st, constraints) <- HMC.run $ HMC.check expr' tyExpr'
+                            return (expr', tyExpr', res, st, constraints)
                     in case parsed of
                         Left e -> pPrint e
                         Right (expr', ty', (sub, check), st, constraints) -> do

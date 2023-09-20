@@ -104,17 +104,24 @@ let fn
     = \(Data: one) two -> one + two
 
 
-\baz -> {
-    a <- baz
-    return a + 1
-}
+
+
+
+let fn
+    : Int -> Int -> Int
+    = \one two -> one + two
+
+
+  
+type Functor
+  :: (Type -> Type) -> Protocol 
+  = \f => 
+    { map: \a b => (a -> b) -> f a! -> f b! }
 */
 
-
-let check 
-    : Int -> Int -> Int
-    = \foo bar -> update (.one) bar
-
-
-
-
+let listFunctorImpl
+  : impl Functor: List
+  = { map: \f fa -> match fa
+        | [] -> fa
+        | [e | fa'] -> f e ++ map f fa'
+    }

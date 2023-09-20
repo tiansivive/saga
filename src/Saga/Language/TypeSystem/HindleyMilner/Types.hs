@@ -56,7 +56,7 @@ data Type where
   TUnion :: [Type] -> Type
   TArrow :: Type -> Type -> Type
   TData :: Tycon -> Type
-  TClosure :: [String] -> TypeExpr -> Map String Type -> Type
+  TClosure :: [String] -> TypeExpr -> Map String TypeExpr -> Type
   TApplied :: Type -> Type -> Type
   TVar :: Tyvar -> Type
   TVoid :: Type

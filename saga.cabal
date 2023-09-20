@@ -24,6 +24,7 @@ library
       Saga.Language.TypeSystem.HindleyMilner.Check
       Saga.Language.TypeSystem.HindleyMilner.Constraints
       Saga.Language.TypeSystem.HindleyMilner.Environment
+      Saga.Language.TypeSystem.HindleyMilner.Errors
       Saga.Language.TypeSystem.HindleyMilner.Inference
       Saga.Language.TypeSystem.HindleyMilner.Lib
       Saga.Language.TypeSystem.HindleyMilner.Refinement

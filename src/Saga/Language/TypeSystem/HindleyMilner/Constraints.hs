@@ -1,5 +1,8 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs             #-}
+{-# LANGUAGE NamedFieldPuns    #-}
+
 module Saga.Language.TypeSystem.HindleyMilner.Constraints where
 
 import           Control.Monad.Except
@@ -16,6 +19,7 @@ import           Data.Bifunctor                                     (bimap)
 import           Data.Either                                        (fromRight)
 import           Data.Functor                                       ((<&>))
 import           Data.List                                          (delete,
+                                                                     find,
                                                                      groupBy,
                                                                      intersect,
                                                                      partition,
@@ -25,10 +29,12 @@ import           Data.Maybe                                         (fromJust,
                                                                      fromMaybe)
 import qualified Data.Set                                           as Set
 import           Debug.Trace
-import           Prelude                                            hiding (EQ)
+import           Prelude                                            hiding (EQ,
+                                                                     id)
 import           Saga.Language.Core.Literals                        (Literal (..))
 import           Saga.Language.TypeSystem.HindleyMilner.Environment hiding
                                                                     (Implements)
+import           Saga.Language.TypeSystem.HindleyMilner.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.HindleyMilner.Lib
 import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as Refine
 import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
@@ -37,12 +43,12 @@ import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
 import           Text.Pretty.Simple                                 (pShow)
 -- type Solve = StateT SolveState (Except InferenceError)
 
-type Solve = ReaderT ProtocolEnv (Except InferenceError)
-type ProtocolEnv = Map.Map ProtocolID Protocol
+type Solve = ReaderT CompilerState (Except SagaError)
 
-type Subst = Map.Map UnificationVar Type
 
-data SolveState = SST { unifier :: (Subst, [IConstraint]), protocols :: Map.Map ProtocolID Protocol}
+type Subst = Map.Map Tyvar Type
+
+newtype SolveState = SST { unifier :: (Subst, [IConstraint]) }
 
 
 class Substitutable a where
@@ -77,7 +83,7 @@ instance Substitutable Type where
   ftv _                        = Set.empty
 
 instance Substitutable TypeExpr where
-  apply s t | trace ("Applying typeExpr sub: " ++ show s ++ " to " ++ show t) False = undefined
+  --apply s t | trace ("Applying typeExpr sub: " ++ show s ++ " to " ++ show t) False = undefined
   apply s (TAtom ty) = TAtom $ apply s ty
   apply s (TLambda params tyExpr) = TLambda (subStrVar s <$> params) $ apply s tyExpr
     where
@@ -90,10 +96,12 @@ instance Substitutable TypeExpr where
       cs' = apply s <$> cs
   apply _ t  = t
 
-  ftv (TAtom ty)                = ftv ty
-  ftv (TLambda _ tyExpr)        = ftv tyExpr
-  ftv (TComposite comp)         = ftv comp
-  ftv (TQualified (cs :=> ty))  = cs' `Set.union` ty'
+  ftv (TAtom ty)                      = ftv ty
+  ftv (TLambda _ tyExpr)              = ftv tyExpr
+  ftv (TFnApp fn args)                = ftv fn `Set.union` args' where args' = Set.unions $ fmap ftv args
+  ftv (TComposite comp)               = ftv comp
+  ftv (TImplementation prtcl tyExpr)  = ftv tyExpr
+  ftv (TQualified (cs :=> ty))        = cs' `Set.union` ty'
     where
       cs' = ftv cs
       ty' = ftv ty
@@ -155,9 +163,9 @@ s1 `compose` s2 = s `Map.union` s1
 
 
 
-runSolve :: [IConstraint] -> Either InferenceError (Subst, [ImplConstraint])
+runSolve :: CompilerState -> [IConstraint] -> Except SagaError (Subst, [ImplConstraint])
 -- runSolve cs | trace ("Solving: " ++ show cs) False = undefined
-runSolve cs =  runExcept $ runReaderT (solver cs) builtInProtocols
+runSolve env cs = runReaderT (solver cs) env
 
 
 
@@ -190,7 +198,7 @@ unification s (e:es) | t1 `EQ` t2 <- e = do
 
 
 
-unify :: (MonadError e m, e ~ InferenceError) => Type -> Type -> m Subst
+unify :: (MonadReader CompilerState m, MonadError e m, e ~ SagaError) => Type -> Type -> m Subst
 --unify t1 t2 | trace ("Unifying:\n\t" ++ show t1 ++ "\n\t" ++ show t2) False = undefined
 
 unify (TLiteral a) (TLiteral b) | a == b = return nullSubst
@@ -216,18 +224,26 @@ unify t (TVar a) = bind a t
 
 unify t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch"
 unify t1 t2 = case (t1, t2) of
-  (t@(TClosure {}), t') -> refine t `unify` t'
-  (t, t'@(TClosure {})) -> t `unify` refine t'
+  (t@(TClosure {}), t2) -> do
+    t' <- refine t
+    t' `unify` t2
+  (t, t'@(TClosure {})) -> do
+    t2' <- refine t2
+    t `unify` t2'
   _                     -> throwError $ UnificationFail t1 t2
   where
-    refine (TClosure params tyExpr env) = fromRight err $ Refine.runIn (env `Map.union` env') tyExpr
+    refine :: (MonadReader CompilerState m, MonadError e m, e ~ SagaError) => Type -> m Type
+    refine (TClosure params tyExpr captured) = do
+      env <- ask
+      return $ fromRight err $ Refine.runIn (extended env) tyExpr
       where
         tvars = fmap (`Tyvar` KType) params
-        env'  = Map.fromList $ zip params (fmap TVar tvars)
+        captured'  = Map.fromList $ zip params (fmap (TAtom . TVar) tvars)
+        extended env = env{ types = captured' `Map.union` types env }
         err   = error "Failed to refine TClosure while unifying"
 
 
-bind :: (MonadError e m, e ~ InferenceError) => Tyvar -> Type -> m Subst
+bind :: (MonadError e m, e ~ SagaError) => Tyvar -> Type -> m Subst
 -- bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
 bind a t
   | t == TVar a = return nullSubst
@@ -245,7 +261,7 @@ occursCheck a t = a `Set.member` set
   where
     set = ftv t
 
-isSubtype :: (MonadError e m, e ~ InferenceError) => Type -> Type -> m Subst
+isSubtype :: (MonadReader CompilerState m, MonadError e m, e ~ SagaError) => Type -> Type -> m Subst
 -- isSubtype  a b | trace ("subtype " ++ show a ++ " <: " ++ show b ++ "\n  ") False = undefined
 TLiteral (LInt _) `isSubtype` TPrimitive TInt = return nullSubst
 TLiteral (LString _) `isSubtype` TPrimitive TString = return nullSubst
@@ -276,12 +292,12 @@ resolve constraints = do
   where
     findImplementingType :: [ProtocolID] -> Solve ()
     findImplementingType ps = do
-      env <- ask
-      if any' (implGroups env) (hasAll ps)
+      Saga { protocols } <- ask
+      if any' (implGroups protocols) (hasAll ps)
         then return ()
         else throwError $ Fail $ "Could not resolve for protocols: " ++ show ps
 
-    impls = concatMap implementations . Map.elems
+    impls = concatMap implementations
     byType (ty `IP` _) (ty' `IP` _) = ty == ty'
     extract (IP _ p) = p
 
@@ -314,12 +330,12 @@ inHNF (ty `IP` p) = hnf ty
 byImplementation :: ImplConstraint -> Solve [ImplConstraint]
 -- byImplementation impl | trace ("\nSearch by Implementation:\n\t" ++ show impl) False = undefined
 byImplementation implConstraint@(ty `IP` p)    = do
-  env <- ask
-  concat <$> sequence [ tryInst impl | impl <- impls env p ]
+  Saga { protocols } <- ask
+  concat <$> sequence [ tryInst impl | impl <- impls p protocols ]
 
   where
     mkIP (ty `Implements` p) = ty `IP` p
-    impls env id = maybe [] implementations $ Map.lookup id env
+    impls id' = maybe [] implementations . find (\(Protocol { id }) -> id == id')
     tryInst (cs :=> implConstraint') = do
       sub <- unifyImpl implConstraint' implConstraint
       return $ fmap (apply sub . mkIP) cs
@@ -371,13 +387,14 @@ entail ipcs ipConstraint = do
 byBase :: ImplConstraint -> Solve [ImplConstraint]
 -- byBase impl | trace ("\nSearching base constraints of\n\t" ++ show impl) False = undefined
 byBase impl@(ty `IP` p) = do
-    protocols <- ask
-    impls <- sequence [ byBase (ty `IP` base) | base <- sups protocols p ]
+    Saga { protocols } <- ask
+    impls <- sequence [ byBase (ty `IP` base) | base <- sups p protocols]
     let all = impl : concat impls
     --traceM $ "Found:\n\t" ++ show all
     return all
     where
-      sups env id = maybe [] supers $ Map.lookup id env
+      sups id' = maybe [] supers . find (\(Protocol { id }) -> id == id')
+
 
 
 

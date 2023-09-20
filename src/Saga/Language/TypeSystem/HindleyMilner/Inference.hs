@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns        #-}
 
 
 module Saga.Language.TypeSystem.HindleyMilner.Inference where
@@ -11,7 +12,8 @@ import           Control.Monad.Except
 import           Control.Monad.RWS                                  (MonadReader (ask, local),
                                                                      MonadWriter (tell),
                                                                      RWST (runRWST),
-                                                                     evalRWST)
+                                                                     evalRWST,
+                                                                     modify')
 import           Control.Monad.State.Lazy                           (MonadState,
                                                                      State,
                                                                      evalState,
@@ -29,10 +31,12 @@ import           Data.Maybe                                         (fromMaybe)
 import qualified Data.Set                                           as Set
 import           Debug.Trace                                        (trace,
                                                                      traceM)
-import           Prelude                                            hiding (EQ)
+import           Prelude                                            hiding (EQ,
+                                                                     log)
 import           Saga.Language.Core.Literals                        (Literal (..))
 import           Saga.Language.Core.Syntax
-import           Saga.Language.TypeSystem.HindleyMilner.Constraints
+import           Saga.Language.TypeSystem.HindleyMilner.Constraints hiding
+                                                                    (unification)
 import           Saga.Language.TypeSystem.HindleyMilner.Environment
 import qualified Saga.Language.TypeSystem.HindleyMilner.Types       as T
 import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
@@ -47,30 +51,38 @@ import           Saga.Parser.Shared                                 hiding
                                                                      Tuple,
                                                                      return)
 
-import           Saga.Language.TypeSystem.HindleyMilner.Lib         (listConstructor)
+import           Control.Monad.Trans.RWS                            (get,
+                                                                     modify)
+import           Saga.Language.TypeSystem.HindleyMilner.Errors      (SagaError (..))
+import           Saga.Language.TypeSystem.HindleyMilner.Lib         (defaultEnv,
+                                                                     listConstructor)
 import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as Refine
 
+
+--type Infer a = Saga InferState (WriterT [IConstraint] (Except SagaError)) a
+type Infer = RWST CompilerState [IConstraint] InferState (Except SagaError)
+data InferState = IST { tvars :: Int, kvars:: Int, unification:: Map.Map String Tyvar  } deriving (Show)
 
 run :: String -> Either String TypeExpr
 run input = do
   Parsed expr _ _ <- runSagaExpr input
-  show `first` runInfer (infer $ desugarExpr expr)
+  show `first` runExcept (runInfer defaultEnv (infer $ desugarExpr expr))
 
 
-runInfer :: Infer Type -> Either InferenceError TypeExpr
-runInfer m = do
+runInfer :: CompilerState -> Infer Type -> Except SagaError TypeExpr
+runInfer env m = do
   -- traceM "\n\n"
   -- traceM "--------------------"
   -- traceM "RUNNING INFERENCE"
   -- traceM "\n\n"
-  (ty, constraints) <- runExcept $ evalRWST m empty initState
+  (ty, constraints) <-  evalRWST m env initState
   -- traceM "\n\n"
   -- traceM "--------------------"
   -- traceM "SOLVING CONSTRAINTS"
   -- traceM $ "Inferred Type: " ++ show ty
   -- traceM $ "Emitted Constraints" ++ show constraints
   -- traceM "\n\n"
-  (subst, implConstraints) <- runSolve constraints
+  (subst, implConstraints) <- runSolve env constraints
   -- traceM "\n\n"
   -- traceM "--------------------"
   -- traceM "CLOSING OVER"
@@ -78,6 +90,18 @@ runInfer m = do
   -- traceM $ "Impl constraints" ++ show implConstraints
   -- traceM "\n\n"
   return $ closeOver implConstraints $ apply subst ty
+
+
+-- inference :: Monad t => Expr -> Saga t (Maybe TypeExpr)
+-- inference expr = case runInfer (infer expr) of
+--   Left err -> do
+--     log (Error $ show err)
+--     return Nothing
+--   Right te -> return $ Just te
+
+
+
+
 
 closeOver :: [ImplConstraint] -> Type -> TypeExpr
 closeOver cs = normalize . generalize empty cs
@@ -115,10 +139,12 @@ instance Instantiate TypeExpr where
       vars = Set.toList $ ftv cs
 
 
-  instantiate tyExpr = case Refine.run tyExpr of
-    Right (TClosure _ body _ ) -> instantiate body
-    Right ty                   -> return ty
-    Left err                   -> throwError $ Fail err
+  instantiate tyExpr = do
+    env <- ask
+    case Refine.runIn env tyExpr of
+      Right (TClosure _ body _ ) -> instantiate body
+      Right ty                   -> return ty
+      Left err                   -> throwError $ Fail err
 instance Instantiate Constraint where
   instantiate (t `T.Implements` p) = instantiate $ t `T.Implements` p
 
@@ -150,11 +176,14 @@ generalize env impls t
 
 lookupEnv :: String -> Infer Type
 lookupEnv x = do
-  (Env vars aliases) <- ask
-  case Map.lookup x aliases <|> Map.lookup (Tyvar x KType) vars of
+  Saga {types} <- ask
+  IST { unification } <- get
+  case Map.lookup x types <|> lookup' x unification of
     Just tyExpr -> instantiate tyExpr
     Nothing     -> throwError $ UnboundVariable (show x)
 
+  where
+    lookup' x = fmap (TAtom . TVar) . Map.lookup x
 
 infer :: Expr -> Infer Type
 -- infer ex | trace ("Inferring: " ++ show ex) False = undefined
@@ -163,7 +192,7 @@ infer ex = case ex of
 
   Lambda (param : rest) body -> do
     tVar <- fresh KType
-    out' <- infer out `scoped` (Tyvar param KType, TAtom tVar)
+    out' <- infer out `scoped` (param, Tyvar param KType)
     return $ tVar `TArrow` out'
     where
       tvars (TVar v) = [v]
@@ -220,7 +249,7 @@ infer ex = case ex of
         Return expr                   -> infer expr
         Declaration (Let id _ _ expr) -> do
           tVar <- fresh KType
-          infer' rest `scoped` (Tyvar id KType, TAtom tVar)
+          infer' rest `scoped` (id, Tyvar id KType)
         _ -> infer' rest
 
       inferStmt (Return expr)                        = infer expr
@@ -241,7 +270,6 @@ generalizeArg (TLiteral lit) = generalize' $ case lit of
     where
       generalize' (protocol, t) = do
         tVar <- fresh KType
-        --emit $ EqCons $ tVar `EQ` TPrimitive t
         emit $ ImplCons $ tVar `IP` protocol
         return tVar
 
@@ -273,4 +301,32 @@ normalize tyExpr = case tyExpr of
     normConstraint (t `T.Implements` p) = normType t `T.Implements` p
 
     normCons (Tycon x k) = Tycon (norm' x) k
+
+
+
+initState :: InferState
+initState = IST {tvars = 0, kvars = 0, unification = Map.empty }
+
+emit :: IConstraint -> Infer ()
+emit = tell . pure
+
+fresh :: Kind -> Infer Type
+fresh k = do
+  modify $ \s -> s {tvars = tvars s + 1}
+  s <- get
+  let v = "t" ++ show ([1 ..] !! tvars s)
+  return $ TVar $ Tyvar v k
+
+freshKind :: Infer Kind
+freshKind = do
+  modify $ \s -> s {kvars = kvars s + 1}
+  s <- get
+  let v = "k" ++ show ([1 ..] !! kvars s)
+  return $ KVar v
+
+scoped :: Infer a -> (String, Tyvar) -> Infer a
+scoped m (id, tvar) = do
+  modify $ \s -> s{ unification = Map.insert id tvar $ unification s  }
+  m
+
 

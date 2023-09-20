@@ -1,57 +1,73 @@
-
-
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Saga.Language.TypeSystem.HindleyMilner.Refinement where
 
 import           Control.Monad.Except
-import           Control.Monad.State.Lazy                     (MonadState,
-                                                               State, evalState,
-                                                               evalStateT,
-                                                               replicateM)
-import           Control.Monad.Trans.Except                   (ExceptT,
-                                                               runExceptT)
+import           Control.Monad.State.Lazy                           (MonadState,
+                                                                     State,
+                                                                     evalState,
+                                                                     evalStateT,
+                                                                     replicateM)
+import           Control.Monad.Trans.Except                         (ExceptT,
+                                                                     runExceptT)
 
-import           Data.Functor                                 ((<&>))
+import           Data.Functor                                       ((<&>))
 
-import qualified Data.Map                                     as Map
-import qualified Data.Set                                     as Set
-import           Debug.Trace                                  (trace, traceM)
+import qualified Data.Map                                           as Map
+import qualified Data.Set                                           as Set
+import           Debug.Trace                                        (trace,
+                                                                     traceM)
 
 import           Saga.Language.TypeSystem.HindleyMilner.Types
 
-import           Control.Monad.Trans.Reader                   (ReaderT (runReaderT),
-                                                               ask, local)
-import           Control.Monad.Trans.State                    (StateT)
-import           Data.Bifunctor                               (first)
-import           Prelude                                      hiding (lookup)
+import           Control.Monad.Trans.Reader                         (ReaderT (runReaderT))
+import           Control.Monad.Trans.State                          (StateT)
+import           Data.Bifunctor                                     (first)
+import           Prelude                                            hiding (id,
+                                                                     lookup)
 
+import           Control.Monad.Identity                             (Identity)
+
+import           Control.Monad.Reader                               (ask, local)
+import           Data.List                                          (find)
+import           Saga.Language.TypeSystem.HindleyMilner.Environment (CompilerState (Saga, protocols, types),
+                                                                     Protocol (Protocol, id),
+                                                                     Saga, spec)
+import           Saga.Language.TypeSystem.HindleyMilner.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.HindleyMilner.Lib
-import           Saga.Parser.ParsingInfo                      hiding (return)
-
-type RefinementEnv = Map.Map String Type
-type Refined = ReaderT RefinementEnv (Except RefinementError)
-
-data RefinementError
-    = UnexpectedType String
-    | UnboundIdentifier String String
-    | TooManyArguments TypeExpr [TypeExpr]
-  deriving (Show)
+import           Saga.Parser.ParsingInfo                            hiding
+                                                                    (return)
 
 
-run :: TypeExpr -> Either String Type
-run tyExpr = show `first` runExcept (runReaderT (refine tyExpr) builtInTypes)
+--type Refined a = Saga () (Except RefinementError) a
 
-runIn :: RefinementEnv ->  TypeExpr -> Either String Type
-runIn env tyExpr = show `first` runExcept (runReaderT (refine tyExpr) (builtInTypes `Map.union` env))
+type Refined = ReaderT CompilerState (Except SagaError)
+
+
+
+
+-- run :: TypeExpr -> Either String Type
+-- run tyExpr = do
+--   protocols' <- mapM (refine' builtInTypes) protocols
+--   refine' (builtInTypes `Map.union` protocols') tyExpr
+--   where
+--     refine' env t = show `first` runExcept (runReaderT (refine t) env)
+--     protocols =  TComposite . TERecord . spec <$> builtInProtocols
+
+runIn' :: CompilerState -> TypeExpr -> Except SagaError Type
+runIn' env tyExpr = runReaderT (refine tyExpr) env
+
+runIn :: CompilerState ->  TypeExpr -> Either String Type
+runIn env tyExpr = show `first` runExcept (runReaderT (refine tyExpr) env)
 
 
 
 lookup :: String -> Refined Type
 lookup id = do
     aliases <- ask
-    case Map.lookup id aliases of
-        Nothing -> throwError $ UnboundIdentifier id ""
-        Just ty -> return ty
+    case Map.lookup id (types aliases) of
+        Nothing -> throwError $ UndefinedIdentifier id
+        Just ty -> refine ty
 
 refine :: TypeExpr -> Refined Type
 refine a | trace ("refining: " ++ show a) False = undefined
@@ -65,21 +81,18 @@ refine (TComposite (TEArrow in' out')) = TArrow <$> refine in' <*> refine out'
 
 refine (TConditional cond true false) = TUnion <$> mapM refine [true, false]
 refine (TClause tyExpr bindings)      = do
-    env <- ask
-    env' <- foldM extend env bindings
+    env@(Saga {types}) <- ask
     te <- foldM constrainImpls tyExpr bindings
 
-    let scoped = local (env' `Map.union`)
+    let scoped = local (\e -> e{ types = updated types })
     scoped $ refine te
-
     scoped $ refine tyExpr
 
       where
+        updated tys = foldl extend tys bindings `Map.union` tys
         extend env binding = case binding of
-          Bind id tyExpr' -> do
-            ty' <- refine tyExpr'
-            return $ Map.insert id ty' env
-          _               -> return env
+          Bind id tyExpr' -> Map.insert id tyExpr' env
+          _               -> env
 
         constrainImpls :: TypeExpr -> Binding TypeExpr -> Refined TypeExpr
         constrainImpls tyExpr' binding = case binding of
@@ -92,7 +105,9 @@ refine (TClause tyExpr bindings)      = do
           _ -> return tyExpr'
 
 
-refine (TLambda params body) = ask <&> TClosure params body
+refine (TLambda params body) = do
+  Saga {types} <- ask
+  return $ TClosure params body types
 refine (TFnApp fnExpr argExprs) = do
   fn <- refine fnExpr
   args <- mapM refine argExprs
@@ -113,15 +128,21 @@ refine (TFnApp fnExpr argExprs) = do
 
         apply :: TypeExpr -> [String] -> [Type] -> Refined Type
         apply tyExpr [] [] = refine tyExpr
-        apply tyExpr params [] = ask <&> TClosure params tyExpr
+        apply tyExpr params [] = do
+          Saga {types} <- ask
+          return $ TClosure params tyExpr types
         apply tyExpr (p:params) (a: args) = do
-            let scoped = local $ Map.insert p a
+            let scoped = local (\e -> e{ types = Map.insert p (TAtom a) (types e) })
             scoped $ apply tyExpr params args
 
         apply _ [] (a: args) = throwError $ TooManyArguments fnExpr argExprs
 
 refine (TQualified (cs :=> typeExpr)) = refine typeExpr
-
+refine (TImplementation prtcl tyExpr) = do
+  Saga {protocols} <- ask
+  case find (\(Protocol { id }) -> id == prtcl) protocols of
+    Nothing                -> error $ "Could not find Protocol: " ++ prtcl
+    Just (Protocol {spec}) -> refine $ TFnApp spec [tyExpr]
 
 
 

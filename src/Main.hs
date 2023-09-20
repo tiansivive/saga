@@ -9,7 +9,9 @@ import           REPL.Repl                                        (repl)
 import qualified Saga.Lexer.Lexer                                 as L
 import qualified Saga.Parser.Parser                               as P
 
+
 import           Saga.Language.Generation.JS                      (Generator (generate))
+import           Saga.Language.TypeSystem.HindleyMilner.Check     (checkScript)
 import           Saga.Language.TypeSystem.HindleyMilner.Inference (run)
 import           Saga.Parser.Desugar                              (desugarExpr,
                                                                    desugarScript)
@@ -69,6 +71,33 @@ lexScript fp = do
     contents <- hGetContents handle
     pPrint (L.scanMany contents)
     hClose handle
+    putStrLn "Bye!"
+
+
+
+typecheckScript :: FilePath -> IO ()
+typecheckScript fp = do
+    handle <- openFile fp ReadMode
+    parsingH <- openFile "./lang/test.parsing.log" WriteMode
+    contents <- hGetContents handle
+    let res = fmap desugarScript <$> P.runSagaScript contents
+    case res of
+        Left parseErr -> pPrint parseErr
+        Right (Parsed script _ _) -> do
+            let (results, state, acc) = checkScript script
+            let extract (r, _, _) = r
+
+            mapM_ (pPrint . fmap extract) results
+            pHPrint parsingH "\n---------------------------\nRESULTS\n---------------------------\n"
+            pHPrint parsingH results
+            pHPrint parsingH "\n----------------------------\nSTATE\n----------------------------\n"
+            pHPrint parsingH state
+            pHPrint parsingH "\n-------------------------\nACCUMULATED\n-------------------------\n"
+            pHPrint parsingH acc
+
+
+    hClose handle
+    hClose parsingH
     putStrLn "Bye!"
 
 
