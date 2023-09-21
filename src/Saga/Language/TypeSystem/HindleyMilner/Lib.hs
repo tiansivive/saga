@@ -71,7 +71,7 @@ semigroupProtocol =
       ])
     ))
     []
-    [ [] :=> listConstructor `IP` "Functor"
+    [ [] :=> listConstructor `IP` "Semigroup"
     ]
       where
         param  = "a"
