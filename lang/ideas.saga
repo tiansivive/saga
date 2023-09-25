@@ -76,10 +76,11 @@ let fn
 
 
 let gt10
-    : Nat -> Nat -> GT10
+    : X -> Y -> GT10
         where
-            @tag X Y Z
             Nat = Int | \x -> x > 0
+            X = Nat
+            Y = Nat 
             GT10 = Nat | \_ -> X + Y > 10
 
     = \x y -> x + y 
@@ -111,21 +112,19 @@ let compute
 // function Overloads 
 let fn
     : \f a => 
-    | One: ( Int    -> String -> f Int!    )
-    | Two: ( Bool   -> a      -> f String! )
-    | Foo: ( String -> a      -> f Bool!   )
-    | Bar: ( Int    -> Int    -> f Int!    )
+    | One: Int    -> String -> f Int!    
+    | Two: Bool   -> a      -> f String! 
+    | Foo: String -> a      -> f Bool!   
+    | Bar: Int    -> Int    -> f Int!    
     where 
         f implements Functor
-        a implements Show
     
     = \match 
-        | One: i str -> of <| length str! + i
-        | Two: b a   -> of <|
-            if b then show a!
-            else "None!"
-        | Foo: str a -> of <| str ++ show a!
-        | Bar: i j   -> of <| i + j
+        | One: \i str -> [i]
+        | Two: \b a   -> ["two"]       
+        | Foo: \str a -> [true]
+        | Bar: \i j   -> [i, j]
+
 
 
 // Ideas for totality check on backcall pattern binding

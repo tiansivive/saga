@@ -99,70 +99,27 @@ let proc
     }
   
 
-let fn
-    : Data Int -> Int -> Int
-    = \(Data: one) two -> one + two
-
-
-
-
-
-let fn
-    : Int -> Int -> Int
-    = \one two -> one + two
-
-
-  
 type Functor
   :: (Type -> Type) -> Protocol 
   = \f => 
     { map: \a b => (a -> b) -> f a! -> f b! }
 
-let listFunctorImpl
-  : impl Functor: List
-  = { map: \f fa -> match fa
-        | [] -> fa
-        | [e | fa'] -> f e ++ map f fa'
-    }
-
-
-let testMatch
-  : List Int
-  = \x -> match x
-    | 1     -> "hello"
-    | []    -> 0
-    | [one] -> 1 
-
-
-let listFunctorImpl
-  : impl Functor: List
-  = { map: map'}
-    where 
-      map' = \f fa -> match fa
-        | [] -> fa
-        | [e | fa'] -> f e ++ map' f fa'
-
-let recursive
-  : Int -> Int
-  = \x -> {
-    let sum = \y -> match y
-      | 1 -> 1
-      | v -> v + sum (v - 1)
-
-    return sum x
-  }
+let fnTags
+    : Data Int -> Int -> Int
+    = \(Data: one) two -> one + two
 
 
 
-\x -> {
-    let sum = \y -> match y
-      | 1 -> 1
-      | 2 -> "Str"
-      | v -> sum v
+*/
 
-    return sum x
-}
 
+
+
+
+
+let fn
+    : Int -> String -> Int
+    = \one two -> one + two
 
 let listFunctorImpl
   : impl Functor: List
@@ -171,7 +128,6 @@ let listFunctorImpl
       map' = \f fa -> match fa
         | [] -> []
         | [e | fa'] -> [f e] ++ map' f fa'
-*/
 
 let recursive
   : Int -> Int
@@ -182,3 +138,11 @@ let recursive
 
     return sum x
   }
+
+let testMatch
+  : (| Int | List Int) -> (| Int | String)
+  = \x -> match x
+    | 1     -> "hello"
+    | []    -> 0
+    | [one] -> 1 
+
