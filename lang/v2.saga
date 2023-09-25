@@ -117,7 +117,6 @@ type Functor
   :: (Type -> Type) -> Protocol 
   = \f => 
     { map: \a b => (a -> b) -> f a! -> f b! }
-*/
 
 let listFunctorImpl
   : impl Functor: List
@@ -125,3 +124,68 @@ let listFunctorImpl
         | [] -> fa
         | [e | fa'] -> f e ++ map f fa'
     }
+
+
+let testMatch
+  : List Int
+  = \x -> match x
+    | 1     -> "hello"
+    | []    -> 0
+    | [one] -> 1 
+
+
+let listFunctorImpl
+  : impl Functor: List
+  = { map: map'}
+    where 
+      map' = \f fa -> match fa
+        | [] -> fa
+        | [e | fa'] -> f e ++ map' f fa'
+
+let recursive
+  : Int -> Int
+  = \x -> {
+    let sum = \y -> match y
+      | 1 -> 1
+      | v -> v + sum (v - 1)
+
+    return sum x
+  }
+
+
+let listFunctorImpl
+  : impl Functor: List
+  = { map: map'}
+    where 
+      map' = \f fa -> match fa
+        | [] -> fa
+        | [e | fa'] -> f e ++ map' f fa'
+
+
+
+\f fa -> {
+    let map = \f fa -> match fa
+        | [] -> []
+        | [e | fa'] -> f e ++ map f fa'
+
+    return map f fa!
+  }
+
+\x -> {
+    let sum = \y -> match y
+      | 1 -> 1
+      | 2 -> "Str"
+      | v -> sum v
+
+    return sum x
+}
+*/
+
+
+let listFunctorImpl
+  : impl Functor: List
+  = { map: map'}
+    where 
+      map' = \f fa -> match fa
+        | [] -> []
+        | [e | fa'] -> [f e] ++ map' f fa'

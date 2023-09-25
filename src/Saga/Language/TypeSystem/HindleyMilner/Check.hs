@@ -1,5 +1,5 @@
-{-# LANGUAGE GADTs      #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE GADTs #-}
+
 module Saga.Language.TypeSystem.HindleyMilner.Check where
 import           Control.Monad.Except                               (Except,
                                                                      MonadError (throwError),
@@ -38,9 +38,11 @@ import           Saga.Language.TypeSystem.HindleyMilner.Environment (Accumulator
 
 import           Saga.Language.TypeSystem.HindleyMilner.Inference   (Infer,
                                                                      InferState,
+                                                                     Trace,
                                                                      closeOver,
                                                                      infer,
                                                                      initState,
+                                                                     resolveCycles,
                                                                      runInfer)
 
 import           Saga.Language.TypeSystem.HindleyMilner.Types       (Kind (KType),
@@ -57,6 +59,7 @@ import           Control.Monad.Identity                             (Identity)
 import           Control.Monad.Reader                               (ask)
 import           Control.Monad.Trans.RWS                            (get,
                                                                      modify)
+import           Control.Monad.Trans.Writer                         (WriterT (runWriterT))
 import           Data.Either
 import           Data.Functor                                       ((<&>))
 import qualified Data.Set                                           as Set
@@ -72,7 +75,7 @@ import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as Refine
 
 
 type Check = ReaderT CompilerState (Except SagaError)
-type Result = ((Subst, Bool), InferState, [IConstraint])
+type Result = ((Subst, Bool), InferState, Trace)
 
 
 
@@ -83,8 +86,17 @@ check :: Expr -> TypeExpr -> Check Result
 check expr tyExpr = do
     env <- ask
     ty <- Refine.refine tyExpr
+    traceM $ "\n---------------\nRefined:\n\t" ++ show ty
+
     inferredTyExpr <- lift $ runInfer env (infer expr)
+    traceM "\n----------------\nChecking"
+    traceM $ "\tInferred type:\n\t\t" ++ show inferredTyExpr
+    traceM "\nRefining Inferred:"
+
     inferred <- Refine.refine inferredTyExpr
+    traceM $ "\nRefined Inferred type:\n\t\t" ++ show inferred
+    traceM "\n"
+
     lift $ runRWST (unification inferred ty) env initState
 
     where
@@ -96,11 +108,14 @@ check expr tyExpr = do
 
       unification :: Type -> Type -> Infer (Subst, Bool)
       unification inferred' ty'= do
-        sub <- inferred' `unify` ty'
+        (sub, cycles) <- runWriterT (inferred' `unify` ty')
+        sub' <- resolveCycles sub cycles
         -- traceM $ "\nFTV type:\t" ++ show (ftv ty')
         -- traceM $ "Assigned?:\t" ++ show (assignedSpecificType sub <$> Set.toList (ftv ty'))
-        let bool = not $ any (assignedSpecificType sub) (ftv ty')
-        return (sub, bool)
+
+        traceM $ "\nFTV of specified type:\n\t" ++ show (ftv ty')
+        let bool = not $ any (assignedSpecificType sub') (ftv ty')
+        return (sub', bool)
 
 
 

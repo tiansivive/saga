@@ -74,12 +74,14 @@ data IConstraint
   = Empty
   | EqCons Equality
   | ImplCons ImplConstraint
+  | UnionCons Union
       -- \| Subtype Type Type -- Is this at all needed? probably not
       -- | Conjunction IConstraint IConstraint
       -- | Implication [UnificationVar] IConstraint IConstraint
   deriving (Show, Eq)
 
 data Equality = EQ Type Type deriving (Show, Eq)
+data Union = MemberOf Type Type deriving (Show, Eq)
 data ImplConstraint = IP Type String deriving (Show, Eq)
 
 

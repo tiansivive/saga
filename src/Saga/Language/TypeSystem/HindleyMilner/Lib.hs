@@ -6,7 +6,22 @@ import           Saga.Language.TypeSystem.HindleyMilner.Environment
 import qualified Saga.Language.TypeSystem.HindleyMilner.Types       as T
 import           Saga.Language.TypeSystem.HindleyMilner.Types
 
-
+eqProtocol :: Protocol
+eqProtocol =
+  Protocol
+    "Eq"
+    (TLambda [param] (TComposite (TERecord
+      [("==", TComposite $ param' `TEArrow` TComposite (param' `TEArrow` TAtom (TPrimitive TBool)))
+      ])
+    ))
+    []
+    [ [] :=> TPrimitive TInt `IP` "Eq"
+    , [] :=> TPrimitive TString `IP` "Eq"
+    , [] :=> TPrimitive TBool `IP` "Eq"
+    ]
+    where
+      param = "a"
+      param' = TIdentifier param
 
 numProtocol :: Protocol
 numProtocol =
@@ -126,18 +141,20 @@ builtInFns =
       ("-", binaryNumTypeExpr),
       ("*", binaryNumTypeExpr),
       ("/", binaryNumTypeExpr),
-      ("++", appendFn)
+      ("++", appendFn),
+      ("==", binaryEqTypeExpr)
     ]
     where
       var = "a"
       tvar = TVar $ Tyvar var KType
       binaryNumTypeExpr = TQualified $ [tvar `T.Implements` "Num"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` tvar))
+      binaryEqTypeExpr = TQualified $ [tvar `T.Implements` "Eq"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` TPrimitive TBool))
       appendFn = TQualified $ [tvar `T.Implements` "Semigroup"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` tvar))
 
 
 
 defaultEnv :: CompilerState
-defaultEnv = Saga { values = builtInFns, types = builtInTypes, kinds = Map.empty, protocols = [numProtocol, isStringProtocol, functorProtocol, semigroupProtocol] }
+defaultEnv = Saga { values = builtInFns, types = builtInTypes, kinds = Map.empty, protocols = [eqProtocol, numProtocol, isStringProtocol, functorProtocol, semigroupProtocol] }
 
 startWriter :: Accumulator
 startWriter = Acc { logs = [], warnings = [], errors = [] }

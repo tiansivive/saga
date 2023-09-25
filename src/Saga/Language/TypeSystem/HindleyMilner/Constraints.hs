@@ -15,20 +15,26 @@ import           Control.Monad.State                                (StateT (run
                                                                      get,
                                                                      modify,
                                                                      put)
+import           Control.Monad.Trans.Writer                         (WriterT (runWriterT))
+import           Control.Monad.Writer                               (MonadWriter (tell))
 import           Data.Bifunctor                                     (bimap)
 import           Data.Either                                        (fromRight)
 import           Data.Functor                                       ((<&>))
 import           Data.List                                          (delete,
                                                                      find,
                                                                      groupBy,
+                                                                     intercalate,
                                                                      intersect,
                                                                      partition,
                                                                      (\\))
 import qualified Data.Map                                           as Map
-import           Data.Maybe                                         (fromJust,
-                                                                     fromMaybe)
+import           Data.Maybe                                         (catMaybes,
+                                                                     fromJust,
+                                                                     fromMaybe,
+                                                                     isJust)
 import qualified Data.Set                                           as Set
 import           Debug.Trace
+import           GHC.IO                                             (unsafeDupablePerformIO)
 import           Prelude                                            hiding (EQ,
                                                                      id)
 import           Saga.Language.Core.Literals                        (Literal (..))
@@ -40,13 +46,17 @@ import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as Refine
 import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
                                                                     (ProtocolID,
                                                                      implementationTy)
-import           Text.Pretty.Simple                                 (pShow)
+import           Saga.Utils.Utils
+import           Text.Pretty.Simple                                 (pPrintDarkBg,
+                                                                     pShow)
+import           Unsafe.Coerce                                      (unsafeCoerce)
 -- type Solve = StateT SolveState (Except InferenceError)
 
-type Solve = ReaderT CompilerState (Except SagaError)
+type Solve = ReaderT CompilerState (WriterT [Cycle] (Except SagaError))
 
 
 type Subst = Map.Map Tyvar Type
+type Cycle = (Tyvar, Type, Subst)
 
 newtype SolveState = SST { unifier :: (Subst, [IConstraint]) }
 
@@ -65,8 +75,13 @@ instance (Substitutable a, Functor f, Foldable f) => Substitutable (f a) where
 
 instance Substitutable Type where
   --apply s t | trace ("Applying type sub\n\t" ++ show s ++ "\n\t" ++ show t) False = undefined
-  apply s t@(TVar id) = Map.findWithDefault t id s
-  apply s (inTy `TArrow` outTy) = in' `TArrow` out'
+  apply s t@(TVar id)                     = Map.findWithDefault t id s
+  apply s (TTuple elems)                  = TTuple $ apply s <$> elems
+  apply s (TRecord pairs)                 = TRecord $ apply s <$> pairs
+  apply s (TUnion elems)                  = TUnion . Set.fromList $ apply s <$> (Set.toList elems)
+  apply s (TApplied cons arg)             = TApplied (apply s cons) (apply s arg)
+  apply s (TClosure params body env)      = TClosure params (apply s body) (apply s env)
+  apply s (inTy `TArrow` outTy)           = in' `TArrow` out'
     where
       in' = apply s inTy
       out' = apply s outTy
@@ -76,7 +91,7 @@ instance Substitutable Type where
   ftv (TVar id)                = Set.singleton id
   ftv (TTuple elems)           = ftv elems
   ftv (TRecord pairs)          = ftv pairs
-  ftv (TUnion tys)             = ftv tys
+  ftv (TUnion tys)             = ftv (Set.toList tys)
   ftv (cons `TApplied` arg)    = ftv cons `Set.union` ftv arg
   ftv (t `TArrow` t')          = ftv t `Set.union` ftv t'
   ftv (TClosure params body _) = ftv body
@@ -84,8 +99,16 @@ instance Substitutable Type where
 
 instance Substitutable TypeExpr where
   --apply s t | trace ("Applying typeExpr sub: " ++ show s ++ " to " ++ show t) False = undefined
-  apply s (TAtom ty) = TAtom $ apply s ty
-  apply s (TLambda params tyExpr) = TLambda (subStrVar s <$> params) $ apply s tyExpr
+  apply s (TAtom ty)                      = TAtom $ apply s ty
+  apply s (TComposite comp)               = TComposite $ apply s comp
+  apply s (TTagged tag tyExpr)            = TTagged tag $ apply s tyExpr
+  apply s (TClause tyExpr bindings)        = TClause (apply s tyExpr) (fmap apply' bindings)
+    where
+      apply' (ImplBind tyExpr prtcl) = ImplBind (apply s tyExpr) prtcl
+      apply' b                       = b
+  apply s (TImplementation prtcl tyExpr)  = TImplementation prtcl $ apply s tyExpr
+  apply s (TFnApp fn args)                = TFnApp (apply s fn) (apply s args)
+  apply s (TLambda params tyExpr)         = TLambda (subStrVar s <$> params) $ apply s tyExpr
     where
       subStrVar sub str = case Map.lookup (Tyvar str KType) sub of
         Nothing                   -> str
@@ -100,6 +123,13 @@ instance Substitutable TypeExpr where
   ftv (TLambda _ tyExpr)              = ftv tyExpr
   ftv (TFnApp fn args)                = ftv fn `Set.union` args' where args' = Set.unions $ fmap ftv args
   ftv (TComposite comp)               = ftv comp
+  ftv (TTagged tag tyExpr)            = ftv tyExpr
+  ftv (TClause tyExpr bindings)       = foldl (\tvars b -> tvars `Set.union` ftv' b) (ftv tyExpr) bindings
+    where
+      ftv' (ImplBind tyExpr _)     = ftv tyExpr
+      ftv' (Bind _ tyExpr )        = ftv tyExpr
+      ftv' (SubtypeBind _ tyExpr ) = ftv tyExpr
+      ftv' (RefineBind _ tyExpr )  = ftv tyExpr
   ftv (TImplementation prtcl tyExpr)  = ftv tyExpr
   ftv (TQualified (cs :=> ty))        = cs' `Set.union` ty'
     where
@@ -116,6 +146,13 @@ instance Substitutable CompositeExpr where
   ftv (TERecord pairs) = ftv pairs
   ftv (TEUnion tys)    = ftv tys
   ftv (t `TEArrow` t') = ftv t `Set.union` ftv t'
+
+instance Substitutable (Binding TypeExpr) where
+  apply s (ImplBind tyExpr prtcl) = ImplBind (apply s tyExpr) prtcl
+  apply _ b                       = b
+
+  ftv (ImplBind tyExpr _) = ftv tyExpr
+  ftv _                   = Set.empty
 
 instance Substitutable Scheme where
   --apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
@@ -150,6 +187,10 @@ instance Substitutable Equality where
   --apply s e | trace ("Applying EQ constraint sub\n\t" ++ show s ++ "\n\t" ++ show e) False = undefined
   apply s  (t1 `EQ` t2) = apply s t1 `EQ` apply s t2
   ftv (t1 `EQ` t2) = ftv t1 `Set.union` ftv t2
+instance Substitutable Union where
+  --apply s e | trace ("Applying EQ constraint sub\n\t" ++ show s ++ "\n\t" ++ show e) False = undefined
+  apply s  (t1 `MemberOf` t2) = apply s t1 `MemberOf` apply s t2
+  ftv (t1 `MemberOf` t2) = ftv t1 `Set.union` ftv t2
 
 instance Substitutable Constraint where
   apply s (t `Implements` p) = apply s t `Implements` p
@@ -163,17 +204,28 @@ s1 `compose` s2 = s `Map.union` s1
 
 
 
-runSolve :: CompilerState -> [IConstraint] -> Except SagaError (Subst, [ImplConstraint])
+-- runSolve :: CompilerState -> [IConstraint] -> Except SagaError (Subst, [ImplConstraint])
 -- runSolve cs | trace ("Solving: " ++ show cs) False = undefined
-runSolve env cs = runReaderT (solver cs) env
+runSolve :: CompilerState -> [IConstraint] -> Except SagaError (Subst, [ImplConstraint], [Cycle])
+runSolve env cs = do
+  ((sub, cs), cycles) <- runWriterT $ runReaderT (solver cs) env
+  return (sub, cs, cycles)
 
 
+printEqs eqs = "EQs:\n\t\t" ++ intercalate "\n\t\t" (eqs <&> \(EQ t1 t2) -> show t1 ++ " == " ++ show t2)
 
 solver :: [IConstraint] -> Solve (Subst, [ImplConstraint])
+
 solver constraints = do
   let eqs' = eqs constraints
-  --traceM $ "EQs: " ++ show eqs'
+  traceM $ printEqs eqs'
   sub <- unification nullSubst eqs'
+  traceM $ "\nUnifier from equality constraints\n\t" ++ pretty sub
+  -- traceM $ "\nGenerated unions\n\t" ++ show unionTvars
+  --let sub' = Map.foldlWithKey toSubst sub unionTvars
+  -- traceM $ "\nUnion TVar subst\n\t" ++ show sub'
+  -- --sub'' <- checkUnions sub' $ apply sub' $ union constraints
+  -- traceM $ "\nFinal subst\n\t" ++ pretty sub
   --traceM $ "\nMGU:\n\t" ++ show sub
   is <- reduce $ apply sub $ impls constraints
   resolve is
@@ -181,13 +233,27 @@ solver constraints = do
 
 
   where
-    impls cs =  [ ip | ImplCons ip <- cs ]
-    eqs   cs =  [ eq | EqCons   eq <- cs ]
+    impls  cs =  [ ip   | ImplCons ip   <- cs ]
+    eqs    cs =  [ eq   | EqCons eq     <- cs ]
+    union  cs =  [ uni  | UnionCons uni <- cs ]
 
+    unionTvars = buildUnions (union constraints) Map.empty
+    toSubst s k val = compose (Map.singleton k $ TUnion val) s
+
+
+
+buildUnions :: [Union] -> Map.Map Tyvar [Type] -> Map.Map Tyvar [Type]
+buildUnions [] unions = unions
+buildUnions (t1 `MemberOf` TVar tvar : us) unions = buildUnions us $ Map.insertWith mappend tvar [t1] unions
+
+checkUnions :: Subst -> [Union] -> Solve Subst
+checkUnions sub []                                 = return sub
+checkUnions sub (t1 `MemberOf` t2@(TUnion _) : us) = unify t1 t2 >>= \sub -> checkUnions sub us
+checkUnions _   (t1 `MemberOf` t2 : us)            = throwError $ Fail $ "Type " ++ show t2 ++ " is not a Union type"
 
 
 unification :: Subst -> [Equality] -> Solve Subst
---unification s cs | trace ("\nUnification:" ++ "\n\tUnifier: " ++ show s ++ "\n\tConstraints: " ++ show cs) False = undefined
+unification s cs | trace ("\nUnification:" ++ "\n\tUnifier:\n\t" ++ pretty s ++ "\n\t" ++ printEqs cs) False = undefined
 unification s [] = return s
 unification s (e:es) | t1 `EQ` t2 <- e = do
   sub <- unify t1 t2
@@ -198,56 +264,100 @@ unification s (e:es) | t1 `EQ` t2 <- e = do
 
 
 
-unify :: (MonadReader CompilerState m, MonadError e m, e ~ SagaError) => Type -> Type -> m Subst
+unify :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Type -> Type -> m Subst
 --unify t1 t2 | trace ("Unifying:\n\t" ++ show t1 ++ "\n\t" ++ show t2) False = undefined
-
-unify (TLiteral a) (TLiteral b) | a == b = return nullSubst
-unify (TPrimitive a) (TPrimitive b) | a == b = return nullSubst
-unify (TData lCons) (TData rCons) | lCons == rCons = return nullSubst
-unify sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
-unify lit@(TLiteral _) prim@(TPrimitive _) = lit `isSubtype` prim
-unify (TTuple as) (TTuple bs) = do
-  ss <- zipWithM unify as bs
-  return $ foldl compose nullSubst ss
-
-unify (il `TArrow` ol) (ir `TArrow` or) = do
-  sub <- unify il ir
-  s <- apply sub ol `unify` apply sub or
-  return $ s `compose` sub
-unify (TApplied f t) (TApplied f' t') = do
-  sub <- unify f f'
-  s <- apply sub t `unify` apply sub t'
-  return $ s `compose` sub
-
-unify (TVar a) t = bind a t
-unify t (TVar a) = bind a t
-
-unify t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch"
-unify t1 t2 = case (t1, t2) of
-  (t@(TClosure {}), t2) -> do
-    t' <- refine t
-    t' `unify` t2
-  (t, t'@(TClosure {})) -> do
-    t2' <- refine t2
-    t `unify` t2'
-  _                     -> throwError $ UnificationFail t1 t2
+unify = unify_ 0
   where
-    refine :: (MonadReader CompilerState m, MonadError e m, e ~ SagaError) => Type -> m Type
-    refine (TClosure params tyExpr captured) = do
-      env <- ask
-      return $ fromRight err $ Refine.runIn (extended env) tyExpr
+    unify_ :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Int -> Type -> Type -> m Subst
+    unify_ n t1 t2 = do
+      let ident = intercalate "" (replicate n "\t")
+      traceM (ident ++ "Unifying:\n" ++ ident ++ "  " ++ show t1 ++ "\n" ++ ident ++ "  " ++ show t2)
+      result <- unify' t1 t2
+      traceM (ident ++ "Result:\n" ++ ident ++ "  " ++ show result)
+      return result
       where
-        tvars = fmap (`Tyvar` KType) params
-        captured'  = Map.fromList $ zip params (fmap (TAtom . TVar) tvars)
-        extended env = env{ types = captured' `Map.union` types env }
-        err   = error "Failed to refine TClosure while unifying"
+        unify' :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Type -> Type -> m Subst
+        unify' (TVar a) t = bind a t
+        unify' t (TVar a) = bind a t
+        unify' (TLiteral a) (TLiteral b) | a == b = return nullSubst
+        unify' (TPrimitive a) (TPrimitive b) | a == b = return nullSubst
+        unify' (TData lCons) (TData rCons) | lCons == rCons = return nullSubst
+        unify' sub@(TRecord as) parent@(TRecord bs) = sub `isSubtype` parent
+        unify' lit@(TLiteral _) prim@(TPrimitive _) = lit `isSubtype` prim
+        unify' (TTuple as) (TTuple bs) = do
+          ss <- zipWithM (unify_ $ n+1) as bs
+          return $ foldl compose nullSubst ss
+
+        unify' (il `TArrow` ol) (ir `TArrow` or) = do
+          sub <- unify_ (n+1) il ir
+          s <- unify_ (n+1) (apply sub ol) (apply sub or)
+          return $ s `compose` sub
+        unify' (TApplied f t) (TApplied f' t') = do
+          sub <- unify_ (n+1) f f'
+          s <-  unify_ (n+1) (apply sub t) (apply sub t')
+          return $ s `compose` sub
 
 
-bind :: (MonadError e m, e ~ SagaError) => Tyvar -> Type -> m Subst
--- bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
+        unify' u1@(TUnion tys1) u2@(TUnion tys2)  = do
+          subs <- forM (Set.toList tys1) $ \t1 -> forM (Set.toList tys2) (unifier t1) <&> catMaybes
+          --traceM $ ("\nAll subs:\n\t" ++ show subs)
+          if not $ any null subs then
+            return $ foldl (foldl compose) nullSubst subs
+          else throwError $ UnificationFail u1 u2
+          where
+            unifier t1 t2 = catchError (unify_ (n+1) t1 t2 <&> Just) (\_ -> return Nothing)
+
+        unify' t1@(TUnion tys) t2 = foldM unifier nullSubst (Set.toList tys)
+          where
+            unifier sub t = compose sub <$> unify_ (n+1) (apply sub t) t2
+        unify' t1 t2@(TUnion tys) = do
+          subs <- catMaybes <$> mapM (unifier t1) (Set.toList tys)
+          if null subs then
+            throwError $ UnificationFail t1 t2
+          else return $ foldl compose nullSubst subs
+          where
+            unifier t1 t2 = catchError (unify_ (n+1) t1 t2 <&> Just) (\_ -> return Nothing)
+
+
+
+        unify' t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch"
+        unify' t1 t2 = case (t1, t2) of
+          (t@(TClosure {}), t2) -> do
+            t' <- refine t
+            unify_ (n+1) t' t2
+          (t, t'@(TClosure {})) -> do
+            t2' <- refine t2
+            unify_ (n+1) t t2'
+          _                     -> throwError $ UnificationFail t1 t2
+          where
+            refine :: (MonadReader CompilerState m, MonadError e m, e ~ SagaError) => Type -> m Type
+            refine (TClosure params tyExpr captured) = do
+              env <- ask
+              traceM "\n\nRefine TClosure:"
+              traceM $ "Env:\n\t" ++ pretty (types env)
+              traceM $ "Extended:\n\t" ++ pretty (types $ extended env)
+              traceM $ "Captured:\n\t" ++ pretty captured ++ "\n---------------------\n\n"
+              case Refine.runIn (extended env) tyExpr of
+                Left err -> throwError $ Fail $ "Failed to refine TClosure while unifying:\n\t" ++ err
+                Right ty -> return ty
+              where
+                tvars = fmap (TAtom . TVar . (`Tyvar` KType)) params
+                params' =  Map.fromList $ zip params tvars
+                extended env = env{ types = params' `Map.union` captured `Map.union` types env }
+
+
+
+bind :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Tyvar -> Type -> m Subst
+bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
 bind a t
   | t == TVar a = return nullSubst
-  | occursCheck a t = throwError $ InfiniteType a t
+  | occursCheck a t = case t of
+      TUnion tys | TVar a `elem` tys -> do
+        let tys' = Set.delete (TVar a) tys
+        let solution = Map.singleton a $ TUnion tys'
+        tell [(a, t, solution)]
+        return nullSubst
+      _                              -> throwError $ InfiniteType a t
   | kind a /= kind t = throwError $ Fail "kinds do not match"
   | TLiteral l <- t = return . Map.singleton a $
       case l of
@@ -261,7 +371,7 @@ occursCheck a t = a `Set.member` set
   where
     set = ftv t
 
-isSubtype :: (MonadReader CompilerState m, MonadError e m, e ~ SagaError) => Type -> Type -> m Subst
+isSubtype :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Type -> Type -> m Subst
 -- isSubtype  a b | trace ("subtype " ++ show a ++ " <: " ++ show b ++ "\n  ") False = undefined
 TLiteral (LInt _) `isSubtype` TPrimitive TInt = return nullSubst
 TLiteral (LString _) `isSubtype` TPrimitive TString = return nullSubst
@@ -282,10 +392,10 @@ nullSubst = Map.empty
 
 -- | Implementation Constraints solving
 resolve :: [ImplConstraint] -> Solve ()
--- resolve cs | trace ("\n\nProtocol Resolution:\n\t" ++ show cs) False = undefined
+resolve cs | trace ("\n\nProtocol Resolution:\n\t" ++ show cs) False = undefined
 resolve constraints = do
   env <- ask
-  --traceM $ "\tGrouped Constraints: " ++ show (groupBy byType constraints)
+  traceM $ "\tGrouped Constraints: " ++ show (groupBy byType constraints)
   --traceM $ "\tGrouped Implementations: " ++ show (groupBy byType' (impls env))
   forM_ constraintGroups findImplementingType
 
@@ -312,7 +422,7 @@ resolve constraints = do
 
 
 reduce :: [ImplConstraint] -> Solve [ImplConstraint]
--- reduce cs | trace ("\nReducing\n\tImplementation constraint:" ++ show cs) False = undefined
+reduce cs | trace ("\nReducing\n\tImplementation constraint:" ++ show cs) False = undefined
 reduce cs = mapM toHNF cs >>= simplify . concat
 
 toHNF :: ImplConstraint -> Solve [ImplConstraint]
@@ -328,7 +438,7 @@ inHNF (ty `IP` p) = hnf ty
        hnf _        = False
 
 byImplementation :: ImplConstraint -> Solve [ImplConstraint]
--- byImplementation impl | trace ("\nSearch by Implementation:\n\t" ++ show impl) False = undefined
+byImplementation impl | trace ("\nSearch by Implementation:\n\t" ++ show impl) False = undefined
 byImplementation implConstraint@(ty `IP` p)    = do
   Saga { protocols } <- ask
   concat <$> sequence [ tryInst impl | impl <- impls p protocols ]
@@ -348,9 +458,19 @@ unifyImpl (ty `IP` p) (ty' `IP` p')
 
   where
     match :: Type -> Type -> Solve Subst
+    match t1 t2 | trace ("\nMatching:\n\t" ++ show t1 ++ "\n\t" ++ show t2) False = undefined
     match (TVar v)   ty     = return $ Map.fromList [(v, ty)]
     match ty    (TVar v)    = return $ Map.fromList [(v, ty)]
     match t1 t2 | t1 == t2  = return nullSubst
+    match t1 t2@(TUnion {}) = unify t1 t2
+    -- subs <- catMaybes <$> mapM (unifier t1) tys
+    --       if null subs then
+    --         throwError $ UnificationFail t1 t2
+    --       else return $ foldl compose nullSubst subs
+    --       where
+    --         unifier :: (MonadReader CompilerState m, MonadError e m, e ~ SagaError) => Type -> Type -> m (Maybe Subst)
+    --         --unifier t1 t2 | trace ("\nUnion unifier:\n\t" ++ show t1 ++ "\n\t" ++ show t2) False = undefined
+    --         unifier t1 t2 = catchError (unify_ (n+1) t1 t2 <&> Just) (\_ -> return Nothing)
     match t1 t2             = throwError $ Fail "types do not match"
 
 

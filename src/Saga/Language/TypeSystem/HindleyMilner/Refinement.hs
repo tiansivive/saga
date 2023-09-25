@@ -70,16 +70,16 @@ lookup id = do
         Just ty -> refine ty
 
 refine :: TypeExpr -> Refined Type
-refine a | trace ("refining: " ++ show a) False = undefined
+--refine a | trace ("refining: " ++ show a) False = undefined
 refine (TAtom ty) = return ty
 refine (TIdentifier id) = lookup id
-refine (TComposite (TEUnion types)) = TUnion <$> mapM refine types
+refine (TComposite (TEUnion types)) = TUnion . Set.fromList <$> mapM refine types
 refine (TComposite (TETuple types)) = TTuple <$> mapM refine types
 refine (TComposite (TERecord pairs)) = TRecord <$> mapM (mapM refine) pairs
 refine (TComposite (TEArrow in' out')) = TArrow <$> refine in' <*> refine out'
 
 
-refine (TConditional cond true false) = TUnion <$> mapM refine [true, false]
+refine (TConditional cond true false) = TUnion . Set.fromList <$> mapM refine [true, false]
 refine (TClause tyExpr bindings)      = do
     env@(Saga {types}) <- ask
     te <- foldM constrainImpls tyExpr bindings

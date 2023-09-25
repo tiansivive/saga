@@ -67,6 +67,7 @@ test-suite saga-test
       Saga.Language.EvaluationSpec
       Saga.Language.InferenceSpec
       Saga.Language.SubtypingSpec
+      Saga.Language.UnificationSpec
       Saga.Parser.ParserSpec
       SpecHook
       Paths_saga

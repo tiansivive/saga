@@ -36,7 +36,7 @@ import           Text.Pretty.Simple                               (pHPrint,
 main :: IO ()
 main = do
     putStrLn "Starting Saga..."
-    repl
+    typecheckScript "lang/v2.saga"
 
 
 parseScript :: FilePath -> IO ()
@@ -56,7 +56,7 @@ inferScript fp = do
     handle <- openFile fp ReadMode
     parsingH <- openFile "./lang/test.parsing.log" WriteMode
     contents <- hGetContents handle
-    pPrint $ fmap desugarExpr <$> P.runSagaExpr contents
+    --pPrint $ fmap desugarExpr <$> P.runSagaExpr contents
     let res = run contents
     pPrint res
     pHPrint parsingH res

@@ -4,6 +4,7 @@
 module Saga.Language.TypeSystem.HindleyMilner.Types where
 
 import           Data.Map                    (Map)
+import           Data.Set                    (Set)
 import           GHC.Base                    ()
 import           Saga.Language.Core.Literals (Literal)
 import           Saga.Lexer.Tokens           (Token (Qualified))
@@ -34,17 +35,17 @@ data Binding a
   | ImplBind TypeExpr ProtocolId
   | SubtypeBind String a
   | RefineBind String a
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 data Qualified t = (:=>) { constraints :: [Constraint], item:: t } --, mode :: Mode, multiplicity :: Multiplicity }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 infixr 0 :=>
 
 
 data Constraint
   = Type `Implements` String
   -- | Extends Type Type
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 type ProtocolId = String
 
@@ -53,7 +54,7 @@ data Type where
   TPrimitive :: PrimitiveType -> Type
   TTuple :: [Type] -> Type
   TRecord :: [(String, Type)] -> Type
-  TUnion :: [Type] -> Type
+  TUnion :: Set Type -> Type
   TArrow :: Type -> Type -> Type
   TData :: Tycon -> Type
   TClosure :: [String] -> TypeExpr -> Map String TypeExpr -> Type
@@ -61,7 +62,7 @@ data Type where
   TVar :: Tyvar -> Type
   TVoid :: Type
 
-data Tycon = Tycon String Kind deriving ( Eq)
+data Tycon = Tycon String Kind deriving ( Eq, Ord)
 data Tyvar = Tyvar String Kind deriving ( Eq, Ord)
 instance Show Tyvar where
   show (Tyvar s _) = s
@@ -71,16 +72,19 @@ data PrimitiveType
   = TBool
   | TInt
   | TString
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 infixr 5 `TArrow`
 
 deriving instance Show TypeExpr
 deriving instance Eq TypeExpr
+deriving instance Ord TypeExpr
 deriving instance Show CompositeExpr
 deriving instance Eq CompositeExpr
+deriving instance Ord CompositeExpr
 deriving instance Show Type
 deriving instance Eq Type
+deriving instance Ord Type
 
 data Kind
   = KType
