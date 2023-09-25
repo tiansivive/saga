@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs             #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
 
 module Saga.Language.TypeSystem.HindleyMilner.Constraints where
@@ -453,25 +454,10 @@ byImplementation implConstraint@(ty `IP` p)    = do
 unifyImpl :: ImplConstraint -> ImplConstraint -> Solve Subst
 unifyImpl p1 p2 | trace ("\n-------\nUnifying Implementations\n-------\n\t" ++ show p1 ++ "\n\t" ++ show p2 ++ "\n") False = undefined
 unifyImpl (ty `IP` p) (ty' `IP` p')
-  | p == p'   = ty `match` ty'
+  | p == p'   = catchError (ty `unify` ty') $ \err -> throwError $ case err of
+        UnificationFail t1 t2 ->  Fail $ "Types do not match:\n\t" ++ show t1 ++ "\n\t" ++ show t2
+        err                   -> err
   | otherwise = throwError $ Fail "protocols differ"
-
-  where
-    match :: Type -> Type -> Solve Subst
-    match t1 t2 | trace ("\nMatching:\n\t" ++ show t1 ++ "\n\t" ++ show t2) False = undefined
-    match (TVar v)   ty     = return $ Map.fromList [(v, ty)]
-    match ty    (TVar v)    = return $ Map.fromList [(v, ty)]
-    match t1 t2 | t1 == t2  = return nullSubst
-    match t1 t2@(TUnion {}) = unify t1 t2
-    -- subs <- catMaybes <$> mapM (unifier t1) tys
-    --       if null subs then
-    --         throwError $ UnificationFail t1 t2
-    --       else return $ foldl compose nullSubst subs
-    --       where
-    --         unifier :: (MonadReader CompilerState m, MonadError e m, e ~ SagaError) => Type -> Type -> m (Maybe Subst)
-    --         --unifier t1 t2 | trace ("\nUnion unifier:\n\t" ++ show t1 ++ "\n\t" ++ show t2) False = undefined
-    --         unifier t1 t2 = catchError (unify_ (n+1) t1 t2 <&> Just) (\_ -> return Nothing)
-    match t1 t2             = throwError $ Fail "types do not match"
 
 
 simplify   :: [ImplConstraint] -> Solve [ImplConstraint]

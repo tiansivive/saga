@@ -153,23 +153,6 @@ let recursive
   }
 
 
-let listFunctorImpl
-  : impl Functor: List
-  = { map: map'}
-    where 
-      map' = \f fa -> match fa
-        | [] -> fa
-        | [e | fa'] -> f e ++ map' f fa'
-
-
-
-\f fa -> {
-    let map = \f fa -> match fa
-        | [] -> []
-        | [e | fa'] -> f e ++ map f fa'
-
-    return map f fa!
-  }
 
 \x -> {
     let sum = \y -> match y
@@ -179,7 +162,6 @@ let listFunctorImpl
 
     return sum x
 }
-*/
 
 
 let listFunctorImpl
@@ -189,3 +171,14 @@ let listFunctorImpl
       map' = \f fa -> match fa
         | [] -> []
         | [e | fa'] -> [f e] ++ map' f fa'
+*/
+
+let recursive
+  : Int -> Int
+  = \x -> {
+    let sum = \y -> match y
+      | 1 -> 1
+      | v -> v + sum (v - 1)
+
+    return sum x
+  }

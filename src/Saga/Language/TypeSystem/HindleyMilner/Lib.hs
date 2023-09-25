@@ -86,7 +86,7 @@ semigroupProtocol =
       ])
     ))
     []
-    [ [] :=> listConstructor `IP` "Semigroup"
+    [ [] :=> TApplied listConstructor (TVar $ Tyvar param KType) `IP` "Semigroup"
     ]
       where
         param  = "a"

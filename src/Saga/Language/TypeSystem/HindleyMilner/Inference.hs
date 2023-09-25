@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE LambdaCase            #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE TupleSections         #-}
@@ -131,8 +132,13 @@ runInfer env m = do
 resolveCycles :: MonadError SagaError m => Subst -> [Cycle] -> m Subst
 resolveCycles = foldM collapse
 
-unbound :: Ord k => k -> Map.Map k a -> Bool
-unbound tvar =  Map.lookup tvar |> isNothing
+
+-- | TODO: Check if any of the tvars are constrained. If so, then try to unify within the union. If it fails, it's an actual error
+unbound :: Tyvar -> Subst -> Bool
+unbound tvar subst = case Map.lookup tvar subst of
+  Just (TVar tvar) -> unbound tvar subst
+  Just _           -> False
+  Nothing          -> True
 
 collapse :: MonadError SagaError m => Subst -> Cycle -> m Subst
 collapse sub (tvar, ty, solution) =
