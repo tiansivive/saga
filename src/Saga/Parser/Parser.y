@@ -338,9 +338,17 @@ typeAnnotation
 kindAnnotation
   :                                                 { Nothing }
   | '::' kindExpr                                   { Just $2 }
+
 kindExpr
-  : kindExpr '->' kindExpr                          { P.kindArrow $1 $3 }
-  | identifier                                      { P.kindId $1 }
+  : kindExpr2                                %shift { $1 }
+  | kindExpr2 '->' kindExpr                         { P.kindArrow $1 $3 }
+  
+kindExpr2
+  : kindAtom                                        { $1 }
+  | identifier kindExpr                             { P.kindApplication $1 $2 }
+  
+kindAtom
+  : identifier                                      { P.kindId $1 }
   | '(' kindExpr ')'                                { $2 }  
 
 

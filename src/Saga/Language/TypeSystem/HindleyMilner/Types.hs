@@ -89,7 +89,7 @@ deriving instance Ord Type
 data Kind
   = KType
   | KArrow Kind Kind
-  | KProtocol
+  | KProtocol Kind
   | KVar String
     deriving (Show, Eq, Ord)
 

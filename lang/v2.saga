@@ -99,20 +99,10 @@ let proc
     }
   
 
-type Functor
-  :: (Type -> Type) -> Protocol 
-  = \f => 
-    { map: \a b => (a -> b) -> f a! -> f b! }
 
 let fnTags
     : Data Int -> Int -> Int
     = \(Data: one) two -> one + two
-
-
-
-*/
-
-
 
 
 
@@ -146,3 +136,10 @@ let testMatch
     | []    -> 0
     | [one] -> 1 
 
+*/
+
+
+type MyFunctor
+  :: Protocol (Type -> Type)
+  = \f => 
+    { map: \a b => (a -> b) -> f a! -> f b! }

@@ -565,7 +565,7 @@ instance HasKind TypeExpr where
   kind (TComposite composite) = kind composite
   kind (TTagged tag ty) = kind ty
   kind (TClause ty binds) = kind ty
-  kind (TImplementation pid ty) = KProtocol
+  kind (TImplementation pid ty) = kind ty
   kind (TLambda params body) = foldr (KArrow . KVar) (kind body) params
   kind (TIdentifier ty) = error "still need to implement kind inference for TIdentifier"
   kind (TFnApp fn args) = error "still need to implement kind inference for TFnApp"

@@ -97,7 +97,7 @@ desugarTypeExpr (ParserTy.TFnApp tyFn tyArgs)               = CoreTy.TFnApp (des
 
 desugarKind :: ParserTy.Kind -> CoreTy.Kind
 desugarKind ParserTy.KType = CoreTy.KType
-desugarKind ParserTy.KProtocol = CoreTy.KProtocol
+desugarKind (ParserTy.KProtocol k) = CoreTy.KProtocol $ desugarKind k
 desugarKind (ParserTy.KVar id) = CoreTy.KVar id
 desugarKind (ParserTy.KArrow inK outK) = CoreTy.KArrow (desugarKind inK) (desugarKind outK)
 

@@ -31,6 +31,7 @@ import qualified Saga.Parser.Types           as PT
 
 
 
+
 -- | EXPRESSIONS
 identifier :: L.RangedToken -> (String -> a) -> ParsedData a
 identifier rt constructor = Parsed expr (L.rtRange rt) [rt]
@@ -337,10 +338,13 @@ kindArrow input output =
 kindId :: ParsedData E.Expr -> ParsedData PT.Kind
 kindId (Parsed e rng toks)
     | idStr e == "Type" = Parsed PT.KType rng toks
-    | idStr e == "Protocol" = Parsed PT.KProtocol rng toks
+    -- | idStr e == "Protocol" = Parsed PT.KProtocol rng toks
     | otherwise =  error $ "Unrecognised Kind: " ++ show e
 
-
+kindApplication :: ParsedData E.Expr -> ParsedData PT.Kind -> ParsedData PT.Kind
+kindApplication id kArg
+    | Parsed e _ _ <- id, idStr e == "Protocol" = PT.KProtocol <$> kArg
+    | otherwise =  error $ "Unrecognised kind application: " ++ show id
 
 
 -- | DATA TYPE
