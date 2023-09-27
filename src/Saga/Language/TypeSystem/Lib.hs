@@ -1,10 +1,10 @@
-module Saga.Language.TypeSystem.HindleyMilner.Lib where
+module Saga.Language.TypeSystem.Lib where
 
 import           Data.Functor                                       ((<&>))
 import qualified Data.Map                                           as Map
-import           Saga.Language.TypeSystem.HindleyMilner.Environment
-import qualified Saga.Language.TypeSystem.HindleyMilner.Types       as T
-import           Saga.Language.TypeSystem.HindleyMilner.Types
+import           Saga.Language.TypeSystem.Environment
+import qualified Saga.Language.TypeSystem.Types       as T
+import           Saga.Language.TypeSystem.Types
 
 eqProtocol :: Protocol
 eqProtocol =

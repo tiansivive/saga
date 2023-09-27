@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-module Saga.Language.TypeSystem.HindleyMilner.Types where
+module Saga.Language.TypeSystem.Types where
 
 import           Data.Map                    (Map)
 import           Data.Set                    (Set)

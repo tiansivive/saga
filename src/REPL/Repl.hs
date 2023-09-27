@@ -2,10 +2,10 @@ module REPL.Repl where
 
 
 import qualified Saga.Language.Evaluation                           as E
-import qualified Saga.Language.TypeSystem.HindleyMilner.Check       as HMC
+import qualified Saga.Language.TypeSystem.Check       as HMC
 
-import qualified Saga.Language.TypeSystem.HindleyMilner.Inference   as HMI
-import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as HMR
+import qualified Saga.Language.TypeSystem.Inference   as HMI
+import qualified Saga.Language.TypeSystem.Refinement  as HMR
 
 import qualified Saga.Parser.Parser                                 as P
 
@@ -16,7 +16,7 @@ import           Control.Monad.Except                               (ExceptT)
 import           Control.Monad.State                                (StateT)
 import           Debug.Trace                                        (traceM)
 import           Saga.Language.Core.Syntax                          (Expr)
-import           Saga.Language.TypeSystem.HindleyMilner.Constraints (nullSubst)
+import           Saga.Language.TypeSystem.Constraints (nullSubst)
 import           Saga.Parser.Desugar
 import           Saga.Parser.ParsingInfo                            hiding
                                                                     (Term)

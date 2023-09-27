@@ -4,7 +4,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
 
-module Saga.Language.TypeSystem.HindleyMilner.Constraints where
+module Saga.Language.TypeSystem.Constraints where
 
 import           Control.Monad.Except
 import           Control.Monad.Reader                               (MonadReader (local),
@@ -39,12 +39,12 @@ import           GHC.IO                                             (unsafeDupab
 import           Prelude                                            hiding (EQ,
                                                                      id)
 import           Saga.Language.Core.Literals                        (Literal (..))
-import           Saga.Language.TypeSystem.HindleyMilner.Environment hiding
+import           Saga.Language.TypeSystem.Environment hiding
                                                                     (Implements)
-import           Saga.Language.TypeSystem.HindleyMilner.Errors      (SagaError (..))
-import           Saga.Language.TypeSystem.HindleyMilner.Lib
-import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as Refine
-import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
+import           Saga.Language.TypeSystem.Errors      (SagaError (..))
+import           Saga.Language.TypeSystem.Lib
+import qualified Saga.Language.TypeSystem.Refinement  as Refine
+import           Saga.Language.TypeSystem.Types       hiding
                                                                     (ProtocolID,
                                                                      implementationTy)
 import           Saga.Utils.Utils

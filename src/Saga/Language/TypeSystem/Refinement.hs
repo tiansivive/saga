@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Saga.Language.TypeSystem.HindleyMilner.Refinement where
+module Saga.Language.TypeSystem.Refinement where
 
 import           Control.Monad.Except
 import           Control.Monad.State.Lazy                           (MonadState,
@@ -18,7 +18,7 @@ import qualified Data.Set                                           as Set
 import           Debug.Trace                                        (trace,
                                                                      traceM)
 
-import           Saga.Language.TypeSystem.HindleyMilner.Types
+import           Saga.Language.TypeSystem.Types
 
 import           Control.Monad.Trans.Reader                         (ReaderT (runReaderT))
 import           Control.Monad.Trans.State                          (StateT)
@@ -30,11 +30,11 @@ import           Control.Monad.Identity                             (Identity)
 
 import           Control.Monad.Reader                               (ask, local)
 import           Data.List                                          (find)
-import           Saga.Language.TypeSystem.HindleyMilner.Environment (CompilerState (Saga, protocols, types),
+import           Saga.Language.TypeSystem.Environment (CompilerState (Saga, protocols, types),
                                                                      Protocol (Protocol, id),
                                                                      Saga, spec)
-import           Saga.Language.TypeSystem.HindleyMilner.Errors      (SagaError (..))
-import           Saga.Language.TypeSystem.HindleyMilner.Lib
+import           Saga.Language.TypeSystem.Errors      (SagaError (..))
+import           Saga.Language.TypeSystem.Lib
 import           Saga.Parser.ParsingInfo                            hiding
                                                                     (return)
 

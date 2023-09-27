@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs #-}
 
-module Saga.Language.TypeSystem.HindleyMilner.Check where
+module Saga.Language.TypeSystem.Check where
 import           Control.Monad.Except                               (Except,
                                                                      MonadError (throwError),
                                                                      MonadTrans (lift),
@@ -12,7 +12,7 @@ import           Control.Monad.RWS                                  (RWST (runRW
                                                                      execRWST,
                                                                      runRWS)
 import qualified Data.Map                                           as Map
-import           Saga.Language.TypeSystem.HindleyMilner.Constraints (HasKind (kind),
+import           Saga.Language.TypeSystem.Constraints (HasKind (kind),
                                                                      Solve,
                                                                      Subst,
                                                                      Substitutable (apply, ftv),
@@ -27,7 +27,7 @@ import           Control.Monad.Trans.RWS                            (evalRWST,
 import           Data.Bifunctor                                     (first)
 import           Debug.Trace                                        (trace,
                                                                      traceM)
-import           Saga.Language.TypeSystem.HindleyMilner.Environment (Accumulator,
+import           Saga.Language.TypeSystem.Environment (Accumulator,
                                                                      CompilerState (types),
                                                                      IConstraint,
                                                                      InferenceEnv,
@@ -36,7 +36,7 @@ import           Saga.Language.TypeSystem.HindleyMilner.Environment (Accumulator
                                                                      Tell (Error),
                                                                      log)
 
-import           Saga.Language.TypeSystem.HindleyMilner.Inference   (Infer,
+import           Saga.Language.TypeSystem.Inference   (Infer,
                                                                      InferState,
                                                                      Trace,
                                                                      closeOver,
@@ -45,14 +45,14 @@ import           Saga.Language.TypeSystem.HindleyMilner.Inference   (Infer,
                                                                      resolveCycles,
                                                                      runInfer)
 
-import           Saga.Language.TypeSystem.HindleyMilner.Types       (Kind (KType),
+import           Saga.Language.TypeSystem.Types       (Kind (KType),
                                                                      PrimitiveType (..),
                                                                      Type (..),
                                                                      TypeExpr,
                                                                      Tyvar (Tyvar))
 
 import           Saga.Language.Core.Syntax
-import           Saga.Language.TypeSystem.HindleyMilner.Shared
+import           Saga.Language.TypeSystem.Shared
 
 import           Control.Monad                                      (zipWithM)
 import           Control.Monad.Identity                             (Identity)
@@ -65,10 +65,10 @@ import           Data.Functor                                       ((<&>))
 import qualified Data.Set                                           as Set
 import           Prelude                                            hiding (log)
 import           Saga.Language.Core.Literals                        (Literal (..))
-import           Saga.Language.TypeSystem.HindleyMilner.Errors      (SagaError)
-import           Saga.Language.TypeSystem.HindleyMilner.Lib         (defaultEnv,
+import           Saga.Language.TypeSystem.Errors      (SagaError)
+import           Saga.Language.TypeSystem.Lib         (defaultEnv,
                                                                      startWriter)
-import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as Refine
+import qualified Saga.Language.TypeSystem.Refinement  as Refine
 
 
 

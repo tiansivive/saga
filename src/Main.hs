@@ -11,8 +11,8 @@ import qualified Saga.Parser.Parser                               as P
 
 
 import           Saga.Language.Generation.JS                      (Generator (generate))
-import           Saga.Language.TypeSystem.HindleyMilner.Check     (checkScript)
-import           Saga.Language.TypeSystem.HindleyMilner.Inference (run)
+import           Saga.Language.TypeSystem.Check     (checkScript)
+import           Saga.Language.TypeSystem.Inference (run)
 import           Saga.Parser.Desugar                              (desugarExpr,
                                                                    desugarScript)
 import           Saga.Parser.ParsingInfo                          (script)

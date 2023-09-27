@@ -1,9 +1,9 @@
-module Saga.Language.TypeSystem.HindleyMilner.Shared where
+module Saga.Language.TypeSystem.Shared where
 
 import qualified Data.Map                                           as Map
-import           Saga.Language.TypeSystem.HindleyMilner.Environment
-import qualified Saga.Language.TypeSystem.HindleyMilner.Types       as T
-import           Saga.Language.TypeSystem.HindleyMilner.Types
+import           Saga.Language.TypeSystem.Environment
+import qualified Saga.Language.TypeSystem.Types       as T
+import           Saga.Language.TypeSystem.Types
 
 import           Control.Monad.RWS
 

@@ -1,6 +1,6 @@
-module Saga.Language.TypeSystem.HindleyMilner.Errors where
+module Saga.Language.TypeSystem.Errors where
 
-import           Saga.Language.TypeSystem.HindleyMilner.Types (Type, TypeExpr,
+import           Saga.Language.TypeSystem.Types (Type, TypeExpr,
                                                                Tyvar)
 
 data SagaError

@@ -7,7 +7,7 @@
 {-# LANGUAGE TupleSections         #-}
 
 
-module Saga.Language.TypeSystem.HindleyMilner.Inference where
+module Saga.Language.TypeSystem.Inference where
 
 import           Control.Applicative                                ((<|>))
 import           Control.Monad.Except
@@ -41,15 +41,15 @@ import           Prelude                                            hiding (EQ,
                                                                      log)
 import           Saga.Language.Core.Literals                        (Literal (..))
 import           Saga.Language.Core.Syntax
-import           Saga.Language.TypeSystem.HindleyMilner.Constraints hiding
+import           Saga.Language.TypeSystem.Constraints hiding
                                                                     (simplify,
                                                                      unification)
-import           Saga.Language.TypeSystem.HindleyMilner.Environment
-import qualified Saga.Language.TypeSystem.HindleyMilner.Types       as T
-import           Saga.Language.TypeSystem.HindleyMilner.Types       hiding
+import           Saga.Language.TypeSystem.Environment
+import qualified Saga.Language.TypeSystem.Types       as T
+import           Saga.Language.TypeSystem.Types       hiding
                                                                     (Implements)
 
-import           Saga.Language.TypeSystem.HindleyMilner.Shared
+import           Saga.Language.TypeSystem.Shared
 import           Saga.Parser.Desugar
 import           Saga.Parser.Parser                                 (runSagaExpr)
 import           Saga.Parser.Shared                                 hiding
@@ -61,10 +61,10 @@ import           Saga.Parser.Shared                                 hiding
 import           Control.Monad.Trans.RWS                            (get, local,
                                                                      modify)
 import           Control.Monad.Writer
-import           Saga.Language.TypeSystem.HindleyMilner.Errors      (SagaError (..))
-import           Saga.Language.TypeSystem.HindleyMilner.Lib         (defaultEnv,
+import           Saga.Language.TypeSystem.Errors      (SagaError (..))
+import           Saga.Language.TypeSystem.Lib         (defaultEnv,
                                                                      listConstructor)
-import qualified Saga.Language.TypeSystem.HindleyMilner.Refinement  as Refine
+import qualified Saga.Language.TypeSystem.Refinement  as Refine
 import           Saga.Utils.Utils                                   (Pretty (pretty),
                                                                      (|>))
 

@@ -2,7 +2,7 @@ module Saga.Language.InferenceSpec where
 
 import qualified Data.Map                                      as Map
 import qualified Data.Set                                      as Set
-import qualified Saga.Language.TypeSystem.HindleyMilner.Inference   
+import qualified Saga.Language.TypeSystem.Inference   
 
 
 import qualified Saga.Language.Core.Syntax as E
@@ -12,9 +12,9 @@ import qualified Saga.Language.Core.Literals as L
 import           Test.Hspec
 
 import           Control.Monad.State.Lazy
-import           Saga.Language.TypeSystem.HindleyMilner.Environment (Scheme (Scheme))
-import           Saga.Language.TypeSystem.HindleyMilner.Types       
-import           Saga.Language.TypeSystem.HindleyMilner.Inference (simplify)       
+import           Saga.Language.TypeSystem.Environment (Scheme (Scheme))
+import           Saga.Language.TypeSystem.Types       
+import           Saga.Language.TypeSystem.Inference (simplify)       
 
 
 

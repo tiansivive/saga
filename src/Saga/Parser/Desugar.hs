@@ -6,7 +6,7 @@ import           Unsafe.Coerce                                (unsafeCoerce)
 import           Data.Functor                                 ((<&>))
 import qualified Saga.Language.Core.Literals                  as Core
 import qualified Saga.Language.Core.Syntax                    as Core
-import qualified Saga.Language.TypeSystem.HindleyMilner.Types as CoreTy
+import qualified Saga.Language.TypeSystem.Types as CoreTy
 import qualified Saga.Parser.Expr                             as Parser
 import qualified Saga.Parser.Types                            as ParserTy
 

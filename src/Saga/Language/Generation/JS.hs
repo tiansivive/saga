@@ -8,8 +8,8 @@ import           Data.Maybe                                        (fromMaybe)
 import           Saga.Language.Core.Literals                       (Literal (..))
 import           Saga.Language.Core.Syntax                         hiding
                                                                    (Binding)
-import           Saga.Language.TypeSystem.HindleyMilner.Refinement
-import           Saga.Language.TypeSystem.HindleyMilner.Types      (Binding,
+import           Saga.Language.TypeSystem.Refinement
+import           Saga.Language.TypeSystem.Types      (Binding,
                                                                     CompositeExpr (..),
                                                                     Constraint (..),
                                                                     PrimitiveType (..),

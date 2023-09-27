@@ -5,8 +5,8 @@ module Saga.Language.Core.Syntax where
 
 import           Saga.Language.Core.Literals                  (Literal)
 
-import qualified Saga.Language.TypeSystem.HindleyMilner.Types as T
-import           Saga.Language.TypeSystem.HindleyMilner.Types hiding (Binding)
+import qualified Saga.Language.TypeSystem.Types as T
+import           Saga.Language.TypeSystem.Types hiding (Binding)
 
 -- | Term expressions
 data Expr where
