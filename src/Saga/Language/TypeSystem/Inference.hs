@@ -51,7 +51,8 @@ import           Saga.Language.TypeSystem.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.Lib         (defaultEnv,
                                                        listConstructor)
 import qualified Saga.Language.TypeSystem.Refinement  as Refine
-import           Saga.Utils.Utils                     (Pretty (pretty), (|>))
+import           Saga.Utils.Utils                     (Pretty (pretty), (|>),
+                                                       (||>))
 
 
 --type Infer a = Saga InferState (WriterT [IConstraint] (Except SagaError)) a
@@ -106,12 +107,12 @@ runInfer env m = do
       traceM $ "\nFinal Subst:\n\t" ++ pretty subst'
       traceM $ "\nImpl constraints" ++ show implConstraints
       traceM "\n"
-      let final = simplify $ apply subst' ty
-      let bindings = normalize $ apply subst (TVar <$> unification st)
+      let bindings = normalize Set.empty $ apply subst (TVar <$> unification st)
+      let final = ty ||> apply subst' |> simplify
       traceM $ "\nFinal type:\n\t" ++ show final
       traceM $ "\nWith bindings:\n\t" ++ show bindings
 
-      return (closeOver implConstraints final, bindings, e)
+      return (closeOver implConstraints final, bindings, normalize (ftv final) (apply subst' e))
 
     _ -> throwError $ Fail $ "Could not infer type for: " ++ show e
 
@@ -133,7 +134,9 @@ collapse sub (tvar, ty, solution) =
       else throwError $ InfiniteType tvar ty
 
 closeOver ::  [ImplConstraint] -> Type -> TypeExpr
-closeOver cs = normalize . qualify cs
+closeOver cs ty = normalize (ftv tyExpr) tyExpr
+  where
+    tyExpr = qualify cs ty
 
 qualify :: [ImplConstraint] -> Type -> TypeExpr
 qualify impls t
@@ -382,53 +385,84 @@ generalize ty = case ty of
 
 
 class Normalized a where
-  normalize :: a -> a
+  normalize :: Set.Set UnificationVar -> a -> a
 
 instance Normalized TypeExpr where
-  normalize tyExpr = case tyExpr of
-    (TQualified (cs :=> tyExpr')) -> TQualified $ (normConstraint <$> cs) :=> normalize tyExpr'
-    (TAtom ty)                    -> TAtom $ normType ty
-    (TLambda params tyExpr')       -> TLambda (fmap norm' params) (normalize tyExpr')
-    (TTagged tag tyExpr')          -> TTagged tag $ normalize tyExpr'
+  normalize ftv tyExpr = case tyExpr of
+    (TQualified (cs :=> tyExpr')) -> TQualified $ (normConstraint <$> cs) :=> normalize ftv tyExpr'
+    (TAtom ty)                    -> TAtom $ normalize ftv ty
+    (TLambda params tyExpr')       -> TLambda (fmap norm' params) (normalize ftv tyExpr')
+    (TTagged tag tyExpr')          -> TTagged tag $ normalize ftv tyExpr'
     _ -> tyExpr
 
     where
       ord = zip tvars letters
-      tvars = nub (Set.toList $ ftv tyExpr) <&> \(Tyvar v _) -> v
+      tvars = ftv ||> Set.toList |> fmap (\(Tyvar v _) -> v)
       norm' x = fromMaybe x (lookup x ord)
 
-      normType (TTuple tys)        = TTuple $ fmap normType tys
-      normType (TUnion tys)        = TUnion . Set.fromList $ fmap normType (Set.toList tys)
-      normType (TRecord pairs)     = TRecord $ fmap (fmap normType) pairs
-      normType (TData cons)        = TData $ normCons cons
-      normType (TApplied cons arg) = normType cons `TApplied` normType arg
-      normType (a `TArrow` b)      = normType a `TArrow` normType b
-      normType (TVar (Tyvar v k))  = TVar $ Tyvar (norm' v) k
-      normType t                   = t
+      normConstraint (t `T.Implements` p) = normalize ftv t `T.Implements` p
 
-      normConstraint (t `T.Implements` p) = normType t `T.Implements` p
 
-      normCons (Tycon x k) = Tycon (norm' x) k
+instance Normalized Type where
+  normalize ftv = normalize'
+    where
+      mapping = zip tvars letters
+      tvars = ftv ||> Set.toList |> fmap (\(Tyvar v _) -> v)
+      norm' x = fromMaybe x (lookup x mapping)
+
+      normalize' = \case
+        (TTuple tys)        -> TTuple $ fmap normalize' tys
+        (TUnion tys)        -> TUnion . Set.fromList $ fmap normalize' (Set.toList tys)
+        (TRecord pairs)     -> TRecord $ fmap (fmap normalize') pairs
+        (TApplied cons arg) -> normalize' cons `TApplied` normalize' arg
+        (a `TArrow` b)      -> normalize' a `TArrow` normalize' b
+        (TVar (Tyvar v k))  -> TVar $ Tyvar (norm' v) k
+        (TData (Tycon x k)) -> TData $ Tycon (norm' x) k
+        t                   -> t
 
 instance Normalized (Map.Map String Type) where
-  normalize unifier = fmap normType unifier
+  normalize _ unifier = fmap (normalize tvars) unifier
     where
       vals = snd <$> Map.toList unifier
-      tvars = foldl (\vars t -> vars `Set.union` ftv t) Set.empty vals
-      ord = zip (Set.toList tvars <&> \(Tyvar v _) -> v) letters
+      tvars = foldl (\vars t -> vars <> ftv t) Set.empty vals
 
-      norm' x = fromMaybe x (lookup x ord)
+instance Normalized Expr where
+  normalize ftv = normalize'
+    where
+      mapping = zip tvars letters
+      tvars = ftv ||> Set.toList |> fmap (\(Tyvar v _) -> v)
+      norm' x = fromMaybe x (lookup x mapping)
 
-      normType (TTuple tys)        = TTuple $ fmap normType tys
-      normType (TUnion tys)        = TUnion . Set.fromList $ fmap normType (Set.toList tys)
-      normType (TRecord pairs)     = TRecord $ fmap (fmap normType) pairs
-      normType (TData cons)        = TData $ normCons cons
-      normType (TApplied cons arg) = normType cons `TApplied` normType arg
-      normType (a `TArrow` b)      = normType a `TArrow` normType b
-      normType (TVar (Tyvar v k))  = TVar $ Tyvar (norm' v) k
-      normType t                   = t
+      normalize' = \case
+        Typed e ty -> Typed (normalize' e) (normalize ftv ty)
 
-      normCons (Tycon x k) = Tycon (norm' x) k
+        Lambda ps body -> Lambda (fmap norm' ps) (normalize' body)
+        FnApp fn args  -> FnApp (normalize' fn) (fmap normalize' args)
+        Match cond cases -> Match (normalize' cond) (fmap (normalize ftv) cases)
+
+        Record es -> Record $ fmap normalize' <$> es
+        Tuple es  -> Tuple $ fmap normalize' es
+        List es   -> List $ fmap normalize' es
+
+        Block stmts -> Block $ fmap (normalize ftv) stmts
+        e           -> e
+
+instance Normalized Case where
+  normalize ftv = \case
+    Case pat e -> Case pat (normalize ftv e)
+    TypedCase pat ty e -> TypedCase pat (normalize ftv ty) (normalize ftv e)
+
+instance Normalized Statement where
+  normalize ftv = \case
+    Return e -> Return $ normalize ftv e
+    Procedure e -> Procedure $ normalize ftv e
+    Declaration d -> Declaration $ normalize ftv d
+
+instance Normalized Declaration where
+  normalize ftv = \case
+    Let id ty k e -> Let id (fmap (normalize ftv) ty) k (normalize ftv e)
+    Type id k ty -> Type id k (normalize ftv ty)
+    Data id k dataExps binds -> Data id k (fmap (fmap $ normalize ftv) dataExps) binds
 
 
 

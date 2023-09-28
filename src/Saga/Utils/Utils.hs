@@ -25,7 +25,11 @@ scoped m f = do
 (|>) :: (a -> b) -> (b -> c) -> a -> c
 (|>) = flip (.)
 
+(||>) :: a -> (a -> b) -> b
+(||>) a f = f a
+
 infixr 9 |>
+infixr 9 ||>
 
 
 

@@ -29,12 +29,17 @@ import           Debug.Trace
 import           GHC.IO                               (unsafeDupablePerformIO)
 import           Prelude                              hiding (EQ, id)
 import           Saga.Language.Core.Literals          (Literal (..))
+import           Saga.Language.Core.Syntax            (Case (..),
+                                                       Declaration (..),
+                                                       Expr (..),
+                                                       Statement (..))
 import           Saga.Language.TypeSystem.Environment hiding (Implements)
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.Lib
 import qualified Saga.Language.TypeSystem.Refinement  as Refine
 import           Saga.Language.TypeSystem.Types       hiding (ProtocolID,
                                                        implementationTy)
+import           Saga.Parser.ParsingInfo              (tyBinding)
 import           Saga.Utils.Utils
 import           Text.Pretty.Simple                   (pPrintDarkBg, pShow)
 import           Unsafe.Coerce                        (unsafeCoerce)
@@ -521,10 +526,61 @@ instance Substitutable Constraint where
 
   ftv (t `Implements` p) = ftv t
 
+
+
+instance Substitutable Expr where
+  apply s (Typed e t)        = Typed (apply s e) (apply s t)
+  apply s (Lambda ps body)   = Lambda ps (apply s body)
+  apply s (FnApp fn args)    = FnApp (apply s fn) (apply s args)
+  apply s (Match cond cases) = Match (apply s cond) (apply s cases)
+  apply s (Tuple es)         = Tuple (apply s es)
+  apply s (List es)          = List (apply s es)
+  apply s (Record pairs)     = Record $ apply s <$> pairs
+  apply s (Block stmts)      = Block $ apply s stmts
+  apply s e                  = e
+
+  ftv (Typed e t)        = ftv e <> ftv t
+  ftv (Lambda _ body)    = ftv body
+  ftv (FnApp fn args)    = ftv fn <> ftv args
+  ftv (Match cond cases) = ftv cond <> ftv cases
+  ftv (Tuple es)         = ftv es
+  ftv (List es)          = ftv es
+  ftv (Record pairs)     = ftv pairs
+  ftv (Block stmts)      = ftv stmts
+  ftv _                  = mempty
+
+instance Substitutable Case where
+  apply s (Case pat e)         = Case pat (apply s e)
+  apply s (TypedCase pat ty e) = TypedCase pat (apply s ty) (apply s e)
+
+  ftv (Case _ e)         = ftv e
+  ftv (TypedCase _ ty e) = ftv e <> ftv ty
+
+instance Substitutable Statement where
+  apply s (Return e)      = Return $ apply s e
+  apply s (Procedure e)   = Procedure $ apply s e
+  apply s (Declaration d) = Declaration $ apply s d
+
+  ftv (Return e)      = ftv e
+  ftv (Procedure e)   = ftv e
+  ftv (Declaration d) = ftv d
+
+instance Substitutable Declaration where
+  apply s (Let id ty k e)            = Let id (apply s ty) k (apply s e)
+  apply s (Type id k ty)             = Type id k (apply s ty)
+  apply s (Data id k dExps bindings) = Data id k (apply s dExps) bindings
+
+  ftv (Let _ ty _ e)     = ftv ty <> ftv e
+  ftv (Type _ _ ty)      = ftv ty
+  ftv (Data _ _ dExps _) = ftv dExps
+
+
 compose :: Subst -> Subst -> Subst
 s1 `compose` s2 = s `Map.union` s1
   where
     s = Map.map (apply s1) s2
+
+
 
 
 

@@ -152,8 +152,7 @@ type MyFunctor
 
 */
 
-({ 
-   x: 1
+({ x: 1
  , y: 2
  , foo: "hello"
  , jumbo: (\x -> x + 1)
