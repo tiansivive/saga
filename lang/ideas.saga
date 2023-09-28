@@ -176,3 +176,23 @@ let listComprehension
                 then take 5
                 --then group `by` .y // not really sure about how group works, maybe leave it for later
                 using someMonadImpl
+
+
+//Ideas for function Overloads and Variadic params
+let add
+  : Int+ -> Int 
+  = \arguments: [first | rest] -> fold (+) first rest
+
+let curriedVariadic
+    : (-> Int)+ -> Int 
+    =\arguments: [first | rest] ->
+
+let overload
+    | Foo: (Int, Int) -> Int                = \(x,y) -> x + y 
+    | Bar: (String, Int) -> Int             = \(x,y) -> read x + y 
+    | Baz: (Int, String) -> Int             = \(x,y) -> x + read y 
+    | Curried: Curry (String, Int) -> Int   = \x y -> x + y
+
+
+    
+        

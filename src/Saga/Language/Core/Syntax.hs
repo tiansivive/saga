@@ -3,7 +3,7 @@
 
 module Saga.Language.Core.Syntax where
 
-import           Saga.Language.Core.Literals                  (Literal)
+import           Saga.Language.Core.Literals    (Literal (LInt))
 
 import qualified Saga.Language.TypeSystem.Types as T
 import           Saga.Language.TypeSystem.Types hiding (Binding)
@@ -22,10 +22,24 @@ data Expr where
   FnApp :: Expr -> [Expr] -> Expr
 
   Block :: [Statement] -> Expr
+  Typed :: Expr -> Type -> Expr
 
   --FieldAccess :: Expr -> String -> Expr
 deriving instance Show Expr
 deriving instance Eq Expr
+
+
+foo = Typed
+  (Lambda ["x"]
+    (Typed
+      (FnApp
+        (Typed (Identifier "x") (TPrimitive TInt `TArrow` TPrimitive TInt))
+        [Typed (Literal (LInt 1)) (TPrimitive TInt)]
+      )
+      (TPrimitive TInt)
+    )
+  )
+  (TPrimitive TInt `TArrow` TPrimitive TInt)
 
 
 data Binding a
@@ -43,7 +57,9 @@ deriving instance Eq Statement
 
 
 
-data Case = Case Pattern Expr
+data Case
+  = Case Pattern Expr
+  | TypedCase Pattern Type Expr
   deriving (Show, Eq)
 
 data Pattern

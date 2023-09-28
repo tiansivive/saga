@@ -1,73 +1,56 @@
 {-# LANGUAGE GADTs #-}
 
 module Saga.Language.TypeSystem.Check where
-import           Control.Monad.Except                               (Except,
-                                                                     MonadError (throwError),
-                                                                     MonadTrans (lift),
-                                                                     foldM,
-                                                                     runExcept)
-import           Control.Monad.Reader                               (ReaderT (runReaderT))
-import           Control.Monad.RWS                                  (RWST (runRWST),
-                                                                     evalRWS,
-                                                                     execRWST,
-                                                                     runRWS)
-import qualified Data.Map                                           as Map
-import           Saga.Language.TypeSystem.Constraints (HasKind (kind),
-                                                                     Solve,
-                                                                     Subst,
-                                                                     Substitutable (apply, ftv),
-                                                                     compose,
-                                                                     isSubtype,
-                                                                     nullSubst,
-                                                                     runSolve,
-                                                                     unify)
+import           Control.Monad.Except                 (Except,
+                                                       MonadError (throwError),
+                                                       MonadTrans (lift), foldM,
+                                                       runExcept)
+import           Control.Monad.Reader                 (ReaderT (runReaderT))
+import           Control.Monad.RWS                    (RWST (runRWST), evalRWS,
+                                                       execRWST, runRWS)
+import qualified Data.Map                             as Map
+import           Saga.Language.TypeSystem.Constraints (HasKind (kind), Solve,
+                                                       Subst,
+                                                       Substitutable (apply, ftv),
+                                                       compose, isSubtype,
+                                                       nullSubst, runSolve,
+                                                       unify)
 
-import           Control.Monad.Trans.RWS                            (evalRWST,
-                                                                     execRWS)
-import           Data.Bifunctor                                     (first)
-import           Debug.Trace                                        (trace,
-                                                                     traceM)
+import           Control.Monad.Trans.RWS              (evalRWST, execRWS)
+import           Data.Bifunctor                       (first)
+import           Debug.Trace                          (trace, traceM)
 import           Saga.Language.TypeSystem.Environment (Accumulator,
-                                                                     CompilerState (types),
-                                                                     IConstraint,
-                                                                     InferenceEnv,
-                                                                     Saga,
-                                                                     Scheme,
-                                                                     Tell (Error),
-                                                                     log)
+                                                       CompilerState (types),
+                                                       IConstraint,
+                                                       InferenceEnv, Saga,
+                                                       Scheme, Tell (Error),
+                                                       log)
 
-import           Saga.Language.TypeSystem.Inference   (Infer,
-                                                                     InferState,
-                                                                     Trace,
-                                                                     closeOver,
-                                                                     infer,
-                                                                     initState,
-                                                                     resolveCycles,
-                                                                     runInfer)
+import           Saga.Language.TypeSystem.Inference   (Infer, InferState, Trace,
+                                                       closeOver, infer,
+                                                       initState, resolveCycles,
+                                                       runInfer)
 
 import           Saga.Language.TypeSystem.Types       (Kind (KType),
-                                                                     PrimitiveType (..),
-                                                                     Type (..),
-                                                                     TypeExpr,
-                                                                     Tyvar (Tyvar))
+                                                       PrimitiveType (..),
+                                                       Type (..), TypeExpr,
+                                                       Tyvar (Tyvar))
 
 import           Saga.Language.Core.Syntax
 import           Saga.Language.TypeSystem.Shared
 
-import           Control.Monad                                      (zipWithM)
-import           Control.Monad.Identity                             (Identity)
-import           Control.Monad.Reader                               (ask)
-import           Control.Monad.Trans.RWS                            (get,
-                                                                     modify)
-import           Control.Monad.Trans.Writer                         (WriterT (runWriterT))
+import           Control.Monad                        (zipWithM)
+import           Control.Monad.Identity               (Identity)
+import           Control.Monad.Reader                 (ask)
+import           Control.Monad.Trans.RWS              (get, modify)
+import           Control.Monad.Trans.Writer           (WriterT (runWriterT))
 import           Data.Either
-import           Data.Functor                                       ((<&>))
-import qualified Data.Set                                           as Set
-import           Prelude                                            hiding (log)
-import           Saga.Language.Core.Literals                        (Literal (..))
+import           Data.Functor                         ((<&>))
+import qualified Data.Set                             as Set
+import           Prelude                              hiding (log)
+import           Saga.Language.Core.Literals          (Literal (..))
 import           Saga.Language.TypeSystem.Errors      (SagaError)
-import           Saga.Language.TypeSystem.Lib         (defaultEnv,
-                                                                     startWriter)
+import           Saga.Language.TypeSystem.Lib         (defaultEnv, startWriter)
 import qualified Saga.Language.TypeSystem.Refinement  as Refine
 
 
@@ -88,7 +71,7 @@ check expr tyExpr = do
     ty <- Refine.refine tyExpr
     traceM $ "\n---------------\nRefined:\n\t" ++ show ty
 
-    inferredTyExpr <- lift $ runInfer env (infer expr)
+    (inferredTyExpr, bindings, typedAST) <- lift $ runInfer env (infer expr)
     traceM "\n----------------\nChecking"
     traceM $ "\tInferred type:\n\t\t" ++ show inferredTyExpr
     traceM "\nRefining Inferred:"
@@ -153,7 +136,7 @@ checkScript (Script decs) = runRWS (mapM saga decs) () defaultEnv
 
       where
         checkInferred expr st = do
-          inferred <- runExcept $ runInfer st (infer expr)
+          (inferred, binds, typedAST) <- runExcept $ runInfer st (infer expr)
           result <- check' expr inferred st
           return (result, inferred)
 

@@ -23,6 +23,7 @@ library
       Saga.Language.Generation.JS
       Saga.Language.TypeSystem.Check
       Saga.Language.TypeSystem.Constraints
+      Saga.Language.TypeSystem.Elaboration
       Saga.Language.TypeSystem.Environment
       Saga.Language.TypeSystem.Errors
       Saga.Language.TypeSystem.Inference

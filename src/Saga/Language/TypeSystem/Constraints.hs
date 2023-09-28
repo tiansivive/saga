@@ -7,50 +7,37 @@
 module Saga.Language.TypeSystem.Constraints where
 
 import           Control.Monad.Except
-import           Control.Monad.Reader                               (MonadReader (local),
-                                                                     ReaderT (runReaderT))
-import           Control.Monad.RWS                                  (MonadReader (ask),
-                                                                     RWST)
-import           Control.Monad.State                                (StateT (runStateT),
-                                                                     evalStateT,
-                                                                     get,
-                                                                     modify,
-                                                                     put)
-import           Control.Monad.Trans.Writer                         (WriterT (runWriterT))
-import           Control.Monad.Writer                               (MonadWriter (tell))
-import           Data.Bifunctor                                     (bimap)
-import           Data.Either                                        (fromRight)
-import           Data.Functor                                       ((<&>))
-import           Data.List                                          (delete,
-                                                                     find,
-                                                                     groupBy,
-                                                                     intercalate,
-                                                                     intersect,
-                                                                     partition,
-                                                                     (\\))
-import qualified Data.Map                                           as Map
-import           Data.Maybe                                         (catMaybes,
-                                                                     fromJust,
-                                                                     fromMaybe,
-                                                                     isJust)
-import qualified Data.Set                                           as Set
+import           Control.Monad.Reader                 (MonadReader (local),
+                                                       ReaderT (runReaderT))
+import           Control.Monad.RWS                    (MonadReader (ask), RWST)
+import           Control.Monad.State                  (StateT (runStateT),
+                                                       evalStateT, get, modify,
+                                                       put)
+import           Control.Monad.Trans.Writer           (WriterT (runWriterT))
+import           Control.Monad.Writer                 (MonadWriter (tell))
+import           Data.Bifunctor                       (bimap)
+import           Data.Either                          (fromRight)
+import           Data.Functor                         ((<&>))
+import           Data.List                            (delete, find, groupBy,
+                                                       intercalate, intersect,
+                                                       partition, (\\))
+import qualified Data.Map                             as Map
+import           Data.Maybe                           (catMaybes, fromJust,
+                                                       fromMaybe, isJust)
+import qualified Data.Set                             as Set
 import           Debug.Trace
-import           GHC.IO                                             (unsafeDupablePerformIO)
-import           Prelude                                            hiding (EQ,
-                                                                     id)
-import           Saga.Language.Core.Literals                        (Literal (..))
-import           Saga.Language.TypeSystem.Environment hiding
-                                                                    (Implements)
+import           GHC.IO                               (unsafeDupablePerformIO)
+import           Prelude                              hiding (EQ, id)
+import           Saga.Language.Core.Literals          (Literal (..))
+import           Saga.Language.TypeSystem.Environment hiding (Implements)
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.Lib
 import qualified Saga.Language.TypeSystem.Refinement  as Refine
-import           Saga.Language.TypeSystem.Types       hiding
-                                                                    (ProtocolID,
-                                                                     implementationTy)
+import           Saga.Language.TypeSystem.Types       hiding (ProtocolID,
+                                                       implementationTy)
 import           Saga.Utils.Utils
-import           Text.Pretty.Simple                                 (pPrintDarkBg,
-                                                                     pShow)
-import           Unsafe.Coerce                                      (unsafeCoerce)
+import           Text.Pretty.Simple                   (pPrintDarkBg, pShow)
+import           Unsafe.Coerce                        (unsafeCoerce)
 -- type Solve = StateT SolveState (Except InferenceError)
 
 type Solve = ReaderT CompilerState (WriterT [Cycle] (Except SagaError))
@@ -60,149 +47,6 @@ type Subst = Map.Map Tyvar Type
 type Cycle = (Tyvar, Type, Subst)
 
 newtype SolveState = SST { unifier :: (Subst, [IConstraint]) }
-
-
-class Substitutable a where
-  apply :: Subst -> a -> a
-  ftv :: a -> Set.Set UnificationVar
-
-instance (Substitutable a, Functor f, Foldable f) => Substitutable (f a) where
-  apply = fmap . apply
-
-  ftv = foldl union Set.empty
-    where
-      union set x = Set.union (ftv x) set
-
-
-instance Substitutable Type where
-  --apply s t | trace ("Applying type sub\n\t" ++ show s ++ "\n\t" ++ show t) False = undefined
-  apply s t@(TVar id)                     = Map.findWithDefault t id s
-  apply s (TTuple elems)                  = TTuple $ apply s <$> elems
-  apply s (TRecord pairs)                 = TRecord $ apply s <$> pairs
-  apply s (TUnion elems)                  = TUnion . Set.fromList $ apply s <$> (Set.toList elems)
-  apply s (TApplied cons arg)             = TApplied (apply s cons) (apply s arg)
-  apply s (TClosure params body env)      = TClosure params (apply s body) (apply s env)
-  apply s (inTy `TArrow` outTy)           = in' `TArrow` out'
-    where
-      in' = apply s inTy
-      out' = apply s outTy
-
-  apply _ ty = ty
-
-  ftv (TVar id)                = Set.singleton id
-  ftv (TTuple elems)           = ftv elems
-  ftv (TRecord pairs)          = ftv pairs
-  ftv (TUnion tys)             = ftv (Set.toList tys)
-  ftv (cons `TApplied` arg)    = ftv cons `Set.union` ftv arg
-  ftv (t `TArrow` t')          = ftv t `Set.union` ftv t'
-  ftv (TClosure params body _) = ftv body
-  ftv _                        = Set.empty
-
-instance Substitutable TypeExpr where
-  --apply s t | trace ("Applying typeExpr sub: " ++ show s ++ " to " ++ show t) False = undefined
-  apply s (TAtom ty)                      = TAtom $ apply s ty
-  apply s (TComposite comp)               = TComposite $ apply s comp
-  apply s (TTagged tag tyExpr)            = TTagged tag $ apply s tyExpr
-  apply s (TClause tyExpr bindings)        = TClause (apply s tyExpr) (fmap apply' bindings)
-    where
-      apply' (ImplBind tyExpr prtcl) = ImplBind (apply s tyExpr) prtcl
-      apply' b                       = b
-  apply s (TImplementation prtcl tyExpr)  = TImplementation prtcl $ apply s tyExpr
-  apply s (TFnApp fn args)                = TFnApp (apply s fn) (apply s args)
-  apply s (TLambda params tyExpr)         = TLambda (subStrVar s <$> params) $ apply s tyExpr
-    where
-      subStrVar sub str = case Map.lookup (Tyvar str KType) sub of
-        Nothing                   -> str
-        Just (TVar (Tyvar id _ )) -> id
-  apply s (TQualified (cs :=> ty)) = TQualified (cs' :=> ty')
-    where
-      ty' = apply s ty
-      cs' = apply s <$> cs
-  apply _ t  = t
-
-  ftv (TAtom ty)                      = ftv ty
-  ftv (TLambda _ tyExpr)              = ftv tyExpr
-  ftv (TFnApp fn args)                = ftv fn `Set.union` args' where args' = Set.unions $ fmap ftv args
-  ftv (TComposite comp)               = ftv comp
-  ftv (TTagged tag tyExpr)            = ftv tyExpr
-  ftv (TClause tyExpr bindings)       = foldl (\tvars b -> tvars `Set.union` ftv' b) (ftv tyExpr) bindings
-    where
-      ftv' (ImplBind tyExpr _)     = ftv tyExpr
-      ftv' (Bind _ tyExpr )        = ftv tyExpr
-      ftv' (SubtypeBind _ tyExpr ) = ftv tyExpr
-      ftv' (RefineBind _ tyExpr )  = ftv tyExpr
-  ftv (TImplementation prtcl tyExpr)  = ftv tyExpr
-  ftv (TQualified (cs :=> ty))        = cs' `Set.union` ty'
-    where
-      cs' = ftv cs
-      ty' = ftv ty
-  ftv (TIdentifier id)          = Set.singleton $ Tyvar id KType
-instance Substitutable CompositeExpr where
-  apply s (TEUnion tys)      = TEUnion $ apply s tys
-  apply s (TETuple tys)      = TETuple $ apply s tys
-  apply s (TERecord pairs)   = TERecord $ fmap (fmap (apply s)) pairs
-  apply s (TEArrow in' out') =  apply s in' `TEArrow` apply s out'
-
-  ftv (TETuple elems)  = ftv elems
-  ftv (TERecord pairs) = ftv pairs
-  ftv (TEUnion tys)    = ftv tys
-  ftv (t `TEArrow` t') = ftv t `Set.union` ftv t'
-
-instance Substitutable (Binding TypeExpr) where
-  apply s (ImplBind tyExpr prtcl) = ImplBind (apply s tyExpr) prtcl
-  apply _ b                       = b
-
-  ftv (ImplBind tyExpr _) = ftv tyExpr
-  ftv _                   = Set.empty
-
-instance Substitutable Scheme where
-  --apply s t | trace ("Applying scheme sub: " ++ show s ++ " to " ++ show t) False = undefined
-  apply s (Scheme k (cs :=> ty)) = Scheme k (cs' :=> ty')
-    where
-      ty' = apply s ty
-      cs' = apply s <$> cs
-
-  ftv (Scheme k (cs :=> ty)) = cs' `Set.difference` ty'
-    where
-      cs' = ftv cs
-      ty' = ftv ty
-
-instance Substitutable InferenceEnv where
-  --apply s t | trace ("Applying type env sub\n\t" ++ show s) False = undefined
-  apply s e@(Env vars aliases) = e {unificationVars = Map.map (apply s) vars}
-  ftv (Env vars aliases) = ftv $ Map.elems vars
-
-instance Substitutable IConstraint where
-   apply s (EqCons eq)   = EqCons $ apply s eq
-   apply s (ImplCons ip) = ImplCons $ apply s ip
-   apply s c             = c
-   ftv (EqCons eq)   = ftv eq
-   ftv (ImplCons ip) = ftv ip
-
-instance Substitutable ImplConstraint where
-  --apply s ip | trace ("Applying IP constraint sub\n\t" ++ show s ++ "\n\t" ++ show ip) False = undefined
-  apply s  (t `IP` p) = apply s t `IP` p
-
-  ftv (t `IP` p) = ftv  t
-instance Substitutable Equality where
-  --apply s e | trace ("Applying EQ constraint sub\n\t" ++ show s ++ "\n\t" ++ show e) False = undefined
-  apply s  (t1 `EQ` t2) = apply s t1 `EQ` apply s t2
-  ftv (t1 `EQ` t2) = ftv t1 `Set.union` ftv t2
-instance Substitutable Union where
-  --apply s e | trace ("Applying EQ constraint sub\n\t" ++ show s ++ "\n\t" ++ show e) False = undefined
-  apply s  (t1 `MemberOf` t2) = apply s t1 `MemberOf` apply s t2
-  ftv (t1 `MemberOf` t2) = ftv t1 `Set.union` ftv t2
-
-instance Substitutable Constraint where
-  apply s (t `Implements` p) = apply s t `Implements` p
-
-  ftv (t `Implements` p) = ftv t
-
-compose :: Subst -> Subst -> Subst
-s1 `compose` s2 = s `Map.union` s1
-  where
-    s = Map.map (apply s1) s2
-
 
 
 -- runSolve :: CompilerState -> [IConstraint] -> Except SagaError (Subst, [ImplConstraint])
@@ -549,6 +393,138 @@ byBase impl@(ty `IP` p) = do
 --   let (deferred, retained) = partition (all (`elem` vars) . ftv) cs'
 --   retained' <- defaultedConstraints (vars ++ vars') retained
 --   return (deferred, retained \\ retained')
+
+
+
+class Substitutable a where
+  apply :: Subst -> a -> a
+  ftv :: a -> Set.Set UnificationVar
+
+instance (Substitutable a, Functor f, Foldable f) => Substitutable (f a) where
+  apply = fmap . apply
+
+  ftv = foldl union Set.empty
+    where
+      union set x = Set.union (ftv x) set
+
+
+instance Substitutable Type where
+  --apply s t | trace ("Applying type sub\n\t" ++ show s ++ "\n\t" ++ show t) False = undefined
+  apply s t@(TVar id)                     = Map.findWithDefault t id s
+  apply s (TTuple elems)                  = TTuple $ apply s <$> elems
+  apply s (TRecord pairs)                 = TRecord $ apply s <$> pairs
+  apply s (TUnion elems)                  = TUnion . Set.fromList $ apply s <$> (Set.toList elems)
+  apply s (TApplied cons arg)             = TApplied (apply s cons) (apply s arg)
+  apply s (TClosure params body env)      = TClosure params (apply s body) (apply s env)
+  apply s (inTy `TArrow` outTy)           = in' `TArrow` out'
+    where
+      in' = apply s inTy
+      out' = apply s outTy
+
+  apply _ ty = ty
+
+  ftv (TVar id)                = Set.singleton id
+  ftv (TTuple elems)           = ftv elems
+  ftv (TRecord pairs)          = ftv pairs
+  ftv (TUnion tys)             = ftv (Set.toList tys)
+  ftv (cons `TApplied` arg)    = ftv cons `Set.union` ftv arg
+  ftv (t `TArrow` t')          = ftv t `Set.union` ftv t'
+  ftv (TClosure params body _) = ftv body
+  ftv _                        = Set.empty
+
+instance Substitutable TypeExpr where
+  --apply s t | trace ("Applying typeExpr sub: " ++ show s ++ " to " ++ show t) False = undefined
+  apply s (TAtom ty)                      = TAtom $ apply s ty
+  apply s (TComposite comp)               = TComposite $ apply s comp
+  apply s (TTagged tag tyExpr)            = TTagged tag $ apply s tyExpr
+  apply s (TClause tyExpr bindings)        = TClause (apply s tyExpr) (fmap apply' bindings)
+    where
+      apply' (ImplBind tyExpr prtcl) = ImplBind (apply s tyExpr) prtcl
+      apply' b                       = b
+  apply s (TImplementation prtcl tyExpr)  = TImplementation prtcl $ apply s tyExpr
+  apply s (TFnApp fn args)                = TFnApp (apply s fn) (apply s args)
+  apply s (TLambda params tyExpr)         = TLambda (subStrVar s <$> params) $ apply s tyExpr
+    where
+      subStrVar sub str = case Map.lookup (Tyvar str KType) sub of
+        Nothing                   -> str
+        Just (TVar (Tyvar id _ )) -> id
+  apply s (TQualified (cs :=> ty)) = TQualified (cs' :=> ty')
+    where
+      ty' = apply s ty
+      cs' = apply s <$> cs
+  apply _ t  = t
+
+  ftv (TAtom ty)                      = ftv ty
+  ftv (TLambda _ tyExpr)              = ftv tyExpr
+  ftv (TFnApp fn args)                = ftv fn `Set.union` args' where args' = Set.unions $ fmap ftv args
+  ftv (TComposite comp)               = ftv comp
+  ftv (TTagged tag tyExpr)            = ftv tyExpr
+  ftv (TClause tyExpr bindings)       = foldl (\tvars b -> tvars `Set.union` ftv' b) (ftv tyExpr) bindings
+    where
+      ftv' (ImplBind tyExpr _)     = ftv tyExpr
+      ftv' (Bind _ tyExpr )        = ftv tyExpr
+      ftv' (SubtypeBind _ tyExpr ) = ftv tyExpr
+      ftv' (RefineBind _ tyExpr )  = ftv tyExpr
+  ftv (TImplementation prtcl tyExpr)  = ftv tyExpr
+  ftv (TQualified (cs :=> ty))        = cs' `Set.union` ty'
+    where
+      cs' = ftv cs
+      ty' = ftv ty
+  ftv (TIdentifier id)          = Set.singleton $ Tyvar id KType
+instance Substitutable CompositeExpr where
+  apply s (TEUnion tys)      = TEUnion $ apply s tys
+  apply s (TETuple tys)      = TETuple $ apply s tys
+  apply s (TERecord pairs)   = TERecord $ fmap (fmap (apply s)) pairs
+  apply s (TEArrow in' out') =  apply s in' `TEArrow` apply s out'
+
+  ftv (TETuple elems)  = ftv elems
+  ftv (TERecord pairs) = ftv pairs
+  ftv (TEUnion tys)    = ftv tys
+  ftv (t `TEArrow` t') = ftv t `Set.union` ftv t'
+
+instance Substitutable (Binding TypeExpr) where
+  apply s (ImplBind tyExpr prtcl) = ImplBind (apply s tyExpr) prtcl
+  apply _ b                       = b
+
+  ftv (ImplBind tyExpr _) = ftv tyExpr
+  ftv _                   = Set.empty
+
+
+instance Substitutable InferenceEnv where
+  --apply s t | trace ("Applying type env sub\n\t" ++ show s) False = undefined
+  apply s e@(Env vars aliases) = e {unificationVars = Map.map (apply s) vars}
+  ftv (Env vars aliases) = ftv $ Map.elems vars
+
+instance Substitutable IConstraint where
+   apply s (EqCons eq)   = EqCons $ apply s eq
+   apply s (ImplCons ip) = ImplCons $ apply s ip
+   apply s c             = c
+   ftv (EqCons eq)   = ftv eq
+   ftv (ImplCons ip) = ftv ip
+
+instance Substitutable ImplConstraint where
+  --apply s ip | trace ("Applying IP constraint sub\n\t" ++ show s ++ "\n\t" ++ show ip) False = undefined
+  apply s  (t `IP` p) = apply s t `IP` p
+
+  ftv (t `IP` p) = ftv  t
+instance Substitutable Equality where
+  --apply s e | trace ("Applying EQ constraint sub\n\t" ++ show s ++ "\n\t" ++ show e) False = undefined
+  apply s  (t1 `EQ` t2) = apply s t1 `EQ` apply s t2
+  ftv (t1 `EQ` t2) = ftv t1 `Set.union` ftv t2
+instance Substitutable Union where
+  --apply s e | trace ("Applying EQ constraint sub\n\t" ++ show s ++ "\n\t" ++ show e) False = undefined
+  apply s  (t1 `MemberOf` t2) = apply s t1 `MemberOf` apply s t2
+  ftv (t1 `MemberOf` t2) = ftv t1 `Set.union` ftv t2
+
+instance Substitutable Constraint where
+  apply s (t `Implements` p) = apply s t `Implements` p
+
+  ftv (t `Implements` p) = ftv t
+
+compose :: Subst -> Subst -> Subst
+s1 `compose` s2 = s `Map.union` s1
+  where
+    s = Map.map (apply s1) s2
 
 
 

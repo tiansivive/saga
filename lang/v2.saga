@@ -136,10 +136,27 @@ let testMatch
     | []    -> 0
     | [one] -> 1 
 
-*/
+
+
+
+
+let test
+  = map' f fa'!
+
 
 
 type MyFunctor
   :: Protocol (Type -> Type)
   = \f => 
     { map: \a b => (a -> b) -> f a! -> f b! }
+
+*/
+
+({ 
+   x: 1
+ , y: 2
+ , foo: "hello"
+ , jumbo: (\x -> x + 1)
+})
+
+

@@ -1,7 +1,7 @@
 module Saga.Language.TypeSystem.Lib where
 
-import           Data.Functor                                       ((<&>))
-import qualified Data.Map                                           as Map
+import           Data.Functor                         ((<&>))
+import qualified Data.Map                             as Map
 import           Saga.Language.TypeSystem.Environment
 import qualified Saga.Language.TypeSystem.Types       as T
 import           Saga.Language.TypeSystem.Types
@@ -77,6 +77,8 @@ functorProtocol =
         fa = TFnApp (var functor) [var a]
         fb = TFnApp (var functor) [var b]
 
+
+
 semigroupProtocol :: Protocol
 semigroupProtocol =
   Protocol
@@ -142,7 +144,8 @@ builtInFns =
       ("*", binaryNumTypeExpr),
       ("/", binaryNumTypeExpr),
       ("++", appendFn),
-      ("==", binaryEqTypeExpr)
+      ("==", binaryEqTypeExpr),
+      ("map", mapImplType)
     ]
     where
       var = "a"
@@ -150,6 +153,20 @@ builtInFns =
       binaryNumTypeExpr = TQualified $ [tvar `T.Implements` "Num"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` tvar))
       binaryEqTypeExpr = TQualified $ [tvar `T.Implements` "Eq"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` TPrimitive TBool))
       appendFn = TQualified $ [tvar `T.Implements` "Semigroup"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` tvar))
+
+mapImplType :: TypeExpr
+mapImplType = TQualified $ [TVar tf `T.Implements` "Functor"] :=> TLambda [f] (TAtom $ fn `TArrow` (fa `TArrow` fb ))
+  where
+    f = "f"
+    a = "a"
+    b = "b"
+    tf = Tyvar f (KArrow KType KType)
+    ta = Tyvar a KType
+    tb = Tyvar b KType
+    fn = TVar ta `TArrow` TVar tb
+    fa = TApplied (TVar tf) (TVar ta)
+    fb = TApplied (TVar tf) (TVar tb)
+
 
 
 
