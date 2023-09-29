@@ -384,6 +384,7 @@ generalize ty = case ty of
       return tVar
 
 
+
 class Normalized a where
   normalize :: Set.Set UnificationVar -> a -> a
 

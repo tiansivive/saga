@@ -2,6 +2,7 @@ module Saga.Language.TypeSystem.Lib where
 
 import           Data.Functor                         ((<&>))
 import qualified Data.Map                             as Map
+import           Saga.Language.Core.Syntax
 import           Saga.Language.TypeSystem.Environment
 import qualified Saga.Language.TypeSystem.Types       as T
 import           Saga.Language.TypeSystem.Types
@@ -15,9 +16,9 @@ eqProtocol =
       ])
     ))
     []
-    [ [] :=> TPrimitive TInt `IP` "Eq"
-    , [] :=> TPrimitive TString `IP` "Eq"
-    , [] :=> TPrimitive TBool `IP` "Eq"
+    [ [] :=> (TPrimitive TInt, Record [("==", Identifier "$int_$eq_$eq")])
+    , [] :=> (TPrimitive TString, Record [("==", Identifier "$str_$eq_$eq")] )
+    , [] :=> (TPrimitive TBool , Record [("==", Identifier "$bool_$eq_$eq")] )
     ]
     where
       param = "a"
@@ -35,7 +36,12 @@ numProtocol =
       ])
     ))
     []
-    [ [] :=> TPrimitive TInt `IP` "Num"
+    [ [] :=> (TPrimitive TInt, Record [ ("+", Identifier "$int_$num_$add")
+                                      , ("-", Identifier "$int_$num_$sub")
+                                      , ("*", Identifier "$int_$num_$mul")
+                                      , ("/", Identifier "$int_$num_$div")
+                                      ]
+              )
     ]
     where
       param = "a"
@@ -50,7 +56,7 @@ isStringProtocol =
       ])
     ))
     []
-    [ [] :=> TPrimitive TString `IP` "IsString"
+    [ [] :=> (TPrimitive TString, Record [("isString", Identifier "$str_$is_string_$is_String")])
     ]
     where
       param = "a"
@@ -66,7 +72,7 @@ functorProtocol =
       ])
     ))
     []
-    [ [] :=> listConstructor `IP` "Functor"
+    [ [] :=> (listConstructor, Record [("map", Identifier "$list_$functor_$map")])
     ]
       where
         functor = "f"
@@ -88,7 +94,7 @@ semigroupProtocol =
       ])
     ))
     []
-    [ [] :=> TApplied listConstructor (TVar $ Tyvar param KType) `IP` "Semigroup"
+    [ [] :=> (TApplied listConstructor (TVar $ Tyvar param KType), Record [("++", Identifier "$list_a_$semigroup_$append")] )
     ]
       where
         param  = "a"

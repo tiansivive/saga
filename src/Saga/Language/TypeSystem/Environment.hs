@@ -19,6 +19,7 @@ import           Saga.Language.TypeSystem.Types  hiding
                                                                (Implements,
                                                                 ProtocolID)
 import           Saga.Lexer.Tokens                             (Token (Qualified))
+import Saga.Language.Core.Syntax (Expr)
 
 
 
@@ -95,7 +96,7 @@ type Name = String
 type BaseProtocol = String
 type ProtocolID = String
 
-type Implementation = Qualified ImplConstraint
+type Implementation = Qualified (Type, Expr)
 type Method = (Name, TypeExpr)
 
 

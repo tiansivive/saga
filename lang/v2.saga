@@ -152,10 +152,6 @@ type MyFunctor
 
 */
 
-({ x: 1
- , y: 2
- , foo: "hello"
- , jumbo: (\x -> x + 1)
-})
+\xs -> map (\x -> x + 1) xs
 
 

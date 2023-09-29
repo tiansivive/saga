@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs             #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE TupleSections     #-}
 
 module Saga.Language.TypeSystem.Constraints where
 
@@ -21,6 +22,8 @@ import           Data.Functor                         ((<&>))
 import           Data.List                            (delete, find, groupBy,
                                                        intercalate, intersect,
                                                        partition, (\\))
+import           Data.List.NonEmpty                   (groupWith)
+import qualified Data.List.NonEmpty                   as NonEmpty
 import qualified Data.Map                             as Map
 import           Data.Maybe                           (catMaybes, fromJust,
                                                        fromMaybe, isJust)
@@ -39,7 +42,8 @@ import           Saga.Language.TypeSystem.Lib
 import qualified Saga.Language.TypeSystem.Refinement  as Refine
 import           Saga.Language.TypeSystem.Types       hiding (ProtocolID,
                                                        implementationTy)
-import           Saga.Parser.ParsingInfo              (tyBinding)
+import           Saga.Parser.ParsingInfo              (implementation,
+                                                       tyBinding)
 import           Saga.Utils.Utils
 import           Text.Pretty.Simple                   (pPrintDarkBg, pShow)
 import           Unsafe.Coerce                        (unsafeCoerce)
@@ -244,31 +248,48 @@ nullSubst = Map.empty
 resolve :: [ImplConstraint] -> Solve ()
 resolve cs | trace ("\n\nProtocol Resolution:\n\t" ++ show cs) False = undefined
 resolve constraints = do
-  env <- ask
-  traceM $ "\tGrouped Constraints: " ++ show (groupBy byType constraints)
+  traceM $ "\tGrouped Constraints: " ++ show constraintsPerType
   --traceM $ "\tGrouped Implementations: " ++ show (groupBy byType' (impls env))
-  forM_ constraintGroups findImplementingType
+  forM_ constraintsPerType (check allImplemented)
+
 
   where
-    findImplementingType :: [ProtocolID] -> Solve ()
-    findImplementingType ps = do
+
+    constraintsPerType = constraints ||> groupWith type' |> fmap pair |> Map.fromList
+    pair group = (type' $ NonEmpty.head group, protocol' <$> NonEmpty.toList group)
+
+    check f ids = do
       Saga { protocols } <- ask
-      if any' (implGroups protocols) (hasAll ps)
-        then return ()
-        else throwError $ Fail $ "Could not resolve for protocols: " ++ show ps
+      case f ids protocols of
+        Nothing -> throwError $ Fail $ "Could not resolve for protocols: " ++ show ids
+        Just _ -> return ()
 
-    impls = concatMap implementations
-    byType (ty `IP` _) (ty' `IP` _) = ty == ty'
-    extract (IP _ p) = p
 
-    byType' (_ :=> IP ty _) (_ :=> IP ty' _) = ty == ty'
-    extract' (_ :=> IP _ p) = p
 
-    constraintGroups = fmap extract <$> groupBy byType constraints
-    implGroups env = fmap extract' <$> groupBy byType' (impls env)
 
-    hasAll as bs = as `intersect`  bs == as
-    any' = flip any
+
+    allImplemented ids ps | trace "\nImplements all:" False = undefined
+    allImplemented ids ps | trace ("\tIds: " ++ show ids) False = undefined
+    allImplemented ids ps | trace ("\tProtocols: " ++ show (fmap id ps)) False = undefined
+    allImplemented ids env = do
+      traceM $ "Protocols found:\n\t" ++ show (fmap (fmap id) protocols')
+      check <- implemented <$> sequence protocols'
+      when check (return ())
+     -- mapM (implementations |> find (matches ty)) foo
+
+      where
+        implemented ps = not $ null $ foldl atLeastOneType [] ps
+
+        atLeastOneType [] p  = extract <$> implementations p
+        atLeastOneType tys p = tys `intersect` (extract <$> implementations p)
+
+        extract (_ :=> (t, _)) = t
+        protocols' = ids <&> \id' -> env ||> find (\(Protocol { id }) -> id == id')
+
+
+    type' (IP ty _)      = ty
+    protocol' (IP _ p) = p
+
 
 
 reduce :: [ImplConstraint] -> Solve [ImplConstraint]
@@ -289,24 +310,19 @@ inHNF (ty `IP` p) = hnf ty
 
 byImplementation :: ImplConstraint -> Solve [ImplConstraint]
 byImplementation impl | trace ("\nSearch by Implementation:\n\t" ++ show impl) False = undefined
-byImplementation implConstraint@(ty `IP` p)    = do
+byImplementation (ty `IP` p)    = do
   Saga { protocols } <- ask
   concat <$> sequence [ tryInst impl | impl <- impls p protocols ]
 
   where
-    mkIP (ty `Implements` p) = ty `IP` p
-    impls id' = maybe [] implementations . find (\(Protocol { id }) -> id == id')
-    tryInst (cs :=> implConstraint') = do
-      sub <- unifyImpl implConstraint' implConstraint
+    impls id' = find (\(Protocol { id }) -> id == id') |> maybe [] implementations
+    tryInst (cs :=> (ty', e)) = do
+      sub <- catchError (ty' `unify` ty) (handleErr |> throwError)
       return $ fmap (apply sub . mkIP) cs
 
-unifyImpl :: ImplConstraint -> ImplConstraint -> Solve Subst
-unifyImpl p1 p2 | trace ("\n-------\nUnifying Implementations\n-------\n\t" ++ show p1 ++ "\n\t" ++ show p2 ++ "\n") False = undefined
-unifyImpl (ty `IP` p) (ty' `IP` p')
-  | p == p'   = catchError (ty `unify` ty') $ \err -> throwError $ case err of
-        UnificationFail t1 t2 ->  Fail $ "Types do not match:\n\t" ++ show t1 ++ "\n\t" ++ show t2
-        err                   -> err
-  | otherwise = throwError $ Fail "protocols differ"
+    handleErr (UnificationFail t1 t2) = Fail $ "Types do not match:\n\t" ++ show t1 ++ "\n\t" ++ show t2
+    handleErr err = err
+    mkIP (ty `Implements` p) = ty `IP` p
 
 
 simplify   :: [ImplConstraint] -> Solve [ImplConstraint]
@@ -418,7 +434,7 @@ instance Substitutable Type where
   apply s t@(TVar id)                     = Map.findWithDefault t id s
   apply s (TTuple elems)                  = TTuple $ apply s <$> elems
   apply s (TRecord pairs)                 = TRecord $ apply s <$> pairs
-  apply s (TUnion elems)                  = TUnion . Set.fromList $ apply s <$> (Set.toList elems)
+  apply s (TUnion elems)                  = TUnion . Set.fromList $ apply s <$> Set.toList elems
   apply s (TApplied cons arg)             = TApplied (apply s cons) (apply s arg)
   apply s (TClosure params body env)      = TClosure params (apply s body) (apply s env)
   apply s (inTy `TArrow` outTy)           = in' `TArrow` out'

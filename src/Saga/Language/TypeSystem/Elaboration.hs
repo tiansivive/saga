@@ -4,17 +4,22 @@ import           Control.Monad.Except
 import           Control.Monad.Reader                 (Reader, runReader)
 import           Control.Monad.RWS
 import           Control.Monad.State                  (State, get, runState)
-import           Data.List                            (intercalate)
+import           Data.Functor                         ((<&>))
+import           Data.List                            (intercalate, intersect)
 import           Data.Map                             (Map)
 import qualified Data.Map                             as Map
+import qualified Data.Set                             as Set
 import           Prelude                              hiding (log)
 import           Saga.Language.Core.Literals          (Literal (..))
 import           Saga.Language.Core.Syntax
-import           Saga.Language.TypeSystem.Environment (CompilerState, Saga,
-                                                       Tell (Error), log)
+import           Saga.Language.TypeSystem.Constraints (ftv)
+import           Saga.Language.TypeSystem.Environment (CompilerState, Protocol,
+                                                       Saga, Tell (Error),
+                                                       UnificationVar, log)
 import           Saga.Language.TypeSystem.Errors      (SagaError)
 import           Saga.Language.TypeSystem.Inference   hiding (log)
 import           Saga.Language.TypeSystem.Types
+import           Saga.Utils.Utils                     ((|>), (||>))
 
 
 
@@ -46,6 +51,32 @@ import           Saga.Language.TypeSystem.Types
 
 
 --newtype Typed a = Typed (a, Either SagaError TypeExpr)
+
+
+-- type ConstraintEnv = Map.Map Tyvar Protocol
+
+-- elaborate :: MonadReader ConstraintEnv m => Expr -> m b
+-- elaborate (Lambda params body) = Lambda params <$> elaborate body
+-- elaborate (FnApp fn args) = do
+--     dicts <- getProtocolRecords fn
+
+--     args' <- mapM elaborate args
+--     return $ FnApp (FnApp fn dicts) args'
+
+-- getProtocolRecords :: Monad m => Expr -> m [Expr]
+-- getProtocolRecords (Identifier id) = do
+--     ty <- _lookup id
+--     case ty of
+--         TQualified (cs :=> tyExpr) -> do
+--             _impls
+
+--     -- vars <- asks Map.keys
+--     -- let relevant = vars `intersect` tvars
+--     -- Map.
+    -- where
+    --     tvars = Set.toList $ ftv ty
+
+
 
 
 type Transform = Reader Dictionaries
