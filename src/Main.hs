@@ -12,6 +12,7 @@ import qualified Saga.Parser.Parser                   as P
 import qualified Saga.Language.TypeSystem.Elaboration as Elab
 
 import           Control.Monad.Except                 (runExcept)
+import           Data.Bifunctor                       (first)
 import           Saga.Language.Generation.JS          (Generator (generate))
 import           Saga.Language.TypeSystem.Check       (checkScript)
 import           Saga.Language.TypeSystem.Inference   (run)
@@ -25,6 +26,7 @@ import           System.Console.Haskeline             (defaultSettings,
                                                        outputStrLn, runInputT)
 import           System.IO                            (IOMode (ReadMode, ReadWriteMode, WriteMode),
                                                        hClose, hGetContents,
+                                                       hPrint, hPutStr,
                                                        openFile)
 import           Text.Pretty.Simple                   (pHPrint, pPrint)
 
@@ -82,6 +84,36 @@ elaborateScript fp = do
 
     hClose handle
     hClose parsingH
+    putStrLn "Bye!"
+
+compileScript :: FilePath -> FilePath -> IO ()
+compileScript fp outFp = do
+    handle <- openFile fp ReadMode
+    parsingH <- openFile "./lang/test.parsing.log" WriteMode
+    outputH <- openFile outFp WriteMode
+    contents <- hGetContents handle
+    --pPrint $ fmap desugarExpr <$> P.runSagaExpr contents
+
+    let output = do
+            (ty, binds, e) <- run contents
+            res <- show `first` runExcept (Elab.run defaultEnv ty e)
+            return (generate res, res, ty, binds)
+
+
+
+    case output of
+        Left err -> do
+            pPrint err
+            pHPrint parsingH err
+        Right (code, e, t, bs) -> do
+            pPrint (e, t, bs)
+            pHPrint parsingH (e, t, bs)
+            hPutStr outputH code
+
+
+    hClose handle
+    hClose parsingH
+    hClose outputH
     putStrLn "Bye!"
 
 

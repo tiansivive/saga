@@ -316,7 +316,11 @@ infer = infer_ 0
       e@(Block stmts) -> infer' [] stmts
         where
 
-          infer' processed [] = return $ Typed (Block $ reverse processed) TVoid
+          infer' processed [] = return $ Typed (Block $ reverse processed) returnTy
+            where
+              returnTy = case head processed of
+                (Return (Typed e ty)) -> ty
+                _                     -> TVoid
           infer' processed (stmt : rest) = case stmt of
             Return expr                   -> do
               typed <- infer_ n expr

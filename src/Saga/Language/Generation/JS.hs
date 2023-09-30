@@ -3,19 +3,17 @@
 
 module Saga.Language.Generation.JS where
 import           Control.Monad.State
-import           Data.List                                         (intercalate)
-import           Data.Maybe                                        (fromMaybe)
-import           Saga.Language.Core.Literals                       (Literal (..))
-import           Saga.Language.Core.Syntax                         hiding
-                                                                   (Binding)
+import           Data.List                           (intercalate)
+import           Data.Maybe                          (fromMaybe)
+import           Saga.Language.Core.Literals         (Literal (..))
+import           Saga.Language.Core.Syntax           hiding (Binding)
 import           Saga.Language.TypeSystem.Refinement
 import           Saga.Language.TypeSystem.Types      (Binding,
-                                                                    CompositeExpr (..),
-                                                                    Constraint (..),
-                                                                    PrimitiveType (..),
-                                                                    Qualified ((:=>)),
-                                                                    Type (..),
-                                                                    TypeExpr (..))
+                                                      CompositeExpr (..),
+                                                      Constraint (..),
+                                                      PrimitiveType (..),
+                                                      Qualified ((:=>)),
+                                                      Type (..), TypeExpr (..))
 
 
 class Generator a where
@@ -38,6 +36,7 @@ instance Generator Expr where
     generate (Lambda params body) = "(" ++ intercalate "," params  ++ ") => " ++ generate body
     generate (FnApp fn args) = generate fn ++ "(" ++ intercalate "," (fmap generate args)  ++ ")"
     generate (Block stmts) = "(() => {" ++ intercalate ";\n" (fmap generate stmts) ++  "})()"
+    generate (Typed e _) = generate e
 
 instance Generator Literal where
     generate (LInt int)    = show int
@@ -52,26 +51,10 @@ instance Generator Statement where
 
 instance Generator Declaration where
     generate (Type {}) = ""
-    generate (Let id tyExpr _ expr) = "let " ++ id ++ " = " ++ maybe "" generate tyExpr ++ generate expr
+    generate (Let id tyExpr _ expr) = "let " ++ id ++ " = " ++ generate expr
     generate (Data id _ dataExprs _) = "const " ++ id ++ " = {" ++ intercalate "," (fmap generate dataExprs)  ++ "}"
 
-instance Generator TypeExpr where
-    generate (TQualified (cs :=> tyExpr)) = intercalate "=>" (fmap generate cs) ++ "=>" ++ generate tyExpr
-    generate (TLambda _ body) = generate body
-    generate (TFnApp fn args) = generate fn ++ intercalate "" (fmap generate args)
-    generate (TTagged _ tyExpr) = generate tyExpr
-    generate (TClause expr bindings) = intercalate "" (fmap generate bindings) ++ generate expr
-    generate (TComposite comp) = generate comp
-    generate _ = ""
-instance Generator Constraint where
-    generate (ty `Implements` prtcl) = "(" ++ prtcl ++ ")"
 
-instance Generator a => Generator (Binding a) where
-    generate _ = ""
-
-instance Generator CompositeExpr where
-    generate (TEArrow one two) = generate one ++ generate two
-    generate _                 = ""
 instance Generator DataExpr where
     generate (tag, TAtom ty) = tag ++ ": (" ++ values ++ ") => ({_tag: \"" ++ tag ++ "\"," ++ values ++ "})"
         where

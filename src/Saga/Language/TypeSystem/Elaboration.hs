@@ -104,7 +104,16 @@ elaborate e@(Match cond cases) = do
 elaborate e@(Lambda params body) = Lambda params <$> elaborate body
 elaborate e@(FnApp fn args) = FnApp <$> elaborate fn <*> forM args elaborate
 
-elaborate e@(Block stmts) = error "Elaboration not yet implemented for Blocks"
+elaborate e@(Block stmts) = Block <$> forM stmts elaborateStmt
+
+elaborateStmt stmt@(Return e)      = Return <$> elaborate e
+elaborateStmt stmt@(Procedure e)   = Procedure <$> elaborate e
+elaborateStmt stmt@(Declaration d) = Declaration <$> elaborateDec d
+
+elaborateDec :: Declaration -> Elaboration Declaration
+elaborateDec (Let id ty k e) = Let id ty k <$> elaborate e
+elaborateDec d               = return d
+
 
 
 generateName :: Type -> String
