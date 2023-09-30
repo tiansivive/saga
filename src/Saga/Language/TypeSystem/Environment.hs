@@ -23,7 +23,7 @@ import Saga.Language.Core.Syntax (Expr)
 
 
 
-type Saga t a = RWST () Accumulator CompilerState t a
+type Saga r t a = RWST r Accumulator CompilerState t a
 data CompilerState = Saga 
   { protocols :: [Protocol]
   , values    :: Map.Map String TypeExpr

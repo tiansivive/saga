@@ -115,7 +115,8 @@ checkScript (Script decs) = runRWS (mapM saga decs) () defaultEnv
     --       return Nothing
     --     Right result -> return $ Just result
     check' e t st = runExcept (runReaderT (check e t) st)
-    saga :: Declaration -> Saga Identity (Maybe Result)
+
+    saga :: Declaration -> Saga () Identity (Maybe Result)
     saga (Let _ (Just tyExpr) _ expr) = do
       state <- get
       case check' expr tyExpr state of

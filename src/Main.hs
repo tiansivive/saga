@@ -4,29 +4,29 @@
 module Main (main) where
 
 
-import           REPL.Repl                                        (repl)
+import           REPL.Repl                            (repl)
 
-import qualified Saga.Lexer.Lexer                                 as L
-import qualified Saga.Parser.Parser                               as P
+import qualified Saga.Lexer.Lexer                     as L
+import qualified Saga.Parser.Parser                   as P
 
+import qualified Saga.Language.TypeSystem.Elaboration as Elab
 
-import           Saga.Language.Generation.JS                      (Generator (generate))
-import           Saga.Language.TypeSystem.Check     (checkScript)
-import           Saga.Language.TypeSystem.Inference (run)
-import           Saga.Parser.Desugar                              (desugarExpr,
-                                                                   desugarScript)
-import           Saga.Parser.ParsingInfo                          (script)
-import           Saga.Parser.Shared                               (ParsedData (Parsed))
-import           System.Console.Haskeline                         (defaultSettings,
-                                                                   getInputLine,
-                                                                   outputStrLn,
-                                                                   runInputT)
-import           System.IO                                        (IOMode (ReadMode, ReadWriteMode, WriteMode),
-                                                                   hClose,
-                                                                   hGetContents,
-                                                                   openFile)
-import           Text.Pretty.Simple                               (pHPrint,
-                                                                   pPrint)
+import           Control.Monad.Except                 (runExcept)
+import           Saga.Language.Generation.JS          (Generator (generate))
+import           Saga.Language.TypeSystem.Check       (checkScript)
+import           Saga.Language.TypeSystem.Inference   (run)
+import           Saga.Language.TypeSystem.Lib         (defaultEnv)
+import           Saga.Parser.Desugar                  (desugarExpr,
+                                                       desugarScript)
+import           Saga.Parser.ParsingInfo              (script)
+import           Saga.Parser.Shared                   (ParsedData (Parsed))
+import           System.Console.Haskeline             (defaultSettings,
+                                                       getInputLine,
+                                                       outputStrLn, runInputT)
+import           System.IO                            (IOMode (ReadMode, ReadWriteMode, WriteMode),
+                                                       hClose, hGetContents,
+                                                       openFile)
+import           Text.Pretty.Simple                   (pHPrint, pPrint)
 
 
 
@@ -60,6 +60,26 @@ inferScript fp = do
     let res = run contents
     pPrint res
     pHPrint parsingH res
+    hClose handle
+    hClose parsingH
+    putStrLn "Bye!"
+
+elaborateScript :: FilePath -> IO ()
+elaborateScript fp = do
+    handle <- openFile fp ReadMode
+    parsingH <- openFile "./lang/test.parsing.log" WriteMode
+    contents <- hGetContents handle
+    --pPrint $ fmap desugarExpr <$> P.runSagaExpr contents
+    case run contents of
+        Left err -> do
+            pPrint err
+            pHPrint parsingH err
+        Right (ty, _, e) -> do
+            let res = runExcept $ Elab.run defaultEnv ty e
+            pPrint res
+            pHPrint parsingH res
+
+
     hClose handle
     hClose parsingH
     putStrLn "Bye!"

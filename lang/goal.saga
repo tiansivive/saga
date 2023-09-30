@@ -140,8 +140,6 @@ type Ord
         }
 
 
-
-
 let functorEitherImpl 
     : impl Functor: forall e. Either e! 
     :: Type -> Type

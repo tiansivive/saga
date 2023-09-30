@@ -265,9 +265,6 @@ resolve constraints = do
         Just _ -> return ()
 
 
-
-
-
     allImplemented ids ps | trace "\nImplements all:" False = undefined
     allImplemented ids ps | trace ("\tIds: " ++ show ids) False = undefined
     allImplemented ids ps | trace ("\tProtocols: " ++ show (fmap id ps)) False = undefined
@@ -278,6 +275,7 @@ resolve constraints = do
      -- mapM (implementations |> find (matches ty)) foo
 
       where
+        implemented ps | trace ("\nImplementing types:\n\t" ++ show (foldl atLeastOneType [] ps)) False = undefined
         implemented ps = not $ null $ foldl atLeastOneType [] ps
 
         atLeastOneType [] p  = extract <$> implementations p
