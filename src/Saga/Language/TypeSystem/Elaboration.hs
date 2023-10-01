@@ -58,6 +58,20 @@ run state (TQualified (cs :=> ty)) e = do
         dicts = cs ||> fmap pair |> Map.fromList
 
 
+elaborateDec :: Declaration -> Elaboration Declaration
+elaborateDec (Let id ty k e) = Let id ty k <$> case ty of
+    Just ty' -> elaborate' ty' e
+    Nothing  -> elaborate e
+
+    where
+        elaborate' (TQualified (cs :=> ty)) e = do
+            dicts <- ask
+            Lambda (Map.toList dicts ||> fmap snd) <$> elaborate e
+        elaborate' t e = elaborate e
+elaborateDec d = return d
+
+
+
 elaborate :: Expr -> Elaboration Expr
 elaborate e@(Typed (Identifier id) ty') = do
     --st <- get
@@ -109,10 +123,6 @@ elaborate e@(Block stmts) = Block <$> forM stmts elaborateStmt
 elaborateStmt stmt@(Return e)      = Return <$> elaborate e
 elaborateStmt stmt@(Procedure e)   = Procedure <$> elaborate e
 elaborateStmt stmt@(Declaration d) = Declaration <$> elaborateDec d
-
-elaborateDec :: Declaration -> Elaboration Declaration
-elaborateDec (Let id ty k e) = Let id ty k <$> elaborate e
-elaborateDec d               = return d
 
 
 

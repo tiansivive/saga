@@ -133,9 +133,8 @@ type MyFunctor
 
 */
 
-\xs -> {
-  let add = \y -> map (\x -> x + y) xs
-  return add 2
-}
+
+map (\x -> x + 1) [1,2,3]
+ 
 
 

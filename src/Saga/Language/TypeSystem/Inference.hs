@@ -45,6 +45,7 @@ import           Saga.Parser.Shared                   hiding (Record, Term,
                                                        Tuple, return)
 
 import           Control.Monad.Identity               (Identity)
+import           Control.Monad.Reader                 (ReaderT (runReaderT))
 import           Control.Monad.Trans.RWS              (get, local, modify)
 import           Control.Monad.Writer
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))
@@ -307,11 +308,16 @@ infer = infer_ 0
         return $ Typed e (TApplied listConstructor var)
       List elems -> do
         elems' <- mapM (infer_ n) elems
+        env <- ask
         let tys = fmap extract elems'
-        let ty = head tys
-        if all (ty ==) tys then
-          return $ Typed (List elems') (TApplied listConstructor ty)
-        else throwError $ Fail "Inferred different element types in a List"
+        ty <- generalize $ head tys
+        let unification = (foldM (\sub t2 -> compose sub <$> unify ty t2 ) nullSubst tys :: Solve Subst)
+        case runExcept . runWriterT $ runReaderT unification env of
+          Left err -> throwError $ Fail $ show err ++ "\nInferred different element types in a List"
+          Right _ -> return $ Typed (List elems') (TApplied listConstructor ty)
+        -- if all (ty ==) tys then
+        --   return $ Typed (List elems') (TApplied listConstructor ty)
+        -- else throwError $ Fail "Inferred different element types in a List"
 
       e@(Block stmts) -> infer' [] stmts
         where
