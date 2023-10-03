@@ -177,7 +177,7 @@ mapImplType = TQualified $ [TVar tf `T.Implements` "Functor"] :=> TLambda [f] (T
 
 
 defaultEnv :: CompilerState
-defaultEnv = Saga { values = builtInFns, types = builtInTypes, kinds = Map.empty, protocols = [eqProtocol, numProtocol, isStringProtocol, functorProtocol, semigroupProtocol] }
+defaultEnv = Saga { values = Map.empty, types = builtInTypes <> builtInFns, kinds = Map.empty, protocols = [eqProtocol, numProtocol, isStringProtocol, functorProtocol, semigroupProtocol] }
 
 startWriter :: Accumulator
 startWriter = Acc { logs = [], warnings = [], errors = [] }

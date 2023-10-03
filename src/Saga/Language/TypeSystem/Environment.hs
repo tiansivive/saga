@@ -26,7 +26,7 @@ import Saga.Language.Core.Syntax (Expr)
 type Saga r t a = RWST r Accumulator CompilerState t a
 data CompilerState = Saga 
   { protocols :: [Protocol]
-  , values    :: Map.Map String TypeExpr
+  , values    :: Map.Map String Expr
   , types     :: Map.Map String TypeExpr
   , kinds     :: Map.Map String Kind 
   } deriving (Show)

@@ -14,7 +14,7 @@ import           Control.Monad.Except
 import           Control.Monad.RWS                    (MonadReader (ask),
                                                        MonadWriter (tell),
                                                        RWST (runRWST), evalRWST,
-                                                       execRWST, modify')
+                                                       execRWST, gets, modify')
 import           Control.Monad.State.Lazy             (MonadState, State,
                                                        evalState, evalStateT,
                                                        replicateM)
@@ -48,6 +48,7 @@ import           Control.Monad.Identity               (Identity)
 import           Control.Monad.Reader                 (ReaderT (runReaderT))
 import           Control.Monad.Trans.RWS              (get, local, modify)
 import           Control.Monad.Writer
+import           Data.Either                          (isLeft)
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.Lib         (defaultEnv,
                                                        listConstructor)
@@ -118,6 +119,25 @@ runInfer env m = do
     _ -> throwError $ Fail $ "Could not infer type for: " ++ show e
 
 
+-- inference :: Expr -> CompilerState -> InferState -> m (TypeExpr, Map.Map String Type, Expr)
+inference ::
+  ( MonadWriter Trace (t (ExceptT SagaError Identity))
+  , MonadError SagaError (t (ExceptT SagaError Identity))
+  , MonadTrans t
+  ) => Expr -> CompilerState -> InferState -> t (Except SagaError) (TypeExpr, Map.Map String Type, Expr)
+inference expr env st = case runExcept $ runRWST (infer expr) env st of
+  Left err -> do
+    tell $ Traced (Acc { logs = [], warnings=[], errors = [err] }) []
+    throwError err
+
+  Right (Typed e ty, st, Traced acc cs) -> lift $ do
+    (subst, implConstraints, cycles) <- runSolve env cs
+    subst' <- resolveCycles subst cycles
+    let bindings = normalize Set.empty $ apply subst (TVar <$> unification st)
+    let final = ty ||> apply subst' |> simplify
+    return (closeOver implConstraints final, bindings, normalize (ftv final) (apply subst' e))
+
+
 resolveCycles :: MonadError SagaError m => Subst -> [Cycle] -> m Subst
 resolveCycles = foldM collapse
 
@@ -152,9 +172,9 @@ qualify impls t
 
 lookupEnv :: String -> Infer Type
 lookupEnv x = do
-  Saga { values } <- ask
+  Saga { types } <- ask
   IST { unification } <- get
-  case Map.lookup x values <|> lookup' x unification of
+  case Map.lookup x types <|> lookup' x unification of
     Just tyExpr -> instantiate tyExpr
     Nothing     -> throwError $ UnboundVariable (show x)
 
@@ -164,6 +184,40 @@ lookupEnv x = do
 
 instance MonadFail Identity where
   fail = error
+
+
+
+inferScript :: CompilerState -> Script -> Either SagaError ([Declaration], CompilerState, Accumulator)
+inferScript env (Script decs) = runExcept $ runRWST (forM decs inferDec) () env
+
+inferDec :: Declaration -> Saga () (Except SagaError) Declaration
+inferDec d@(Type id _ typeExp) = do
+  modify (\e -> e{ types = Map.insert id typeExp $ types e })
+  return d
+
+inferDec (Let id (Just ty) k expr) = do
+  modify (\e -> e{ types = Map.insert id ty $ types e })
+  env <- get
+  ((_, _, expr'), Traced acc _ ) <- lift $ runWriterT $ inference expr env initState
+  tell acc
+  return $ Let id (Just ty) k expr'
+
+inferDec (Let id Nothing k expr) = do
+  env <- get
+  ((ty, expr'), _, Traced acc _) <- lift $ runRWST inference' env initState
+  modify (\e -> e{ types = Map.insert id ty $ types e })
+  tell acc
+  return $ Let id (Just ty) k expr'
+
+  where
+    inference' = do
+      tvar <- fresh KType
+      st <- gets $ \s -> (s{ unification = Map.insert id tvar $ unification s })
+      env <- ask
+      (ty, bindings, expr') <- inference expr env st
+      return (ty, expr')
+
+
 
 infer :: Expr -> Infer Expr
 -- infer ex | trace ("Inferring: " ++ show ex) False = undefined
@@ -336,7 +390,7 @@ infer = infer_ 0
               let scoped = local (\e -> e{ types = Map.insert id typeExp $ types e })
               scoped $ infer' (d : processed) rest
             Declaration (Let id (Just ty) k expr) -> do
-              let scoped = local (\e -> e{ values = Map.insert id ty $ values e })
+              let scoped = local (\e -> e{ types = Map.insert id ty $ types e })
               scoped $ do
                 (Typed expr' _) <- infer_ n expr
                 infer' (Declaration (Let id (Just ty) k expr') :processed) rest
@@ -344,7 +398,7 @@ infer = infer_ 0
               tvar <- fresh KType
               (Typed expr' ty) <- infer_ n expr `extended` (id, tvar)
               emit $ EqCons $ TVar tvar `EQ` ty
-              let scoped = local (\e -> e{ values = Map.insert id (TAtom ty) $ values e })
+              let scoped = local (\e -> e{ types = Map.insert id (TAtom ty) $ types e })
               scoped $ infer' (Declaration (Let id (Just $ TAtom ty) k expr') : processed) rest
             d -> infer' (d:processed) rest
       e@(Literal literal) -> return $ Typed e (TLiteral literal)

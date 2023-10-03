@@ -125,9 +125,9 @@ unify = unify_ 0
     unify_ :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Int -> Type -> Type -> m Subst
     unify_ n t1 t2 = do
       let ident = intercalate "" (replicate n "\t")
-      traceM (ident ++ "Unifying:\n" ++ ident ++ "  " ++ show t1 ++ "\n" ++ ident ++ "  " ++ show t2)
+      -- traceM (ident ++ "Unifying:\n" ++ ident ++ "  " ++ show t1 ++ "\n" ++ ident ++ "  " ++ show t2)
       result <- unify' t1 t2
-      traceM (ident ++ "Result:\n" ++ ident ++ "  " ++ show result)
+      -- traceM (ident ++ "Result:\n" ++ ident ++ "  " ++ show result)
       return result
       where
         unify' :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Type -> Type -> m Subst
@@ -173,7 +173,6 @@ unify = unify_ 0
             unifier t1 t2 = catchError (unify_ (n+1) t1 t2 <&> Just) (\_ -> return Nothing)
 
 
-
         unify' t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch"
         unify' t1 t2 = case (t1, t2) of
           (t@(TClosure {}), t2) -> do
@@ -187,10 +186,10 @@ unify = unify_ 0
             refine :: (MonadReader CompilerState m, MonadError e m, e ~ SagaError) => Type -> m Type
             refine (TClosure params tyExpr captured) = do
               env <- ask
-              traceM "\n\nRefine TClosure:"
-              traceM $ "Env:\n\t" ++ pretty (types env)
-              traceM $ "Extended:\n\t" ++ pretty (types $ extended env)
-              traceM $ "Captured:\n\t" ++ pretty captured ++ "\n---------------------\n\n"
+              -- traceM "\n\nRefine TClosure:"
+              -- traceM $ "Env:\n\t" ++ pretty (types env)
+              -- traceM $ "Extended:\n\t" ++ pretty (types $ extended env)
+              -- traceM $ "Captured:\n\t" ++ pretty captured ++ "\n---------------------\n\n"
               case Refine.runIn (extended env) tyExpr of
                 Left err -> throwError $ Fail $ "Failed to refine TClosure while unifying:\n\t" ++ err
                 Right ty -> return ty

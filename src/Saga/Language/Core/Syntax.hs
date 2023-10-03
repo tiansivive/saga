@@ -29,18 +29,6 @@ deriving instance Show Expr
 deriving instance Eq Expr
 
 
-foo = Typed
-  (Lambda ["x"]
-    (Typed
-      (FnApp
-        (Typed (Identifier "x") (TPrimitive TInt `TArrow` TPrimitive TInt))
-        [Typed (Literal (LInt 1)) (TPrimitive TInt)]
-      )
-      (TPrimitive TInt)
-    )
-  )
-  (TPrimitive TInt `TArrow` TPrimitive TInt)
-
 
 data Binding a
   = Bind String a

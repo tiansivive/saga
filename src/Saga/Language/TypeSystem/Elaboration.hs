@@ -1,9 +1,16 @@
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE NamedFieldPuns #-}
 module Saga.Language.TypeSystem.Elaboration where
 
 import           Control.Monad.Except
-import           Control.Monad.Reader                 (Reader, runReader)
+import           Control.Monad.Reader                 (Reader,
+                                                       ReaderT (runReaderT),
+                                                       runReader)
 import           Control.Monad.RWS
 import           Control.Monad.State                  (State, get, runState)
+import           Control.Monad.Trans.Writer           (WriterT (runWriterT),
+                                                       runWriter)
+import           Data.Bifunctor                       (Bifunctor (first))
 import           Data.Functor                         ((<&>))
 import           Data.List                            (find, intercalate,
                                                        intersect)
@@ -13,17 +20,22 @@ import           Data.Maybe
 import qualified Data.Set                             as Set
 import           Data.Traversable                     (for)
 import           Debug.Trace                          (traceM)
-import           Prelude                              hiding (log)
+import           Prelude                              hiding (id, log)
 import           Saga.Language.Core.Literals          (Literal (..))
 import           Saga.Language.Core.Syntax
-import           Saga.Language.TypeSystem.Constraints (ftv)
-import           Saga.Language.TypeSystem.Environment (CompilerState (types, values),
-                                                       Protocol (Protocol),
+import           Saga.Language.TypeSystem.Constraints (Solve, Subst,
+                                                       Substitutable (apply),
+                                                       ftv, unify)
+import           Saga.Language.TypeSystem.Environment (Accumulator,
+                                                       CompilerState (protocols, types, values),
+                                                       Protocol (Protocol, id, implementations),
                                                        ProtocolID, Saga,
                                                        Tell (Error),
                                                        UnificationVar, log)
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.Inference   hiding (log)
+import           Saga.Language.TypeSystem.Lib         (defaultEnv)
+import qualified Saga.Language.TypeSystem.Refinement  as Refine
 import           Saga.Language.TypeSystem.Types
 import           Saga.Utils.Utils                     ((|>), (||>))
 
@@ -58,6 +70,10 @@ run state (TQualified (cs :=> ty)) e = do
         dicts = cs ||> fmap pair |> Map.fromList
 
 
+elaborateScript :: CompilerState -> Script -> Either SagaError (Script, CompilerState, Accumulator)
+elaborateScript st (Script decs) = runExcept $ runRWST elaboration Map.empty st
+    where
+        elaboration =  Script <$> forM decs elaborateDec
 elaborateDec :: Declaration -> Elaboration Declaration
 elaborateDec (Let id ty k e) = Let id ty k <$> case ty of
     Just ty' -> elaborate' ty' e
@@ -65,38 +81,67 @@ elaborateDec (Let id ty k e) = Let id ty k <$> case ty of
 
     where
         elaborate' (TQualified (cs :=> ty)) e = do
-            dicts <- ask
-            Lambda (Map.toList dicts ||> fmap snd) <$> elaborate e
+            let dicts = cs ||> fmap pair |> Map.fromList
+            let scoped = local (<> dicts)
+            scoped $ Lambda (Map.toList dicts ||> fmap snd) <$> elaborate e
         elaborate' t e = elaborate e
+
+        pair (Implements t@(TVar v) p) = ((v, p), generateName t ++ "$" ++ p)
 elaborateDec d = return d
 
 
 
 elaborate :: Expr -> Elaboration Expr
 elaborate e@(Typed (Identifier id) ty') = do
-    --st <- get
-
-    ty <- gets $ values |> Map.lookup id
+    st <- get
+    ty <- gets $ types |> Map.lookup id
     dictMap <- ask
     traceM "elaborating ID in fn app:"
-    traceM $ "\tLooked up: " ++ show ty
+    traceM $ "\tEnv type: " ++ show ty
+    traceM $ "\tInferred type: " ++ show ty'
     traceM $ "\tDict Map: " ++ show dictMap
-    --traceM $ "\n\tState: " ++ show st
+
     case ty of
         Just (TQualified (cs :=> tyExpr)) -> do
-            let dicts = cs ||> combos |> mapMaybe (`Map.lookup` dictMap)
-            case dicts of
-                [d] -> return $ FnApp (Identifier id) [Identifier d]
-                []  -> throwError $ Fail $ "Could not find any suitable protocols for " ++ show id
-                ds  -> throwError $ Fail $ "Ambiguous protocols for:\n\tId: " ++ show id ++ "\n\tProtocols: " ++ show ds
+
+            cs' <- either (throwError . Fail) return instConstraints
+
+            let (tvars, tys) = foldl separate ([], []) cs'
+            traceM $ "\n Instantiated Constraints':\n\t" ++ show cs'
+
+
+            dicts <- forM cs' \c@(Implements ty p) -> case ty of
+                    TVar tvar -> Identifier <$> maybe (throwError $ id_not_found c) return (Map.lookup (tvar, p) dictMap)
+                    _         -> case getDict (ty,p) of
+                        [(_,_, record)] -> return record
+                        []              -> throwError $ impl_not_found c
+                        dicts           -> throwError $ multiple_impls c
+
+            traceM $ "Separated':\n\t" ++ show (tvars, tys)
+            traceM $ "Dicts':\n\t" ++ show dicts
+
+            return $ FnApp (Identifier id) dicts
+            where
+                getDict (ty, p) =  [ (ty', id, record)
+                                    | p'@(Protocol {id}) <- protocols st, id == p
+                                    , impl@(_ :=> (ty', record)) <- implementations p', ty == ty'
+                                    ]
+
+                separate (tvars, tys) constraint = case constraint of
+                    Implements (TVar tvar) p -> ((tvar, p):tvars, tys)
+                    Implements ty          p -> (tvars, (ty, p):tys)
+
+                instConstraints = do
+                    t <- Refine.runIn st tyExpr
+                    (sub, _) <- show `first` runExcept (runWriterT $ runReaderT (unify t ty' :: Solve Subst) st)
+                    return $ apply sub cs
+
+                id_not_found c = Fail $ "Couldn't find provided protocol dictionary identifier for " ++ show c
+                impl_not_found c = Fail $ "Couldn't find protocol implementation for " ++ show c
+                multiple_impls c = Fail $ "Found multiple protocol implementation for " ++ show c
+
         _ -> return e
-    where
-        tvars = Set.toList $ ftv ty'
-        protocols = fmap (\(Implements t p) -> p)
-        combos cs = do
-            tvar <- tvars
-            p <- protocols cs
-            return (tvar, p)
+
 
 elaborate (Typed e _) = elaborate e
 elaborate e@(Hole {}) = return e

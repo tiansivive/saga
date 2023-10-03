@@ -13,9 +13,11 @@ import qualified Saga.Language.TypeSystem.Elaboration as Elab
 
 import           Control.Monad.Except                 (runExcept)
 import           Data.Bifunctor                       (first)
+import           Saga.Language.Core.Syntax            (Script (Script))
 import           Saga.Language.Generation.JS          (Generator (generate))
 import           Saga.Language.TypeSystem.Check       (checkScript)
-import           Saga.Language.TypeSystem.Inference   (run)
+import           Saga.Language.TypeSystem.Elaboration (elaborateScript)
+import           Saga.Language.TypeSystem.Inference   (inferScript, run)
 import           Saga.Language.TypeSystem.Lib         (defaultEnv)
 import           Saga.Parser.Desugar                  (desugarExpr,
                                                        desugarScript)
@@ -53,38 +55,48 @@ parseScript fp = do
     hClose parsingH
     putStrLn "Bye!"
 
-inferScript :: FilePath -> IO ()
-inferScript fp = do
+inferredScript :: FilePath -> IO ()
+inferredScript fp = do
     handle <- openFile fp ReadMode
     parsingH <- openFile "./lang/test.parsing.log" WriteMode
     contents <- hGetContents handle
-    --pPrint $ fmap desugarExpr <$> P.runSagaExpr contents
-    let res = run contents
-    pPrint res
-    pHPrint parsingH res
+    let script = fmap desugarScript <$> P.runSagaScript contents
+    case run' contents of
+        Left err -> pPrint err
+        Right (decs, state, trace) -> do
+            pPrint decs
+            pHPrint parsingH trace
+            pHPrint parsingH state
+            pHPrint parsingH decs
+
     hClose handle
     hClose parsingH
     putStrLn "Bye!"
 
-elaborateScript :: FilePath -> IO ()
-elaborateScript fp = do
-    handle <- openFile fp ReadMode
-    parsingH <- openFile "./lang/test.parsing.log" WriteMode
-    contents <- hGetContents handle
-    --pPrint $ fmap desugarExpr <$> P.runSagaExpr contents
-    case run contents of
-        Left err -> do
-            pPrint err
-            pHPrint parsingH err
-        Right (ty, _, e) -> do
-            let res = runExcept $ Elab.run defaultEnv ty e
-            pPrint res
-            pHPrint parsingH res
+    where
+        run' contents = do
+            (Parsed script _ _) <- fmap desugarScript <$> P.runSagaScript contents
+            show `first` inferScript defaultEnv script
 
 
-    hClose handle
-    hClose parsingH
-    putStrLn "Bye!"
+-- elaborateScript :: FilePath -> IO ()
+-- elaborateScript fp = do
+--     handle <- openFile fp ReadMode
+--     parsingH <- openFile "./lang/test.parsing.log" WriteMode
+--     contents <- hGetContents handle
+--     --pPrint $ fmap desugarExpr <$> P.runSagaExpr contents
+--     case run contents of
+--         Left err -> do
+--             pPrint err
+--             pHPrint parsingH err
+--         Right (ty, _, e) -> do
+--             let res = runExcept $ Elab.run defaultEnv ty e
+--             pPrint res
+--             pHPrint parsingH res
+
+--     hClose handle
+--     hClose parsingH
+--     putStrLn "Bye!"
 
 compileScript :: FilePath -> FilePath -> IO ()
 compileScript fp outFp = do
@@ -95,9 +107,11 @@ compileScript fp outFp = do
     --pPrint $ fmap desugarExpr <$> P.runSagaExpr contents
 
     let output = do
-            (ty, binds, e) <- run contents
-            res <- show `first` runExcept (Elab.run defaultEnv ty e)
-            return (generate res, res, ty, binds)
+            (Parsed script _ _) <- fmap desugarScript <$> P.runSagaScript contents
+            (decs, st, acc) <- show `first` inferScript defaultEnv script
+            (script, st', acc') <- show `first` elaborateScript st (Script decs)
+            return (generate script, st', acc <> acc')
+
 
 
 
@@ -105,9 +119,9 @@ compileScript fp outFp = do
         Left err -> do
             pPrint err
             pHPrint parsingH err
-        Right (code, e, t, bs) -> do
-            pPrint (e, t, bs)
-            pHPrint parsingH (e, t, bs)
+        Right (code, st, acc) -> do
+            pPrint (st, acc)
+            pHPrint parsingH (st, acc)
             hPutStr outputH code
 
 

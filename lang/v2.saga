@@ -131,10 +131,17 @@ type MyFunctor
   = \f => 
     { map: \a b => (a -> b) -> f a! -> f b! }
 
+
 */
+let first 
+  = \xs -> {
+    let add = \f -> map f xs
+    x <- add
+    return x + 2
+  }
+
+let sum = 1 + 2
 
 
-map (\x -> x + 1) [1,2,3]
- 
-
-
+let test
+  = map (\x -> x + 1) [1,2,3]
