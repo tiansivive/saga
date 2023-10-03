@@ -29,7 +29,7 @@ import           Data.Maybe                           (fromMaybe, isJust,
                                                        isNothing)
 import qualified Data.Set                             as Set
 import           Debug.Trace                          (trace, traceM)
-import           Prelude                              hiding (EQ, log)
+import           Prelude                              hiding (EQ, id, log)
 import           Saga.Language.Core.Literals          (Literal (..))
 import           Saga.Language.Core.Syntax
 import           Saga.Language.TypeSystem.Constraints hiding (simplify,
@@ -53,6 +53,7 @@ import           Saga.Language.TypeSystem.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.Lib         (defaultEnv,
                                                        listConstructor)
 import qualified Saga.Language.TypeSystem.Refinement  as Refine
+import           Saga.Language.TypeSystem.Types       (Constraint (Implements))
 import           Saga.Utils.Utils                     (Pretty (pretty), (|>),
                                                        (||>))
 
@@ -120,9 +121,8 @@ runInfer env m = do
 
 
 -- inference :: Expr -> CompilerState -> InferState -> m (TypeExpr, Map.Map String Type, Expr)
-inference ::
-  ( MonadWriter Trace (t (ExceptT SagaError Identity))
-  , MonadError SagaError (t (ExceptT SagaError Identity))
+inference :: ( MonadWriter Trace (t (Except SagaError))
+  , MonadError SagaError (t (Except SagaError))
   , MonadTrans t
   ) => Expr -> CompilerState -> InferState -> t (Except SagaError) (TypeExpr, Map.Map String Type, Expr)
 inference expr env st = case runExcept $ runRWST (infer expr) env st of
@@ -191,6 +191,15 @@ inferScript :: CompilerState -> Script -> Either SagaError ([Declaration], Compi
 inferScript env (Script decs) = runExcept $ runRWST (forM decs inferDec) () env
 
 inferDec :: Declaration -> Saga () (Except SagaError) Declaration
+inferDec d | trace ("\nInferring declaration:\n\t" ++ show d) False = undefined
+inferDec d@(Type id (Just (KProtocol k)) spec') = do
+  modify (\e -> e{ protocols = protocol : protocols e })
+  return d
+  where
+    protocol = case spec' of
+      TQualified (cs :=> spec) -> Protocol { id, spec, supers = cs <&> \(Implements _ p) -> p, implementations = []}
+      spec                     -> Protocol { id, spec, supers = [], implementations = []}
+
 inferDec d@(Type id _ typeExp) = do
   modify (\e -> e{ types = Map.insert id typeExp $ types e })
   return d
@@ -226,10 +235,10 @@ infer = infer_ 0
   where
     infer_ n ex = do
       let ident = intercalate "" (replicate n "\t")
-      traceM $  ident ++ "Inferring: " ++ show ex
+      --traceM $  ident ++ "Inferring: " ++ show ex
       result <- doInfer ex $ n+1
       --traceM $ "For:\n\t"++ show ex
-      traceM $ ident ++ "Result: " ++ show result
+     -- traceM $ ident ++ "Result: " ++ show result
       return result
 
     extract (Typed _ ty) = ty

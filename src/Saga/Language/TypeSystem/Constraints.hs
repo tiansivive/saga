@@ -72,9 +72,9 @@ solver :: [IConstraint] -> Solve (Subst, [ImplConstraint])
 
 solver constraints = do
   let eqs' = eqs constraints
-  traceM $ printEqs eqs'
+  --traceM $ printEqs eqs'
   sub <- unification nullSubst eqs'
-  traceM $ "\nUnifier from equality constraints\n\t" ++ pretty sub
+  --traceM $ "\nUnifier from equality constraints\n\t" ++ pretty sub
   -- traceM $ "\nGenerated unions\n\t" ++ show unionTvars
   --let sub' = Map.foldlWithKey toSubst sub unionTvars
   -- traceM $ "\nUnion TVar subst\n\t" ++ show sub'
@@ -107,7 +107,7 @@ checkUnions _   (t1 `MemberOf` t2 : us)            = throwError $ Fail $ "Type "
 
 
 unification :: Subst -> [Equality] -> Solve Subst
-unification s cs | trace ("\nUnification:" ++ "\n\tUnifier:\n\t" ++ pretty s ++ "\n\t" ++ printEqs cs) False = undefined
+--unification s cs | trace ("\nUnification:" ++ "\n\tUnifier:\n\t" ++ pretty s ++ "\n\t" ++ printEqs cs) False = undefined
 unification s [] = return s
 unification s (e:es) | t1 `EQ` t2 <- e = do
   sub <- unify t1 t2
@@ -201,7 +201,7 @@ unify = unify_ 0
 
 
 bind :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Tyvar -> Type -> m Subst
-bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
+--bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
 bind a t
   | t == TVar a = return nullSubst
   | occursCheck a t = case t of
@@ -245,9 +245,9 @@ nullSubst = Map.empty
 
 -- | Implementation Constraints solving
 resolve :: [ImplConstraint] -> Solve ()
-resolve cs | trace ("\n\nProtocol Resolution:\n\t" ++ show cs) False = undefined
+--resolve cs | trace ("\n\nProtocol Resolution:\n\t" ++ show cs) False = undefined
 resolve constraints = do
-  traceM $ "\tGrouped Constraints: " ++ show constraintsPerType
+  --traceM $ "\tGrouped Constraints: " ++ show constraintsPerType
   --traceM $ "\tGrouped Implementations: " ++ show (groupBy byType' (impls env))
   forM_ constraintsPerType (check allImplemented)
 
@@ -264,17 +264,17 @@ resolve constraints = do
         Just _ -> return ()
 
 
-    allImplemented ids ps | trace "\nImplements all:" False = undefined
-    allImplemented ids ps | trace ("\tIds: " ++ show ids) False = undefined
-    allImplemented ids ps | trace ("\tProtocols: " ++ show (fmap id ps)) False = undefined
+    -- allImplemented ids ps | trace "\nImplements all:" False = undefined
+    -- allImplemented ids ps | trace ("\tIds: " ++ show ids) False = undefined
+    -- allImplemented ids ps | trace ("\tProtocols: " ++ show (fmap id ps)) False = undefined
     allImplemented ids env = do
-      traceM $ "Protocols found:\n\t" ++ show (fmap (fmap id) protocols')
+      --traceM $ "Protocols found:\n\t" ++ show (fmap (fmap id) protocols')
       check <- implemented <$> sequence protocols'
       when check (return ())
      -- mapM (implementations |> find (matches ty)) foo
 
       where
-        implemented ps | trace ("\nImplementing types:\n\t" ++ show (foldl atLeastOneType [] ps)) False = undefined
+        --implemented ps | trace ("\nImplementing types:\n\t" ++ show (foldl atLeastOneType [] ps)) False = undefined
         implemented ps = not $ null $ foldl atLeastOneType [] ps
 
         atLeastOneType [] p  = extract <$> implementations p
@@ -290,7 +290,7 @@ resolve constraints = do
 
 
 reduce :: [ImplConstraint] -> Solve [ImplConstraint]
-reduce cs | trace ("\nReducing\n\tImplementation constraint:" ++ show cs) False = undefined
+--reduce cs | trace ("\nReducing\n\tImplementation constraint:" ++ show cs) False = undefined
 reduce cs = mapM toHNF cs >>= simplify . concat
 
 toHNF :: ImplConstraint -> Solve [ImplConstraint]
@@ -306,7 +306,7 @@ inHNF (ty `IP` p) = hnf ty
        hnf _        = False
 
 byImplementation :: ImplConstraint -> Solve [ImplConstraint]
-byImplementation impl | trace ("\nSearch by Implementation:\n\t" ++ show impl) False = undefined
+--byImplementation impl | trace ("\nSearch by Implementation:\n\t" ++ show impl) False = undefined
 byImplementation (ty `IP` p)    = do
   Saga { protocols } <- ask
   concat <$> sequence [ tryInst impl | impl <- impls p protocols ]

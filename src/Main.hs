@@ -13,6 +13,7 @@ import qualified Saga.Language.TypeSystem.Elaboration as Elab
 
 import           Control.Monad.Except                 (runExcept)
 import           Data.Bifunctor                       (first)
+import           Debug.Trace                          (traceM)
 import           Saga.Language.Core.Syntax            (Script (Script))
 import           Saga.Language.Generation.JS          (Generator (generate))
 import           Saga.Language.TypeSystem.Check       (checkScript)
@@ -109,7 +110,9 @@ compileScript fp outFp = do
     let output = do
             (Parsed script _ _) <- fmap desugarScript <$> P.runSagaScript contents
             (decs, st, acc) <- show `first` inferScript defaultEnv script
+            traceM $ show st
             (script, st', acc') <- show `first` elaborateScript st (Script decs)
+            traceM $ show st'
             return (generate script, st', acc <> acc')
 
 
@@ -120,7 +123,7 @@ compileScript fp outFp = do
             pPrint err
             pHPrint parsingH err
         Right (code, st, acc) -> do
-            pPrint (st, acc)
+            --pPrint (st, acc)
             pHPrint parsingH (st, acc)
             hPutStr outputH code
 

@@ -42,19 +42,6 @@ import           Saga.Utils.Utils                     ((|>), (||>))
 
 
 
-
-
--- elaborate :: Declaration -> [Constraint] -> Saga (Except SagaError) Declaration
--- elaborate dec cs = case dec of
---     Let id (Just tyExpr) k expr -> do
---         (expr', _) <- return $ runReader (transform expr tyExpr) Map.empty
---         return $ Let id (Just tyExpr) k expr'
-
---     where
---         dictionaries = fmap dic cs
---         dic (Implements ty p) = (ty, p, generateName ty ++ "_$" ++ p)
-
-
 type Dicts = Map.Map (Tyvar, ProtocolID) Dictionary
 type Dictionary = String
 
@@ -96,10 +83,10 @@ elaborate e@(Typed (Identifier id) ty') = do
     st <- get
     ty <- gets $ types |> Map.lookup id
     dictMap <- ask
-    traceM "elaborating ID in fn app:"
-    traceM $ "\tEnv type: " ++ show ty
-    traceM $ "\tInferred type: " ++ show ty'
-    traceM $ "\tDict Map: " ++ show dictMap
+    -- traceM "elaborating ID in fn app:"
+    -- traceM $ "\tEnv type: " ++ show ty
+    -- traceM $ "\tInferred type: " ++ show ty'
+    -- traceM $ "\tDict Map: " ++ show dictMap
 
     case ty of
         Just (TQualified (cs :=> tyExpr)) -> do
@@ -107,7 +94,7 @@ elaborate e@(Typed (Identifier id) ty') = do
             cs' <- either (throwError . Fail) return instConstraints
 
             let (tvars, tys) = foldl separate ([], []) cs'
-            traceM $ "\n Instantiated Constraints':\n\t" ++ show cs'
+            --traceM $ "\n Instantiated Constraints':\n\t" ++ show cs'
 
 
             dicts <- forM cs' \c@(Implements ty p) -> case ty of
@@ -117,8 +104,8 @@ elaborate e@(Typed (Identifier id) ty') = do
                         []              -> throwError $ impl_not_found c
                         dicts           -> throwError $ multiple_impls c
 
-            traceM $ "Separated':\n\t" ++ show (tvars, tys)
-            traceM $ "Dicts':\n\t" ++ show dicts
+            -- traceM $ "Separated':\n\t" ++ show (tvars, tys)
+            -- traceM $ "Dicts':\n\t" ++ show dicts
 
             return $ FnApp (Identifier id) dicts
             where
