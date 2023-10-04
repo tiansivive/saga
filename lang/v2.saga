@@ -149,3 +149,7 @@ let test
 let add1 
   : Int -> Int
   = \x -> x + ""
+
+let two
+  : Int -> Int
+  = \y -> y + 1

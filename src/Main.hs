@@ -35,9 +35,6 @@ import           Text.Pretty.Simple                   (pHPrint, pPrint)
 
 
 
-
-
-
 main :: IO ()
 main = do
     putStrLn "Starting Saga..."
