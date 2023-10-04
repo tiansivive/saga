@@ -16,7 +16,7 @@ import           Data.Bifunctor                       (first)
 import           Debug.Trace                          (traceM)
 import           Saga.Language.Core.Syntax            (Script (Script))
 import           Saga.Language.Generation.JS          (Generator (generate))
-import           Saga.Language.TypeSystem.Check       (checkScript)
+
 import           Saga.Language.TypeSystem.Elaboration (elaborateScript)
 import           Saga.Language.TypeSystem.Inference   (inferScript, run)
 import           Saga.Language.TypeSystem.Lib         (defaultEnv)
@@ -41,11 +41,10 @@ import           Text.Pretty.Simple                   (pHPrint, pPrint)
 main :: IO ()
 main = do
     putStrLn "Starting Saga..."
-    typecheckScript "lang/v2.saga"
+    compileFile "lang/v2.saga" "lang/v2.js"
 
-
-parseScript :: FilePath -> IO ()
-parseScript fp = do
+parseFile :: FilePath -> IO ()
+parseFile fp = do
     handle <- openFile fp ReadMode
     parsingH <- openFile "./lang/test.parsing.log" WriteMode
     contents <- hGetContents handle
@@ -56,12 +55,11 @@ parseScript fp = do
     hClose parsingH
     putStrLn "Bye!"
 
-inferredScript :: FilePath -> IO ()
-inferredScript fp = do
+inferFile :: FilePath -> IO ()
+inferFile fp = do
     handle <- openFile fp ReadMode
     parsingH <- openFile "./lang/test.parsing.log" WriteMode
     contents <- hGetContents handle
-    let script = fmap desugarScript <$> P.runSagaScript contents
     case run' contents of
         Left err -> pPrint err
         Right (decs, state, trace) -> do
@@ -80,27 +78,8 @@ inferredScript fp = do
             show `first` inferScript defaultEnv script
 
 
--- elaborateScript :: FilePath -> IO ()
--- elaborateScript fp = do
---     handle <- openFile fp ReadMode
---     parsingH <- openFile "./lang/test.parsing.log" WriteMode
---     contents <- hGetContents handle
---     --pPrint $ fmap desugarExpr <$> P.runSagaExpr contents
---     case run contents of
---         Left err -> do
---             pPrint err
---             pHPrint parsingH err
---         Right (ty, _, e) -> do
---             let res = runExcept $ Elab.run defaultEnv ty e
---             pPrint res
---             pHPrint parsingH res
-
---     hClose handle
---     hClose parsingH
---     putStrLn "Bye!"
-
-compileScript :: FilePath -> FilePath -> IO ()
-compileScript fp outFp = do
+compileFile :: FilePath -> FilePath -> IO ()
+compileFile fp outFp = do
     handle <- openFile fp ReadMode
     parsingH <- openFile "./lang/test.parsing.log" WriteMode
     outputH <- openFile outFp WriteMode
@@ -115,9 +94,6 @@ compileScript fp outFp = do
             traceM $ show st'
             return (generate script, st', acc <> acc')
 
-
-
-
     case output of
         Left err -> do
             pPrint err
@@ -126,7 +102,6 @@ compileScript fp outFp = do
             --pPrint (st, acc)
             pHPrint parsingH (st, acc)
             hPutStr outputH code
-
 
     hClose handle
     hClose parsingH
@@ -142,48 +117,6 @@ lexScript fp = do
     hClose handle
     putStrLn "Bye!"
 
-
-
-typecheckScript :: FilePath -> IO ()
-typecheckScript fp = do
-    handle <- openFile fp ReadMode
-    parsingH <- openFile "./lang/test.parsing.log" WriteMode
-    contents <- hGetContents handle
-    let res = fmap desugarScript <$> P.runSagaScript contents
-    case res of
-        Left parseErr -> pPrint parseErr
-        Right (Parsed script _ _) -> do
-            let (results, state, acc) = checkScript script
-            let extract (r, _, _) = r
-
-            mapM_ (pPrint . fmap extract) results
-            pHPrint parsingH "\n---------------------------\nRESULTS\n---------------------------\n"
-            pHPrint parsingH results
-            pHPrint parsingH "\n----------------------------\nSTATE\n----------------------------\n"
-            pHPrint parsingH state
-            pHPrint parsingH "\n-------------------------\nACCUMULATED\n-------------------------\n"
-            pHPrint parsingH acc
-
-
-    hClose handle
-    hClose parsingH
-    putStrLn "Bye!"
-
-
-genScript :: FilePath -> IO ()
-genScript fp = do
-    handle <- openFile fp ReadMode
-    parsingH <- openFile "./lang/test.parsing.log" WriteMode
-    contents <- hGetContents handle
-    let res = fmap desugarScript <$> P.runSagaScript contents
-    let output = case res of
-            Left err                  -> err
-            Right (Parsed script _ _) -> generate script
-    pPrint output
-    pHPrint parsingH output
-    hClose handle
-    hClose parsingH
-    putStrLn "Bye!"
 
 
 lex :: String -> IO ()

@@ -49,6 +49,7 @@ import           Control.Monad.Reader                 (ReaderT (runReaderT))
 import           Control.Monad.Trans.RWS              (get, local, modify)
 import           Control.Monad.Writer
 import           Data.Either                          (isLeft)
+import           Saga.Language.TypeSystem.Constraints (unify)
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.Lib         (defaultEnv,
                                                        listConstructor)
@@ -207,9 +208,12 @@ inferDec d@(Type id _ typeExp) = do
 inferDec (Let id (Just ty) k expr) = do
   modify (\e -> e{ types = Map.insert id ty $ types e })
   env <- get
-  ((_, _, expr'), Traced acc _ ) <- lift $ runWriterT $ inference expr env initState
-  tell acc
-  return $ Let id (Just ty) k expr'
+  case Refine.runIn env ty of
+    Left err -> throwError $ Fail err
+    Right refined -> do
+      ((ty', _, expr'), Traced acc _ ) <- lift $ runWriterT $ inference (Typed expr refined) env initState
+      tell acc
+      return $ Let id (Just ty) k expr'
 
 inferDec (Let id Nothing k expr) = do
   env <- get
@@ -245,7 +249,10 @@ infer = infer_ 0
 
     doInfer :: Expr -> Int-> Infer Expr
     doInfer e n = case e of
-      typed@(Typed {}) -> return typed
+      typed@(Typed expr ty) -> do
+        Typed expr' inferred <- infer_ n expr
+        emit $ EqCons $ ty `EQ` inferred
+        return typed
       Identifier x -> Typed e <$> lookupEnv x
 
       Lambda ps@(param : rest) body -> do

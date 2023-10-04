@@ -21,7 +21,6 @@ library
       Saga.Language.Core.Syntax
       Saga.Language.Evaluation
       Saga.Language.Generation.JS
-      Saga.Language.TypeSystem.Check
       Saga.Language.TypeSystem.Constraints
       Saga.Language.TypeSystem.Elaboration
       Saga.Language.TypeSystem.Environment
