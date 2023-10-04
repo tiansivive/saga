@@ -73,10 +73,16 @@ import qualified Saga.Parser.ParsingInfo as P
   where      { L.RangedToken T.Where _ }
   with       { L.RangedToken T.With _ }
   if         { L.RangedToken T.If _ }
-  then       { L.RangedToken T.Then _ }
   else       { L.RangedToken T.Else _ }
   match      { L.RangedToken T.Match _ }
   return     { L.RangedToken T.Return _ }
+
+  -- Comprehensions
+  yield       { L.RangedToken T.Yield _ }
+  from        { L.RangedToken T.From _ }
+  select      { L.RangedToken T.Select _ }
+  then        { L.RangedToken T.Then _ }
+  using       { L.RangedToken T.Using _ }
 
   -- Data
   data       { L.RangedToken T.Data _ }
@@ -183,20 +189,37 @@ expr5
   | match expr cases                                   %shift { P.match $2 $3 }       
   | '\\' manyOrEmpty(pattern) '->' expr                       { P.lambda (fmap P.pattern $2) $4 $1 }
   | '.' identifier                                            { P.dotLambda $2 } 
+  | comprehension                                             { $1 }
+
+comprehension
+  : yield exprAtom from many(comprehensionClause) using identifier  { P.comprehension $2 $4 $6 }
+
+comprehensionClause
+  : separated(generator, '|')  { P.generator $1 }
+  | select expr   { P.select $2 }
+  | then expr   { P.thenClause $2 }
+
+generator
+  : identifier from expr { P.from $1 $3 }
+
   
 expr6
   : exprAtom                                                  { $1 }
-  | '{' block '}'                                             { P.block $2 $1 $3 }
+  | block                                                     { $1 }
   
 block
-  : separated(statement, ';') trailing(';')                   { $1 }
+  : '{' separated(statement, ';') trailing(';') '}'           { P.block $2 $1 $4 }
 
 statement
-  : manyOrEmpty(identifier) '<-' expr                  %shift { P.backcall (fmap (P.pattern . P.Var) $1) $3 }
-  | '\\' manyOrEmpty(pattern) '<-' expr                %shift { P.backcall (fmap P.pattern $2) $4 }
-  | expr                                                      { fmap PE.Procedure $1 }
-  | return expr                                               { P.returnStmt $2 $1 }
-  | letdec                                                    { fmap PE.Declaration $1 } 
+  : manyOrEmpty(identifier) '<-' expr trailing(whereClause)       %shift { P.backcall (fmap (P.pattern . P.Var) $1) $3 }
+  | '\\' manyOrEmpty(pattern) '<-' expr trailing(whereClause)     %shift { P.backcall (fmap P.pattern $2) $4 }
+  | expr                                                                 { fmap PE.Procedure $1 }
+  --| then expr                                                            { fmap PE.Then $2 }
+  | return expr                                                          { P.returnStmt $2 $1 }
+  | letdec                                                               { fmap PE.Declaration $1 } 
+
+whereClause
+  : where expr { $2 }
 
 exprAtom 
   : hole                                                      { $1 }

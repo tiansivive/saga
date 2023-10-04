@@ -41,11 +41,17 @@ tokens :-
     in                   { tok In }
     as                   { tok As }
     if                   { tok If }
-    then                 { tok Then }
+  
     else                 { tok Else }
     unless               { tok Unless }
     match                { tok Match }
     <block> return       { tok Return }
+
+    yield                { tok Yield }
+    from                 { tok From }
+    select               { tok Select }
+    then                 { tok Then }
+    using                { tok Using }
     
     data                 { tok Data }
 

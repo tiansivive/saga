@@ -14,11 +14,17 @@ data Token
   | Where
   | With
   | If
-  | Then
   | Else
   | Unless
   | Match
   | Return
+
+  -- Comprehension
+  | Yield
+  | From
+  | Select
+  | Then
+  | Using
 
   -- Modules
   | Module

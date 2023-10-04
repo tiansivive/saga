@@ -23,6 +23,15 @@ data Expr where
 
   Block :: [Statement] -> Expr
 
+  Comprehension :: Expr -> [Clause] -> String -> Expr
+
+data Clause
+  = Generator [From] -- Array of tuples for parallel generators
+  | Select Expr
+  | Then Expr
+  deriving (Eq, Show)
+
+data From = From String Expr deriving (Show, Eq)
 
 deriving instance Show Expr
 deriving instance Eq Expr

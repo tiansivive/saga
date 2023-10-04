@@ -240,8 +240,22 @@ block stmts _ _ = E.Block <$> sequence stmts
 
 
 
+-- | COMPREHENSIONS
 
+comprehension :: ParsedData E.Expr -> [ParsedData E.Clause] -> ParsedData E.Expr -> ParsedData E.Expr
+comprehension atom clauses impl = E.Comprehension <$> atom <*> sequence clauses <*> fmap idStr impl
 
+from :: ParsedData E.Expr -> ParsedData E.Expr -> ParsedData E.From
+from (Parsed iden _ _) expr = E.From (idStr iden) <$> expr
+
+generator :: [ParsedData E.From] -> ParsedData E.Clause
+generator from = E.Generator <$> sequence from
+
+select :: ParsedData E.Expr -> ParsedData E.Clause
+select expr = E.Select <$> expr
+
+thenClause :: ParsedData E.Expr -> ParsedData E.Clause
+thenClause expr = E.Then <$> expr
 
 -- | TYPES
 tyRecord :: [ParsedData (String, PT.TypeExpr)] -> RangedToken -> RangedToken -> ParsedData PT.TypeExpr

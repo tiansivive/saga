@@ -126,7 +126,6 @@ let test
 
 
 
-*/
 type MyFunctor
   :: Protocol (Type -> Type)
   = \f => 
@@ -145,3 +144,15 @@ let sum = 1 + 2
 
 let test
   = map (\x -> x + 1) [1,2,3]
+
+
+let comprehension = 
+    yield (x, y) where
+      x from range 1 10
+      select x > 5
+
+      then filter isEven
+      then sort by x
+      then group by y
+      using someMonadImpl
+*/
