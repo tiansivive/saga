@@ -50,9 +50,9 @@ instance Generator Statement where
     generate (Declaration dec) = generate dec
 
 instance Generator Declaration where
-    generate (Type {}) = ""
+    generate (Type {})              = ""
     generate (Let id tyExpr _ expr) = "let " ++ id ++ " = " ++ generate expr
-    generate (Data id _ dataExprs _) = "const " ++ id ++ " = {" ++ intercalate "," (fmap generate dataExprs)  ++ "}"
+    --generate (Data id _ dataExprs _) = "const " ++ id ++ " = {" ++ intercalate "," (fmap generate dataExprs)  ++ "}"
 
 
 instance Generator DataExpr where

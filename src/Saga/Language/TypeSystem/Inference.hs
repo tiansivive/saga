@@ -230,6 +230,27 @@ inferDec (Let id Nothing k expr) = do
       (ty, bindings, expr') <- inference expr env st
       return (ty, expr')
 
+inferDec dec@(Data id k (TClause (TLambda params tyExpr) bindings)) = do
+  process tyExpr
+  modify (\e -> e{ types = Map.insert id dataType $ types e })
+  modify (\e -> e{ kinds = Map.insert id kind $ kinds e })
+  return dec
+
+  where
+    dataType = TAtom $ TData (Tycon id kind)
+    kind = foldr (\_ k -> KArrow KType k) KType params
+
+    process (TTagged tag tyExpr')      = modify (\e -> e{ types = Map.insert tag tyExpr' $ types e })
+    process (TComposite (TEUnion tys)) = forM_ tys process
+    process _                          = throwError $ Fail $ "Unrecognised type expression in data expression: " ++ id
+
+    -- | TODO: Should we check here that the return type of each member constructor must match the Data type being declared?
+
+
+
+
+
+
 
 
 infer :: Expr -> Infer Expr
@@ -543,7 +564,7 @@ instance Normalized Declaration where
   normalize ftv = \case
     Let id ty k e -> Let id (fmap (normalize ftv) ty) k (normalize ftv e)
     Type id k ty -> Type id k (normalize ftv ty)
-    Data id k dataExps binds -> Data id k (fmap (fmap $ normalize ftv) dataExps) binds
+    Data id k tyExpr -> Data id k (normalize ftv tyExpr)
 
 
 

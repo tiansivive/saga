@@ -66,7 +66,7 @@ type DataExpr = (String, TypeExpr)
 data Declaration
     = Let String (Maybe TypeExpr) (Maybe Kind) Expr
     | Type String (Maybe Kind) TypeExpr
-    | Data String (Maybe Kind) [DataExpr] [T.Binding TypeExpr]
+    | Data String (Maybe Kind) TypeExpr
     deriving (Show, Eq)
 
 newtype Script = Script [Declaration]

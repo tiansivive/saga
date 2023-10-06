@@ -28,6 +28,7 @@ data CompilerState = Saga
   { protocols :: [Protocol]
   , values    :: Map.Map String Expr
   , types     :: Map.Map String TypeExpr
+  , dataTypes :: Map.Map String TypeExpr
   , kinds     :: Map.Map String Kind 
   } deriving (Show)
 

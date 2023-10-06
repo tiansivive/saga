@@ -579,13 +579,13 @@ instance Substitutable Statement where
   ftv (Declaration d) = ftv d
 
 instance Substitutable Declaration where
-  apply s (Let id ty k e)            = Let id (apply s ty) k (apply s e)
-  apply s (Type id k ty)             = Type id k (apply s ty)
-  apply s (Data id k dExps bindings) = Data id k (apply s dExps) bindings
+  apply s (Let id ty k e)    = Let id (apply s ty) k (apply s e)
+  apply s (Type id k ty)     = Type id k (apply s ty)
+  apply s (Data id k tyExpr) = Data id k (apply s tyExpr)
 
-  ftv (Let _ ty _ e)     = ftv ty <> ftv e
-  ftv (Type _ _ ty)      = ftv ty
-  ftv (Data _ _ dExps _) = ftv dExps
+  ftv (Let _ ty _ e)    = ftv ty <> ftv e
+  ftv (Type _ _ ty)     = ftv ty
+  ftv (Data _ _ tyExpr) = ftv tyExpr
 
 
 compose :: Subst -> Subst -> Subst
