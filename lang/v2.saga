@@ -176,13 +176,18 @@ let fake = { bar: "string" }
 let foo = obj.foo
 
 let get = (.foo) obj
-*/
-
 
 
 type Foo = { bar: String }
 type Bar = Foo.bar
+*/
 
 
-let str: Foo.bar = 
 
+data Custom = \a => 
+  | One: Int -> Custom Int
+  | Two: a   -> Custom String
+
+let one
+  : Custom.One -> Custom Int
+  = \x -> x

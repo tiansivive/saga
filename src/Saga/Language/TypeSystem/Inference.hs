@@ -232,13 +232,19 @@ inferDec (Let id Nothing k expr) = do
 
 inferDec dec@(Data id k (TClause (TLambda params tyExpr) bindings)) = do
   process tyExpr
-  modify (\e -> e{ types = Map.insert id dataType $ types e })
   modify (\e -> e{ kinds = Map.insert id kind $ kinds e })
+  modify (\e -> e{ types = Map.insert id dataType $ types e })
+  modify (\e -> e{ dataTypes = Map.insert id namespaced $ dataTypes e })
   return dec
 
   where
     dataType = TAtom $ TData (Tycon id kind)
+    namespaced = TComposite $ TERecord $ mkPairs tyExpr
     kind = foldr (\_ k -> KArrow KType k) KType params
+
+    -- | TODO: This turns each tag into an arrow type. Ideally we want the resulting tuple type
+    mkPairs (TTagged tag tyExpr')      = [(tag, tyExpr')]
+    mkPairs (TComposite (TEUnion tys)) = foldr (\t ps -> mkPairs t ++ ps ) [] tys
 
     process (TTagged tag tyExpr')      = modify (\e -> e{ types = Map.insert tag tyExpr' $ types e })
     process (TComposite (TEUnion tys)) = forM_ tys process
