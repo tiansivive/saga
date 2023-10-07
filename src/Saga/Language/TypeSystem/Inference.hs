@@ -192,7 +192,7 @@ inferScript :: CompilerState -> Script -> Either SagaError ([Declaration], Compi
 inferScript env (Script decs) = runExcept $ runRWST (forM decs inferDec) () env
 
 inferDec :: Declaration -> Saga () (Except SagaError) Declaration
-inferDec d | trace ("\nInferring declaration:\n\t" ++ show d) False = undefined
+--inferDec d | trace ("\nInferring declaration:\n\t" ++ show d) False = undefined
 inferDec d@(Type id (Just (KProtocol k)) spec') = do
   modify (\e -> e{ protocols = protocol : protocols e })
   return d
@@ -263,7 +263,7 @@ infer = infer_ 0
       --traceM $  ident ++ "Inferring: " ++ show ex
       result <- doInfer ex $ n+1
       --traceM $ "For:\n\t"++ show ex
-     -- traceM $ ident ++ "Result: " ++ show result
+      --traceM $ ident ++ "Result: " ++ show result
       return result
 
     extract (Typed _ ty) = ty
@@ -272,7 +272,12 @@ infer = infer_ 0
     doInfer e n = case e of
       typed@(Typed expr ty) -> do
         Typed expr' inferred <- infer_ n expr
-        emit $ EqCons $ ty `EQ` inferred
+          -- | Inferred type is generalized as much as possible and unification expects the LHS to be the subtype
+        case expr' of
+          -- | When expression is a literal, it doesn't get generalized to preserve the literal type
+          Literal _ -> emit $ EqCons $ inferred `EQ` ty
+          -- | In any other case, we want to unify by instantiating the inferred type to the src type
+          _         -> emit $ EqCons $ ty `EQ` inferred
         return typed
       Identifier x -> Typed e <$> lookupEnv x
 
@@ -287,6 +292,16 @@ infer = infer_ 0
           out = case rest of
             [] -> body
             _  -> Lambda rest body
+
+      FnApp dot@(Identifier ".") args@[recordExpr, Identifier field] -> do
+        fieldType <- TVar <$> fresh KType
+        (Typed _ recordTy) <- infer_ n recordExpr
+        emit $ EqCons $ recordTy `EQ` TRecord [(field, fieldType)]
+        return $ Typed (FnApp dot args) fieldType
+
+      --FnApp dot@(Identifier ".") args -> throwError $ Fail $ "Unrecognised expressions for property access:\n\t" ++ show args
+      FnApp (Identifier ".") args -> throwError $ Fail $ "Unrecognised expressions for property access:\n\t" ++ show args
+
       FnApp fn [arg] -> do
         out <- TVar <$> fresh KType
         fn'@(Typed _ fnTy)   <- infer_ n fn

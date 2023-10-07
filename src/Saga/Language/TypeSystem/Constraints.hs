@@ -125,9 +125,9 @@ unify = unify_ 0
     unify_ :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Int -> Type -> Type -> m Subst
     unify_ n t1 t2 = do
       let ident = intercalate "" (replicate n "\t")
-      -- traceM (ident ++ "Unifying:\n" ++ ident ++ "  " ++ show t1 ++ "\n" ++ ident ++ "  " ++ show t2)
+      --traceM (ident ++ "Unifying:\n" ++ ident ++ "  " ++ show t1 ++ "\n" ++ ident ++ "  " ++ show t2)
       result <- unify' t1 t2
-      -- traceM (ident ++ "Result:\n" ++ ident ++ "  " ++ show result)
+      --traceM (ident ++ "Result:\n" ++ ident ++ "  " ++ show result)
       return result
       where
         unify' :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Type -> Type -> m Subst

@@ -152,14 +152,37 @@ let add1
 let two
   : Int -> Int
   = \y -> y + 1
-*/
+
 
 
 data Custom = \a => 
   | One: Int -> Custom Int
   | Two: a   -> Custom String
 
+let one
+  : Custom.One 
+  = One 1
 
-let fn 
-  : String -> Custom Int
-  = \x -> One x
+let two
+  : Custom.Two -> Custom a
+  = \x -> match x
+      | Two: y -> Two y
+
+
+
+let obj = { foo: 1 }
+let fake = { bar: "string" }
+
+let foo = obj.foo
+
+let get = (.foo) obj
+*/
+
+
+
+type Foo = { bar: String }
+type Bar = Foo.bar
+
+
+let str: Foo.bar = 
+

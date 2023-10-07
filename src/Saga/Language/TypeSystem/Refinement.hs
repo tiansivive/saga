@@ -3,40 +3,36 @@
 module Saga.Language.TypeSystem.Refinement where
 
 import           Control.Monad.Except
-import           Control.Monad.State.Lazy                           (MonadState,
-                                                                     State,
-                                                                     evalState,
-                                                                     evalStateT,
-                                                                     replicateM)
-import           Control.Monad.Trans.Except                         (ExceptT,
-                                                                     runExceptT)
+import           Control.Monad.State.Lazy             (MonadState, State,
+                                                       evalState, evalStateT,
+                                                       replicateM)
+import           Control.Monad.Trans.Except           (ExceptT, runExceptT)
 
-import           Data.Functor                                       ((<&>))
+import           Data.Functor                         ((<&>))
 
-import qualified Data.Map                                           as Map
-import qualified Data.Set                                           as Set
-import           Debug.Trace                                        (trace,
-                                                                     traceM)
+import qualified Data.List                            as List
+import qualified Data.Map                             as Map
+import qualified Data.Set                             as Set
+import           Debug.Trace                          (trace, traceM)
 
 import           Saga.Language.TypeSystem.Types
 
-import           Control.Monad.Trans.Reader                         (ReaderT (runReaderT))
-import           Control.Monad.Trans.State                          (StateT)
-import           Data.Bifunctor                                     (first)
-import           Prelude                                            hiding (id,
-                                                                     lookup)
+import           Control.Monad.Trans.Reader           (ReaderT (runReaderT))
+import           Control.Monad.Trans.State            (StateT)
+import           Data.Bifunctor                       (first)
+import           Prelude                              hiding (id, lookup)
 
-import           Control.Monad.Identity                             (Identity)
+import           Control.Monad.Identity               (Identity)
 
-import           Control.Monad.Reader                               (ask, local)
-import           Data.List                                          (find)
+import           Control.Monad.Reader                 (ask, local)
+import           Data.List                            (find)
+import           Data.Maybe                           (fromMaybe)
 import           Saga.Language.TypeSystem.Environment (CompilerState (Saga, protocols, types),
-                                                                     Protocol (Protocol, id),
-                                                                     Saga, spec)
+                                                       Protocol (Protocol, id),
+                                                       Saga, spec)
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.Lib
-import           Saga.Parser.ParsingInfo                            hiding
-                                                                    (return)
+import           Saga.Parser.ParsingInfo              hiding (return)
 
 
 --type Refined a = Saga () (Except RefinementError) a
@@ -108,11 +104,21 @@ refine (TClause tyExpr bindings)      = do
 refine (TLambda params body) = do
   Saga {types} <- ask
   return $ TClosure params body types
+
+refine (TFnApp (TIdentifier ".") [record, TIdentifier field]) = do
+  record' <- refine record
+  case record' of
+    TRecord pairs -> maybe (throwError $ not_field record') return (List.lookup field pairs)
+    _             -> throwError $ Fail $ "Type\n\t" ++ show record' ++ "\nis not a Record when trying to access field\n\t" ++ field
+  where
+    not_field r = Fail $ field ++ " is not a field of " ++ show r
+
 refine (TFnApp fnExpr argExprs) = do
   fn <- refine fnExpr
   args <- mapM refine argExprs
 
   case (fn, args) of
+
     (t@(TData tycon), args) -> return $ foldl TApplied t args
     (TClosure params closure env, args) -> apply closure params args
 

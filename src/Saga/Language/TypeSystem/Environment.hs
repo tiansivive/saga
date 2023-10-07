@@ -77,6 +77,7 @@ data IConstraint
   | EqCons Equality
   | ImplCons ImplConstraint
   | UnionCons Union
+  | FieldOf String Type
       -- \| Subtype Type Type -- Is this at all needed? probably not
       -- | Conjunction IConstraint IConstraint
       -- | Implication [UnificationVar] IConstraint IConstraint

@@ -284,6 +284,12 @@ typeLambda params (Parsed body' bRange bToks) rt =
 typeFnApplication :: ParsedData PT.TypeExpr -> [ParsedData PT.TypeExpr] -> ParsedData PT.TypeExpr
 typeFnApplication fn args = PT.TFnApp <$> fn <*> sequence args
 
+typeBinaryOp :: ParsedData PT.TypeExpr -> L.RangedToken -> ParsedData PT.TypeExpr -> ParsedData PT.TypeExpr
+typeBinaryOp tyL rtok tyR = do
+    tyL' <- tyL
+    tyR' <- tyR
+    return $ PT.TFnApp (PT.TIdentifier ".") [tyL', tyR']
+
 
 tyIdentifier :: ParsedData E.Expr -> ParsedData PT.TypeExpr
 tyIdentifier = fmap $ PT.TIdentifier . idStr

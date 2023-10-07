@@ -203,15 +203,22 @@ spec = do
 --       int `shouldBe` "Int"
 
 
---   describe "Type Expressions: " $ do
---     it "can parse type identifiers" $ do
---         let (T.TIdentifier int) = parseType "Int"
---         let (T.TIdentifier some) = parseType "something"
+  describe "Type Expressions: " $ do
+    it "can parse type identifiers" $ do
+        let (T.TIdentifier int) = parseType "Int"
+        let (T.TIdentifier some) = parseType "something"
 
---         int `shouldBe` "Int"
---         some `shouldBe` "something"
+        int `shouldBe` "Int"
+        some `shouldBe` "something"
+    
+    it "can parse type field access" $ do
+        let (T.TFnApp (T.TIdentifier op) [T.TIdentifier left, T.TIdentifier right]) = parseType "Record.Field"
+       
+        op `shouldBe` "."
+        left `shouldBe` "Record"
+        right `shouldBe` "Field"
 
---     -- it "can parse primitive types" $ do
+    -- it "can parse primitive types" $ do
 
 
 --     -- it "can parse parametric types" $ do
