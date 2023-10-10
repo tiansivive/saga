@@ -49,6 +49,7 @@ import           Control.Monad.Reader                 (ReaderT (runReaderT))
 import           Control.Monad.Trans.RWS              (get, local, modify)
 import           Control.Monad.Writer
 import           Data.Either                          (isLeft)
+import           Data.Foldable                        (for_)
 import           Saga.Language.TypeSystem.Constraints (unify)
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.Lib         (defaultEnv,
@@ -192,7 +193,7 @@ inferScript :: CompilerState -> Script -> Either SagaError ([Declaration], Compi
 inferScript env (Script decs) = runExcept $ runRWST (forM decs inferDec) () env
 
 inferDec :: Declaration -> Saga () (Except SagaError) Declaration
---inferDec d | trace ("\nInferring declaration:\n\t" ++ show d) False = undefined
+inferDec d | trace ("\nInferring declaration:\n\t" ++ show d) False = undefined
 inferDec d@(Type id (Just (KProtocol k)) spec') = do
   modify (\e -> e{ protocols = protocol : protocols e })
   return d
@@ -231,26 +232,60 @@ inferDec (Let id Nothing k expr) = do
       return (ty, expr')
 
 inferDec dec@(Data id k (TClause (TLambda params tyExpr) bindings)) = do
-  process tyExpr
+
   modify (\e -> e{ kinds = Map.insert id kind $ kinds e })
-  modify (\e -> e{ types = Map.insert id dataType $ types e })
-  modify (\e -> e{ dataTypes = Map.insert id namespaced $ dataTypes e })
+  modify (\e -> e{ dataTypes = Map.insert id dataType $ dataTypes e })
+
+  forM_ constructorFns $ \(tag, DCons { constructor  }) -> do
+    traceM $ "Constructor type\n\t" ++ tag ++ "\n\t" ++ show constructor
+    checkReturnType constructor
+    -- | TODO:#namespaces This can be removed when introducing namespaces as we'll know to look for constructors in dataTypes
+    modify (\e -> e{ types = Map.insert tag constructor $ types e })
   return dec
 
   where
-    dataType = TAtom $ TData (Tycon id kind)
-    namespaced = TComposite $ TERecord $ mkPairs tyExpr
-    kind = foldr (\_ k -> KArrow KType k) KType params
 
-    -- | TODO: This turns each tag into an arrow type. Ideally we want the resulting tuple type
-    mkPairs (TTagged tag tyExpr')      = [(tag, tyExpr')]
-    mkPairs (TComposite (TEUnion tys)) = foldr (\t ps -> mkPairs t ++ ps ) [] tys
+    dataType = DataType userType (Map.fromList constructorFns)
+    userType = TAtom $ TData (Tycon id kind)
+    kind = foldr (KArrow . KVar) KType params
+    constructorFns = members tyExpr
 
-    process (TTagged tag tyExpr')      = modify (\e -> e{ types = Map.insert tag tyExpr' $ types e })
-    process (TComposite (TEUnion tys)) = forM_ tys process
-    process _                          = throwError $ Fail $ "Unrecognised type expression in data expression: " ++ id
+    members t@(TTagged tag cons)        = [(tag, constructor t)]
+    members (TComposite (TEUnion tys) ) = tys <&> \case
+        t@(TTagged tag cons)        -> (tag, constructor t)
+        _ -> error $ "Union members of data type " ++ id ++ " must be tagged!"
 
-    -- | TODO: Should we check here that the return type of each member constructor must match the Data type being declared?
+    constructor (TTagged tag cons) = DCons (TLambda params cons) (memberData cons)
+
+    memberData t = TComposite $ TETuple $ init $ buildType t
+
+    buildType (TComposite (TEArrow t1 t2)) = buildType t1 ++ buildType t2
+    buildType t                            = [t]
+
+
+    checkReturnType memberExpr    = do
+      env <- get
+      let extended = env { types =  Map.fromList args `Map.union` types env  }
+      let ret = returnType memberExpr
+      case check ret appliedType extended of
+        Left err  -> throwError $ Fail err
+        Right (sub, _, _) -> do
+          traceM "\nFor type"
+          traceM $ "\t" ++ show memberExpr
+          traceM "Return type is:"
+          traceM $ "\t" ++ show ret
+          return (sub, ret)
+
+      where
+        appliedType = TFnApp userType (fmap snd args)
+        args = params <&> \p -> (p, TAtom $ TVar $ Tyvar p $ KVar p)
+        check t1 t2 env = do
+
+          traceM $ "\nArgs:\n\t" ++ show args
+          traceM $ "\nExtended:\n\t" ++ show (Map.keys $ types env)
+          t1' <- Refine.runIn env t1
+          t2' <- Refine.runIn env t2
+          show `first` runExcept (runSolve env [EqCons $ t1' `EQ` t2'])
 
 
 
@@ -266,10 +301,10 @@ infer = infer_ 0
   where
     infer_ n ex = do
       let ident = intercalate "" (replicate n "\t")
-      --traceM $  ident ++ "Inferring: " ++ show ex
+      traceM $  ident ++ "Inferring: " ++ show ex
       result <- doInfer ex $ n+1
-      --traceM $ "For:\n\t"++ show ex
-      --traceM $ ident ++ "Result: " ++ show result
+      traceM $ "For:\n\t"++ show ex
+      traceM $ ident ++ "Result: " ++ show result
       return result
 
     extract (Typed _ ty) = ty
@@ -614,9 +649,31 @@ extended m (id, tvar) = do
   modify $ \s -> s{ unification = Map.insert id tvar $ unification s  }
   m
 
-
 log :: MonadWriter Trace m => Log -> m ()
 log str = tell $ Traced (Acc { logs = [str], warnings=[], errors = [] }) []
+
+
+
+
+class ReturnType a where
+  returnType :: a -> a
+
+instance ReturnType TypeExpr where
+  returnType (TAtom t)                   = TAtom $ returnType t
+  returnType (TTagged _ ty)              = returnType ty
+  returnType (TClause ty _)              = returnType ty
+  returnType (TImplementation _ ty)      = returnType ty
+  returnType (TQualified (_ :=> ty))     = returnType ty
+  returnType (TComposite (TEArrow _ ty)) = returnType ty
+  returnType (TLambda _ ty)              = returnType ty
+  --returnType (TFnApp ty _)               = returnType ty
+
+  returnType tyExpr                      = tyExpr
+
+instance ReturnType Type where
+  returnType (TArrow _ t) = returnType t
+  returnType t            = t
+
 
 class Instantiate a where
   instantiate :: a -> Infer Type
@@ -634,14 +691,15 @@ instance Instantiate Type where
   instantiate ty = return ty
 
 instance Instantiate TypeExpr where
-  --instantiate te | trace ("\n\n------------\nInstantiating: " ++ show te) False = undefined
+  instantiate te | trace ("\n\n------------\nInstantiating: " ++ show te) False = undefined
+
   instantiate (TQualified (cs :=> te)) = do
     tVars <- mapM (fmap TVar . fresh . getKind) vars
     let sub = Map.fromList $ zip vars tVars
     let te' = apply sub te
 
     -- traceM $ "\nZipped:\t" ++ show sub
-    -- traceM $ "\nSubbed type expression:\t" ++ show te'
+    --traceM $ "\nSubbed type expression:\t" ++ show te'
     tell $ Traced mempty $ mkIConstraint <$> apply sub cs
 
     instantiate te'
@@ -649,7 +707,15 @@ instance Instantiate TypeExpr where
       getKind (Tyvar v k) = k
       vars = Set.toList $ ftv cs
 
-
+  instantiate (TLambda params tyExpr) = do
+    env <- ask
+    let extended = env { types =  Map.fromList args `Map.union` types env  }
+    case Refine.runIn extended tyExpr of
+      Right (TClosure _ body _ ) -> local (const extended) $ instantiate body
+      Right ty                   -> return ty
+      Left err                   -> throwError $ Fail err
+    where
+      args = params <&> \p -> (p, TAtom $ TVar $ Tyvar p $ KVar p)
   instantiate tyExpr = do
     env <- ask
     case Refine.runIn env tyExpr of

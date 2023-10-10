@@ -178,16 +178,18 @@ let foo = obj.foo
 let get = (.foo) obj
 
 
-type Foo = { bar: String }
 type Bar = Foo.bar
+type Foo = \a => { bar: a }
 */
 
 
 
-data Custom = \a => 
-  | One: Int -> Custom Int
-  | Two: a   -> Custom String
 
-let one
-  : Custom.One -> Custom Int
-  = \x -> x
+data Either = \e a =>
+    | Error: String -> e -> Either e a
+    | Result: a -> Either e a
+
+
+let x = Result "String"
+/*
+*/

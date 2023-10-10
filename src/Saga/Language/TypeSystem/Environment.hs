@@ -28,9 +28,14 @@ data CompilerState = Saga
   { protocols :: [Protocol]
   , values    :: Map.Map String Expr
   , types     :: Map.Map String TypeExpr
-  , dataTypes :: Map.Map String TypeExpr
   , kinds     :: Map.Map String Kind 
+  , dataTypes :: Map.Map String DataType
   } deriving (Show)
+
+data DataType = DataType { userType :: TypeExpr, members:: Map.Map String Constructor } deriving (Show, Eq)
+data Constructor = DCons { constructor :: TypeExpr, cdata :: TypeExpr }  deriving (Show, Eq)
+
+
 
 data Accumulator = Acc
   { logs:: [Log]

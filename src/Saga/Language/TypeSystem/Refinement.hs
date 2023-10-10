@@ -1,4 +1,6 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE MonadComprehensions #-}
+{-# LANGUAGE NamedFieldPuns      #-}
+
 
 module Saga.Language.TypeSystem.Refinement where
 
@@ -24,16 +26,17 @@ import           Prelude                              hiding (id, lookup)
 
 import           Control.Monad.Identity               (Identity)
 
+import           Control.Applicative                  ((<|>))
 import           Control.Monad.Reader                 (ask, local)
 import           Data.List                            (find)
 import           Data.Maybe                           (fromMaybe)
-import           Saga.Language.TypeSystem.Environment (CompilerState (Saga, protocols, types),
+import           Saga.Language.TypeSystem.Environment (CompilerState (Saga, dataTypes, protocols, types),
+                                                       DataType (..),
                                                        Protocol (Protocol, id),
                                                        Saga, spec)
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))
 import           Saga.Language.TypeSystem.Lib
 import           Saga.Parser.ParsingInfo              hiding (return)
-
 
 --type Refined a = Saga () (Except RefinementError) a
 
@@ -59,21 +62,28 @@ runIn env tyExpr = show `first` runExcept (runReaderT (refine tyExpr) env)
 
 
 lookup :: String -> Refined Type
+lookup id | trace ("Looking up: " ++ id) False = undefined
 lookup id = do
-    aliases <- ask
-    case Map.lookup id (types aliases) of
-        Nothing -> throwError $ UndefinedIdentifier id
-        Just ty -> refine ty
+    Saga { types, dataTypes } <- ask
+    traceM $ "\n\nTypes:\n\t" ++ show (Map.keys types)
+    let value
+          =   [ userType | DataType { userType } <- Map.lookup id dataTypes]
+          <|> Map.lookup id types
+
+    maybe (throwError $ UndefinedIdentifier id) refine value
+
+
+
 
 refine :: TypeExpr -> Refined Type
---refine a | trace ("refining: " ++ show a) False = undefined
+refine a | trace ("refining: " ++ show a) False = undefined
 refine (TAtom ty) = return ty
 refine (TIdentifier id) = lookup id
 refine (TComposite (TEUnion types)) = TUnion . Set.fromList <$> mapM refine types
 refine (TComposite (TETuple types)) = TTuple <$> mapM refine types
 refine (TComposite (TERecord pairs)) = TRecord <$> mapM (mapM refine) pairs
 refine (TComposite (TEArrow in' out')) = TArrow <$> refine in' <*> refine out'
-
+refine (TTagged _ tyExp) = refine tyExp
 
 refine (TConditional cond true false) = TUnion . Set.fromList <$> mapM refine [true, false]
 refine (TClause tyExpr bindings)      = do
@@ -120,15 +130,17 @@ refine (TFnApp fnExpr argExprs) = do
   case (fn, args) of
 
     (t@(TData tycon), args) -> return $ foldl TApplied t args
+    (t@(TApplied cons arg), args) -> return $ foldl TApplied t args -- | TODO:#Kinds we probably need some kind check here
     (TClosure params closure env, args) -> apply closure params args
 
     (TVar (Tyvar t _), args) -> do
         ty <- lookup t
         case ty of
             t@(TData tycon) -> return $ foldl TApplied t args
+            t@(TApplied cons arg) -> return $ foldl TApplied t args -- | TODO:#Kinds we probably need some kind check here
             TClosure params closure env -> apply closure params args
-            _ -> throwError $ UnexpectedType "Cannot apply this type expression"
-    _ -> throwError $ UnexpectedType "Cannot apply this type expression"
+            _ -> throwError $ UnexpectedType $ "Cannot apply this variable expression:\n\t" ++ show fn
+    _ -> throwError $ UnexpectedType $ "Cannot apply this type expression:\n\t" ++ show fn
 
     where
 
