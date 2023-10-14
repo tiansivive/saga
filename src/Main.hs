@@ -18,7 +18,7 @@ import           Saga.Language.Core.Syntax            (Script (Script))
 import           Saga.Language.Generation.JS          (Generator (generate))
 
 import           Saga.Language.TypeSystem.Elaboration (elaborateScript)
-import           Saga.Language.TypeSystem.Inference   (inferScript, run)
+import           Saga.Language.TypeSystem.Inference   (inferScript)
 import           Saga.Language.TypeSystem.Lib         (defaultEnv)
 import           Saga.Parser.Desugar                  (desugarExpr,
                                                        desugarScript)

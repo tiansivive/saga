@@ -1,5 +1,7 @@
 
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Saga.Language.TypeSystem.Environment where
 
@@ -20,6 +22,7 @@ import           Saga.Language.TypeSystem.Types  hiding
                                                                 ProtocolID)
 import           Saga.Lexer.Tokens                             (Token (Qualified))
 import Saga.Language.Core.Syntax (Expr)
+import Control.Monad.RWS (MonadReader, MonadWriter, MonadRWS)
 
 
 
@@ -62,6 +65,9 @@ type Warning = String
 type Error =  String
 
 
+
+-- | PROTOCOLS
+
 data Protocol = Protocol
   { id              :: ProtocolID
   , spec            :: TypeExpr
@@ -69,13 +75,24 @@ data Protocol = Protocol
   , implementations :: [Implementation]
   } deriving (Show)
 
--- type Infer = RWST InferenceEnv [IConstraint] InferState (Except InferenceError)
+type BaseProtocol = String
+type ProtocolID = String
 
-data InferenceEnv = Env
-  { unificationVars :: Map.Map UnificationVar TypeExpr,
-    aliases         :: Map.Map Alias TypeExpr
-  }
-  deriving (Show)
+type Implementation = Qualified (Type, Expr)
+type Method = (Name, TypeExpr)
+
+
+-- | INFERENCE
+
+type Inference w = RWST CompilerState w IState (Except SagaError)
+type InferM w m  = (MonadRWS CompilerState w IState m, MonadError SagaError m, MonadFail m)
+data IState = IST 
+  { tvars :: Int
+  , kvars:: Int
+  , unification:: Map.Map String Tyvar 
+  , kUnification:: Map.Map String Kind 
+  } deriving (Show)
+
 
 data IConstraint
   = Empty
@@ -92,6 +109,7 @@ data Equality = EQ Type Type deriving (Show, Eq)
 data Union = MemberOf Type Type deriving (Show, Eq)
 data ImplConstraint = IP Type String deriving (Show, Eq)
 
+data KindUnification = UnifyK Kind Kind deriving (Show, Eq)
 
 
 
@@ -100,12 +118,6 @@ type UnificationVar = Tyvar
 type TypeVar = String
 type Alias = String
 type Name = String
-type BaseProtocol = String
-type ProtocolID = String
-
-type Implementation = Qualified (Type, Expr)
-type Method = (Name, TypeExpr)
 
 
 
-data Scheme = Scheme [Tyvar] (Qualified Type) deriving (Show, Eq)

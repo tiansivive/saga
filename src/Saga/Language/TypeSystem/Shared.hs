@@ -1,22 +1,19 @@
 module Saga.Language.TypeSystem.Shared where
 
-import qualified Data.Map                                           as Map
+import qualified Data.Map                             as Map
 import           Saga.Language.TypeSystem.Environment
 import qualified Saga.Language.TypeSystem.Types       as T
 import           Saga.Language.TypeSystem.Types
 
+import           Control.Monad.Except
 import           Control.Monad.RWS
+import           Saga.Language.TypeSystem.Errors
 
 
 
 
 
 
-
-
-
-extend :: InferenceEnv -> (UnificationVar, TypeExpr) -> InferenceEnv
-extend e@(Env unifier aliases) (var, tyExpr) = e {unificationVars = Map.insert var tyExpr unifier}
 
 
 

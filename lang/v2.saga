@@ -191,5 +191,9 @@ data Either = \e a =>
 
 
 let x = Result "String"
+
+let y = match x 
+  | Result: str     -> str
+  | Error: one two  -> 1
 /*
 */

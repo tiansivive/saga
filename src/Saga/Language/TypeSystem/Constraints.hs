@@ -36,7 +36,8 @@ import           Saga.Language.Core.Syntax            (Case (..),
                                                        Declaration (..),
                                                        Expr (..),
                                                        Statement (..))
-import           Saga.Language.TypeSystem.Environment hiding (Implements)
+import           Saga.Language.TypeSystem.Environment hiding (Implements,
+                                                       unification)
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))
 import qualified Saga.Language.TypeSystem.Kinds       as Kinds
 import           Saga.Language.TypeSystem.Lib
@@ -80,7 +81,7 @@ solver constraints = do
   --let sub' = Map.foldlWithKey toSubst sub unionTvars
   -- traceM $ "\nUnion TVar subst\n\t" ++ show sub'
   -- --sub'' <- checkUnions sub' $ apply sub' $ union constraints
-  -- traceM $ "\nFinal subst\n\t" ++ pretty sub
+  traceM $ "\nFinal subst\n\t" ++ pretty sub
   --traceM $ "\nMGU:\n\t" ++ show sub
   is <- reduce $ apply sub $ impls constraints
   resolve is
@@ -108,7 +109,7 @@ checkUnions _   (t1 `MemberOf` t2 : us)            = throwError $ Fail $ "Type "
 
 
 unification :: Subst -> [Equality] -> Solve Subst
---unification s cs | trace ("\nUnification:" ++ "\n\tUnifier:\n\t" ++ pretty s ++ "\n\t" ++ printEqs cs) False = undefined
+unification s cs | trace ("\nUnification:" ++ "\n\tUnifier:\n\t" ++ pretty s ++ "\n\t" ++ printEqs cs) False = undefined
 unification s [] = return s
 unification s (e:es) | t1 `EQ` t2 <- e = do
   sub <- unify t1 t2
@@ -511,10 +512,6 @@ instance Substitutable (Binding TypeExpr) where
   ftv _                   = Set.empty
 
 
-instance Substitutable InferenceEnv where
-  --apply s t | trace ("Applying type env sub\n\t" ++ show s) False = undefined
-  apply s e@(Env vars aliases) = e {unificationVars = Map.map (apply s) vars}
-  ftv (Env vars aliases) = ftv $ Map.elems vars
 
 instance Substitutable IConstraint where
    apply s (EqCons eq)   = EqCons $ apply s eq
