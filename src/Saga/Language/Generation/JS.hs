@@ -29,7 +29,7 @@ instance Generator Expr where
         where code = intercalate "," . fmap generate
     generate (Tuple exprs) = "[" ++ code exprs ++ "]"
         where code = intercalate "," . fmap generate
-    generate (Record pairs) = "{" ++ code pairs ++ "}"
+    generate (Record pairs) = "({" ++ code pairs ++ "})"
         where
             toKeyVal (key, val) = key ++ ":" ++ val
             code = intercalate "," . fmap (toKeyVal . fmap generate)
@@ -52,7 +52,28 @@ instance Generator Statement where
 instance Generator Declaration where
     generate (Type {})              = ""
     generate (Let id tyExpr _ expr) = "let " ++ id ++ " = " ++ generate expr
-    --generate (Data id _ dataExprs _) = "const " ++ id ++ " = {" ++ intercalate "," (fmap generate dataExprs)  ++ "}"
+    generate (Data id k (TClause (TLambda _ ty) bindings)) = main ++ standalone constructors ++ "\n"
+        where
+            main = "let " ++ id ++ " = " ++ generate constructors ++ "\n"
+
+
+            standalone (Record cs) = intercalate "\n" $ fmap code cs
+                where
+                    code (name, _) = "let " ++ name ++ " = " ++ id ++ "." ++ name
+
+            constructors = case ty of
+                TComposite (TEUnion tys) -> Record (fmap build tys)
+                t@(TTagged _ _)          -> Record [build t]
+                _                        -> error "In generate Declaration: Unexpected type expression in data declaration"
+
+            build (TTagged tag ty) = (tag, Lambda args record)
+                where
+                    args = fmap (\n -> "_" ++ show n) [0 .. count 0 ty]
+                    record = Record [("tag", Literal (LString tag)), ("values", Tuple $ fmap Identifier args)]
+
+            count n (TComposite (TEArrow t1 t2)) = n + count n t1 + count n t2
+            count n _                            = n
+            --"const " ++ id ++ " = {" ++ intercalate "," (fmap generate dataExprs)  ++ "}"
 
 
 instance Generator DataExpr where
