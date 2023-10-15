@@ -144,8 +144,56 @@ let sum = 1 + 2
 
 let test
   = map (\x -> x + 1) [1,2,3]
-*/
 
 let add1 
   : Int -> Int
   = \x -> x + ""
+
+let two
+  : Int -> Int
+  = \y -> y + 1
+
+
+
+data Custom = \a => 
+  | One: Int -> Custom Int
+  | Two: a   -> Custom String
+
+let one
+  : Custom.One 
+  = One 1
+
+let two
+  : Custom.Two -> Custom a
+  = \x -> match x
+      | Two: y -> Two y
+
+
+
+let obj = { foo: 1 }
+let fake = { bar: "string" }
+
+let foo = obj.foo
+
+let get = (.foo) obj
+
+
+type Bar = Foo.bar
+type Foo = \a => { bar: a }
+*/
+
+
+
+
+data Either = \e a =>
+    | Error: String -> e -> Either e a
+    | Result: a -> Either e a
+
+
+let x = Result "String"
+
+/*
+let y = match x 
+  | Result: str     -> str
+  | Error: one two  -> 1
+*/

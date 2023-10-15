@@ -135,6 +135,8 @@ builtInTypes = Map.fromList
   , ("String", TAtom $ TPrimitive TString)
   , ("List", TAtom listConstructor)
   , ("Function", TAtom fnConstructor)
+  , ("Record", TAtom $ TRecord [])
+  --, (".", TLambda ["_"] )
   ]
 
 listConstructor, fnConstructor :: Type
@@ -145,17 +147,20 @@ fnConstructor = TData $ Tycon "Function" (KArrow KType (KArrow KType KType))
 builtInFns :: Map.Map Alias TypeExpr
 builtInFns =
   Map.fromList
-    [ ("+", binaryNumTypeExpr),
-      ("-", binaryNumTypeExpr),
-      ("*", binaryNumTypeExpr),
-      ("/", binaryNumTypeExpr),
-      ("++", appendFn),
-      ("==", binaryEqTypeExpr),
-      ("map", mapImplType)
+    [ ("+", binaryNumTypeExpr)
+    --, (".", fieldAccessTypeExpr)
+    , ("-", binaryNumTypeExpr)
+    , ("*", binaryNumTypeExpr)
+    , ("/", binaryNumTypeExpr)
+    , ("++", appendFn)
+    , ("==", binaryEqTypeExpr)
+    , ("map", mapImplType)
     ]
     where
       var = "a"
       tvar = TVar $ Tyvar var KType
+
+      --fieldAccessTypeExpr = TAtom $ TRecord [] `TArrow` (TPrimitive TString `TArrow` tvar)
       binaryNumTypeExpr = TQualified $ [tvar `T.Implements` "Num"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` tvar))
       binaryEqTypeExpr = TQualified $ [tvar `T.Implements` "Eq"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` TPrimitive TBool))
       appendFn = TQualified $ [tvar `T.Implements` "Semigroup"] :=> TLambda [var] (TAtom $ tvar `TArrow` (tvar `TArrow` tvar))
@@ -177,7 +182,16 @@ mapImplType = TQualified $ [TVar tf `T.Implements` "Functor"] :=> TLambda [f] (T
 
 
 defaultEnv :: CompilerState
-defaultEnv = Saga { values = Map.empty, types = builtInTypes <> builtInFns, kinds = Map.empty, protocols = [eqProtocol, numProtocol, isStringProtocol, functorProtocol, semigroupProtocol] }
+defaultEnv = Saga
+  { values = Map.empty
+  , types = builtInTypes <> builtInFns
+  , kinds = Map.empty
+  , dataTypes = Map.empty
+  , protocols =
+      [ eqProtocol, numProtocol, isStringProtocol
+      , functorProtocol, semigroupProtocol
+      ]
+  }
 
 startWriter :: Accumulator
 startWriter = Acc { logs = [], warnings = [], errors = [] }

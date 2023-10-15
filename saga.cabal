@@ -26,7 +26,9 @@ library
       Saga.Language.TypeSystem.Environment
       Saga.Language.TypeSystem.Errors
       Saga.Language.TypeSystem.Inference
+      Saga.Language.TypeSystem.Kinds
       Saga.Language.TypeSystem.Lib
+      Saga.Language.TypeSystem.Normalization
       Saga.Language.TypeSystem.Refinement
       Saga.Language.TypeSystem.Shared
       Saga.Language.TypeSystem.Types

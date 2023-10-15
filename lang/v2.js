@@ -1,8 +1,6 @@
+let Either = ({ Error: (_0) => ({ tag: "Error", values: [_0] }), Result: (_0) => ({ tag: "Result", values: [_0] }) })
+let Error = Either.Error
+let Result = Either.Result
 
 
-let first = ($tvar_α$Num,$tvar_β$Functor) => (xs) => (() => {let add = (f) => map($tvar_β$Functor)(f)(xs);
-return add((x) => (() => {return Core.add($tvar_α$Num)(x)(2)})())})()
-
-let sum = ($tvar_α$Num) => Core.add($tvar_α$Num)(1)(2)
-
-let test = ($tvar_α$Num) => map({map:$list_$functor_$map})((x) => Core.add($tvar_α$Num)(x)(1))([1,2,3])
+let x = ($tvar_β$IsString) => Result("String")

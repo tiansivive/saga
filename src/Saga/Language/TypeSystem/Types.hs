@@ -62,12 +62,12 @@ data Type where
   TVar :: Tyvar -> Type
   TVoid :: Type
 
-data Tycon = Tycon String Kind deriving ( Eq, Ord)
-data Tyvar = Tyvar String Kind deriving ( Eq, Ord)
-instance Show Tyvar where
-  show (Tyvar s _) = s
-instance Show Tycon where
-  show (Tycon s _) = s
+data Tycon = Tycon String Kind deriving (Show, Eq, Ord)
+data Tyvar = Tyvar String Kind deriving (Show, Eq, Ord)
+-- instance Show Tyvar where
+--   show (Tyvar s _) = s
+-- instance Show Tycon where
+--   show (Tycon s _) = s
 data PrimitiveType
   = TBool
   | TInt

@@ -284,6 +284,12 @@ typeLambda params (Parsed body' bRange bToks) rt =
 typeFnApplication :: ParsedData PT.TypeExpr -> [ParsedData PT.TypeExpr] -> ParsedData PT.TypeExpr
 typeFnApplication fn args = PT.TFnApp <$> fn <*> sequence args
 
+typeBinaryOp :: ParsedData PT.TypeExpr -> L.RangedToken -> ParsedData PT.TypeExpr -> ParsedData PT.TypeExpr
+typeBinaryOp tyL rtok tyR = do
+    tyL' <- tyL
+    tyR' <- tyR
+    return $ PT.TFnApp (PT.TIdentifier ".") [tyL', tyR']
+
 
 tyIdentifier :: ParsedData E.Expr -> ParsedData PT.TypeExpr
 tyIdentifier = fmap $ PT.TIdentifier . idStr
@@ -364,14 +370,13 @@ letdec idExpr tyExpr kind expr = Parsed dec (range expr) (tokens expr)
         id = idStr $ value idExpr
         dec = E.Let id (fmap value tyExpr) (fmap value kind) (value expr)
 
-dataType :: ParsedData E.Expr -> Maybe (ParsedData PT.Kind) -> [ParsedData E.DataExpr] -> [ParsedData (PT.Binding PT.TypeExpr)]  -> ParsedData E.Declaration
-dataType (Parsed expr rt ts) kind dtExprs bindings = Parsed d range' (nub dataToks)
+dataType :: ParsedData E.Expr -> Maybe (ParsedData PT.Kind) -> [ParsedData E.Expr] -> [ParsedData E.DataExpr] -> [ParsedData (PT.Binding PT.TypeExpr)]  -> ParsedData E.Declaration
+dataType (Parsed expr _ _) kind typeArgs dtExprs bindings =  E.Data id <$> sequence kind <*> typeArgs' <*> sequence dtExprs <*> sequence bindings
     where
         id = idStr expr
-        dataToks = foldl (\toks' d -> toks' ++ tokens d) ts dtExprs
-        -- toks = maybe tokens [] kind  ++ dataToks
-        range' = rt <-> range (last dtExprs)
-        d = E.Data id (fmap value kind) (fmap value dtExprs) (fmap value bindings)
+        typeArgs' = fmap idStr <$> sequence typeArgs
+
+
 
 typeDef :: ParsedData E.Expr -> Maybe (ParsedData PT.Kind) -> ParsedData PT.TypeExpr -> ParsedData E.Declaration
 typeDef expr kind tyExpr =

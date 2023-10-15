@@ -271,17 +271,22 @@ union
 typeExpr2
   : typeExpr3                                  %shift { $1 }                               
   | typeExpr3 '->' typeExpr                           { P.typeArrow $1 $3 }                               
- 
+
 typeExpr3
-  : typeExpr4                                  %shift { $1 }
-  | instance identifier ':' typeExpr           %shift { P.typeProtocolImplementation (P.tyIdentifier $2) $4 }
+  : typeExpr4                                         { $1 }
+  | typeExpr3 operator typeExpr4               %shift { P.typeBinaryOp $1 $2 $3 }
+  | typeExpr3 '.' identifier                   %shift { P.typeBinaryOp $1 $2 (P.tyIdentifier $3) }
 
 typeExpr4
-  : typeExpr5                                         { $1 }
-  | typeExpr4 typeExpr5                               { P.typeFnApplication $1 [$2] }
-  | typeExpr4 '!'                                     { P.tyParenthesised $1 $2 $2 } 
+  : typeExpr5                                  %shift { $1 }
+  | instance identifier ':' typeExpr           %shift { P.typeProtocolImplementation (P.tyIdentifier $2) $4 }
 
-typeExpr5 
+typeExpr5
+  : typeExpr6                                         { $1 }
+  | typeExpr5 typeExpr6                               { P.typeFnApplication $1 [$2] }
+  | typeExpr5 '!'                                     { P.tyParenthesised $1 $2 $2 } 
+
+typeExpr6 
   : typeAtom { $1 }
   | '\\' many(identifier) '=>' typeExpr               { P.typeLambda ($2) $4 $1 }
 
@@ -305,16 +310,24 @@ tpairs
 script
   : many(dec)                                         { P.script $1 }
 dec 
-  : letdec                                                                                              { $1 }
-  | let identifier typeAnnotation kindAnnotation '=' expr where separated(binding, ',')                 { P.letdec $2 $3 $4 (P.clause $6 $8) }
-  | data identifier kindAnnotation '=' separated(dataExpr, '|')                                         { P.dataType $2 $3 $5 [] }
-  | data identifier kindAnnotation '=' separated(dataExpr, '|') where separated(tbinding, ',')          { P.dataType $2 $3 $5 $7 }
-  | ty identifier kindAnnotation '=' typeExpr                                                           { P.typeDef $2 $3 $5 }
-  | ty identifier kindAnnotation '=' typeExpr where separated(tbinding, ',')                            { P.typeDef $2 $3 (P.typeClause $5 $7) }
+  : letdec                                                                       { $1 }
+  | datadec                                                                      { $1 }
+  | ty identifier kindAnnotation '=' typeExpr                                    { P.typeDef $2 $3 $5 }
+  | ty identifier kindAnnotation '=' typeExpr where separated(tbinding, ',')     { P.typeDef $2 $3 (P.typeClause $5 $7) }
 
 letdec
-  : let identifier typeAnnotation kindAnnotation '=' expr                                               { P.letdec $2 $3 $4 $6 }
+  : let identifier typeAnnotation kindAnnotation '=' expr                                         { P.letdec $2 $3 $4 $6 }
+  | let identifier typeAnnotation kindAnnotation '=' expr where separated(binding, ',')           { P.letdec $2 $3 $4 (P.clause $6 $8) }
 
+datadec 
+  :  data identifier kindAnnotation '=' separated(dataExpr, '|')                                            { P.dataType $2 $3 [] $5 [] }
+  |  data identifier kindAnnotation '=' separated(dataExpr, '|') where separated(tbinding, ',')             { P.dataType $2 $3 [] $5 $7 }
+  |  data identifier kindAnnotation '=' dataParams separated(dataExpr, '|')                                 { P.dataType $2 $3 $5 $6 [] }
+  |  data identifier kindAnnotation '=' dataParams separated(dataExpr, '|') where separated(tbinding, ',')  { P.dataType $2 $3 $5 $6 $8 }
+
+dataParams
+  : '\\' many(identifier) '=>'     { $2 }
+  | '\\' many(identifier) '=>' '|' { $2 }
 dataExpr
   : identifier ':' typeExpr         { P.dataExpr $1 $3 }
 

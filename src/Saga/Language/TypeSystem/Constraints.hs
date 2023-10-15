@@ -17,7 +17,7 @@ import           Control.Monad.State                  (StateT (runStateT),
 import           Control.Monad.Trans.Writer           (WriterT (runWriterT))
 import           Control.Monad.Writer                 (MonadWriter (tell))
 import           Data.Bifunctor                       (bimap)
-import           Data.Either                          (fromRight)
+import           Data.Either                          (fromRight, isLeft)
 import           Data.Functor                         ((<&>))
 import           Data.List                            (delete, find, groupBy,
                                                        intercalate, intersect,
@@ -36,8 +36,10 @@ import           Saga.Language.Core.Syntax            (Case (..),
                                                        Declaration (..),
                                                        Expr (..),
                                                        Statement (..))
-import           Saga.Language.TypeSystem.Environment hiding (Implements)
+import           Saga.Language.TypeSystem.Environment hiding (Implements,
+                                                       unification)
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))
+import qualified Saga.Language.TypeSystem.Kinds       as Kinds
 import           Saga.Language.TypeSystem.Lib
 import qualified Saga.Language.TypeSystem.Refinement  as Refine
 import           Saga.Language.TypeSystem.Types       hiding (ProtocolID,
@@ -79,7 +81,7 @@ solver constraints = do
   --let sub' = Map.foldlWithKey toSubst sub unionTvars
   -- traceM $ "\nUnion TVar subst\n\t" ++ show sub'
   -- --sub'' <- checkUnions sub' $ apply sub' $ union constraints
-  -- traceM $ "\nFinal subst\n\t" ++ pretty sub
+  traceM $ "\nFinal subst\n\t" ++ pretty sub
   --traceM $ "\nMGU:\n\t" ++ show sub
   is <- reduce $ apply sub $ impls constraints
   resolve is
@@ -107,7 +109,7 @@ checkUnions _   (t1 `MemberOf` t2 : us)            = throwError $ Fail $ "Type "
 
 
 unification :: Subst -> [Equality] -> Solve Subst
---unification s cs | trace ("\nUnification:" ++ "\n\tUnifier:\n\t" ++ pretty s ++ "\n\t" ++ printEqs cs) False = undefined
+unification s cs | trace ("\nUnification:" ++ "\n\tUnifier:\n\t" ++ pretty s ++ "\n\t" ++ printEqs cs) False = undefined
 unification s [] = return s
 unification s (e:es) | t1 `EQ` t2 <- e = do
   sub <- unify t1 t2
@@ -125,9 +127,9 @@ unify = unify_ 0
     unify_ :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Int -> Type -> Type -> m Subst
     unify_ n t1 t2 = do
       let ident = intercalate "" (replicate n "\t")
-      -- traceM (ident ++ "Unifying:\n" ++ ident ++ "  " ++ show t1 ++ "\n" ++ ident ++ "  " ++ show t2)
+      traceM (ident ++ "Unifying:\n" ++ ident ++ "  " ++ show t1 ++ "\n" ++ ident ++ "  " ++ show t2)
       result <- unify' t1 t2
-      -- traceM (ident ++ "Result:\n" ++ ident ++ "  " ++ show result)
+      traceM (ident ++ "Result:\n" ++ ident ++ "  " ++ show result)
       return result
       where
         unify' :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Type -> Type -> m Subst
@@ -173,7 +175,7 @@ unify = unify_ 0
             unifier t1 t2 = catchError (unify_ (n+1) t1 t2 <&> Just) (\_ -> return Nothing)
 
 
-        unify' t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch"
+        unify' t t' | kind t /= kind t' = throwError $ Fail "Kind mismatch" -- TODO: kind unification needs to be added here3
         unify' t1 t2 = case (t1, t2) of
           (t@(TClosure {}), t2) -> do
             t' <- refine t
@@ -201,7 +203,7 @@ unify = unify_ 0
 
 
 bind :: (MonadReader CompilerState m, MonadWriter [Cycle] m, MonadError e m, e ~ SagaError) => Tyvar -> Type -> m Subst
---bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
+bind a t | trace ("Binding: " ++ show a ++ " to " ++ show t) False = undefined
 bind a t
   | t == TVar a = return nullSubst
   | occursCheck a t = case t of
@@ -211,13 +213,18 @@ bind a t
         tell [(a, t, solution)]
         return nullSubst
       _                              -> throwError $ InfiniteType a t
-  | kind a /= kind t = throwError $ Fail "kinds do not match"
+  -- | TODO:#Kinds Kind unification
+  | Left err <- Kinds.run (kind a) (kind t) = throwError $ Fail  $ "kinds do not match:\n\tTyvar: " ++ show a ++ "\n\tType: " ++ show t ++ "\nError:\n\t" ++ show err
+  -- | Right sub <-  Kinds.run (kind a) (kind t) =
+  -- | kind a /= kind t = throwError $ Fail $ "kinds do not match:\n\tTyvar: " ++ show a ++ "\n\tType: " ++ show t
   | TLiteral l <- t = return . Map.singleton a $
       case l of
         LInt _    -> TPrimitive TInt
         LString _ -> TPrimitive TString
         LBool _   -> TPrimitive TBool
   | otherwise = return $ Map.singleton a t
+
+
 
 occursCheck :: Substitutable a => Tyvar -> a -> Bool
 occursCheck a t = a `Set.member` set
@@ -461,11 +468,8 @@ instance Substitutable TypeExpr where
       apply' b                       = b
   apply s (TImplementation prtcl tyExpr)  = TImplementation prtcl $ apply s tyExpr
   apply s (TFnApp fn args)                = TFnApp (apply s fn) (apply s args)
-  apply s (TLambda params tyExpr)         = TLambda (subStrVar s <$> params) $ apply s tyExpr
-    where
-      subStrVar sub str = case Map.lookup (Tyvar str KType) sub of
-        Nothing                   -> str
-        Just (TVar (Tyvar id _ )) -> id
+  apply s (TLambda params tyExpr)         = TLambda params $ apply s tyExpr
+
   apply s (TQualified (cs :=> ty)) = TQualified (cs' :=> ty')
     where
       ty' = apply s ty
@@ -508,10 +512,6 @@ instance Substitutable (Binding TypeExpr) where
   ftv _                   = Set.empty
 
 
-instance Substitutable InferenceEnv where
-  --apply s t | trace ("Applying type env sub\n\t" ++ show s) False = undefined
-  apply s e@(Env vars aliases) = e {unificationVars = Map.map (apply s) vars}
-  ftv (Env vars aliases) = ftv $ Map.elems vars
 
 instance Substitutable IConstraint where
    apply s (EqCons eq)   = EqCons $ apply s eq
@@ -579,13 +579,13 @@ instance Substitutable Statement where
   ftv (Declaration d) = ftv d
 
 instance Substitutable Declaration where
-  apply s (Let id ty k e)            = Let id (apply s ty) k (apply s e)
-  apply s (Type id k ty)             = Type id k (apply s ty)
-  apply s (Data id k dExps bindings) = Data id k (apply s dExps) bindings
+  apply s (Let id ty k e)    = Let id (apply s ty) k (apply s e)
+  apply s (Type id k ty)     = Type id k (apply s ty)
+  apply s (Data id k tyExpr) = Data id k (apply s tyExpr)
 
-  ftv (Let _ ty _ e)     = ftv ty <> ftv e
-  ftv (Type _ _ ty)      = ftv ty
-  ftv (Data _ _ dExps _) = ftv dExps
+  ftv (Let _ ty _ e)    = ftv ty <> ftv e
+  ftv (Type _ _ ty)     = ftv ty
+  ftv (Data _ _ tyExpr) = ftv tyExpr
 
 
 compose :: Subst -> Subst -> Subst
@@ -631,7 +631,7 @@ instance HasKind Type where
   kind (TVar u)     = kind u
   kind (TApplied f _) = case kind f of
     (KArrow _ k) -> k
-  kind (TClosure t tyExpr _) = kind tyExpr
+  kind (TClosure ps tyExpr _) = foldr (KArrow . KVar) (kind tyExpr) ps -- | We need to implement kind unification
   kind _ = KType
   --   (KArrow _ k) -> k
 

@@ -122,9 +122,10 @@ repl = runInputT defaultSettings $ repl' Map.empty
                     repl' env
 
                 inferType input = do
-                    case HMI.run input of
-                        (Left e)   -> pPrint e
-                        (Right ty) -> pPrint ty
+                    pPrint "Disabled"
+                    -- case HMI.run input of
+                    --     (Left e)   -> pPrint e
+                    --     (Right ty) -> pPrint ty
                     repl' env
 
                 print' env' = do

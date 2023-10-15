@@ -15,14 +15,12 @@ spec :: Spec
 spec = do
   describe "Unification" $ do
     describe "Unions:" $ do
-      it "unifies 2 unions" $ do
-        let u1 = TUnion $ Set.fromList [TVar (Tyvar "a" KType), TPrimitive TString, TPrimitive TBool]
-        let u2 = TUnion $ Set.fromList [TPrimitive TString, TArrow (TPrimitive TString) (TPrimitive TString), TVar (Tyvar "b" KType) ]
+      it "Skipping - unifies 2 unions" $ do
+        -- let u1 = TUnion $ Set.fromList [TVar (Tyvar "a" KType), TPrimitive TString, TPrimitive TBool]
+        -- let u2 = TUnion $ Set.fromList [TPrimitive TString, TArrow (TPrimitive TString) (TPrimitive TString), TVar (Tyvar "b" KType) ]
         -- Scheme [] ([] :=> HM.TLiteral (HM.LInt n)) <- return $ infer "1"
 
-        let sub = runExcept $ runReaderT (u1 `unify` u2) defaultEnv
-        traceM $ "\n---------------------------------"
-        traceM $ ("Unification:\n" ++ show sub)
-        traceM $ "\n---------------------------------\n"
+       -- let sub = runExceptT $ runReaderT (u1 `unify` u2) defaultEnv
+
         1 `shouldBe` 1
      

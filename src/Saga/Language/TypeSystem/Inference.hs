@@ -9,123 +9,71 @@
 
 module Saga.Language.TypeSystem.Inference where
 
-import           Control.Applicative                  ((<|>))
+import           Control.Applicative                    ((<|>))
 import           Control.Monad.Except
-import           Control.Monad.RWS                    (MonadReader (ask),
-                                                       MonadWriter (tell),
-                                                       RWST (runRWST), evalRWST,
-                                                       execRWST, gets, modify')
-import           Control.Monad.State.Lazy             (MonadState, State,
-                                                       evalState, evalStateT,
-                                                       replicateM)
-import           Control.Monad.Trans.Except           (ExceptT, runExceptT)
-import qualified Control.Monad.Writer                 as W
-import           Data.Bifunctor                       (Bifunctor (first))
-import           Data.Functor                         ((<&>))
-import           Data.List                            (intercalate, nub,
-                                                       partition, (\\))
-import qualified Data.Map                             as Map
-import           Data.Maybe                           (fromMaybe, isJust,
-                                                       isNothing)
-import qualified Data.Set                             as Set
-import           Debug.Trace                          (trace, traceM)
-import           Prelude                              hiding (EQ, id, log)
-import           Saga.Language.Core.Literals          (Literal (..))
+import           Control.Monad.RWS
+
+import           Control.Monad.Trans.Except             (ExceptT, runExceptT)
+import qualified Control.Monad.Writer                   as W
+import           Data.Bifunctor                         (Bifunctor (first))
+import           Data.Functor                           ((<&>))
+import           Data.List                              (intercalate, nub,
+                                                         partition, (\\))
+import qualified Data.Map                               as Map
+import           Data.Maybe                             (fromMaybe, isJust,
+                                                         isNothing)
+import qualified Data.Set                               as Set
+import           Debug.Trace                            (trace, traceM)
+import           Prelude                                hiding (EQ, id, log)
+import           Saga.Language.Core.Literals            (Literal (..))
 import           Saga.Language.Core.Syntax
-import           Saga.Language.TypeSystem.Constraints hiding (simplify,
-                                                       unification)
+import           Saga.Language.TypeSystem.Constraints   hiding (simplify,
+                                                         unification)
 import           Saga.Language.TypeSystem.Environment
-import qualified Saga.Language.TypeSystem.Types       as T
-import           Saga.Language.TypeSystem.Types       hiding (Implements)
+import qualified Saga.Language.TypeSystem.Types         as T
+import           Saga.Language.TypeSystem.Types         hiding (Implements)
 
 import           Saga.Language.TypeSystem.Shared
 import           Saga.Parser.Desugar
-import           Saga.Parser.Parser                   (runSagaExpr)
-import           Saga.Parser.Shared                   hiding (Record, Term,
-                                                       Tuple, return)
+import           Saga.Parser.Parser                     (runSagaExpr)
+import           Saga.Parser.Shared                     hiding (Record, Term,
+                                                         Tuple, return)
 
-import           Control.Monad.Identity               (Identity)
-import           Control.Monad.Reader                 (ReaderT (runReaderT))
-import           Control.Monad.Trans.RWS              (get, local, modify)
+import           Control.Monad.Identity                 (Identity)
+import           Control.Monad.Reader                   (ReaderT (runReaderT))
+
 import           Control.Monad.Writer
-import           Data.Either                          (isLeft)
-import           Saga.Language.TypeSystem.Constraints (unify)
-import           Saga.Language.TypeSystem.Errors      (SagaError (..))
-import           Saga.Language.TypeSystem.Lib         (defaultEnv,
-                                                       listConstructor)
-import qualified Saga.Language.TypeSystem.Refinement  as Refine
-import           Saga.Language.TypeSystem.Types       (Constraint (Implements))
-import           Saga.Utils.Utils                     (Pretty (pretty), (|>),
-                                                       (||>))
+import           Data.Either                            (isLeft)
+import           Data.Foldable                          (for_)
+import           Saga.Language.TypeSystem.Constraints   (unify)
+import           Saga.Language.TypeSystem.Errors        (SagaError (..))
+import           Saga.Language.TypeSystem.Lib           (defaultEnv,
+                                                         listConstructor)
+import           Saga.Language.TypeSystem.Normalization
+import qualified Saga.Language.TypeSystem.Refinement    as Refine
+import           Saga.Language.TypeSystem.Types         (Constraint (Implements))
+import           Saga.Utils.Utils                       (Pretty (pretty), (|>),
+                                                         (||>))
 
 
---type Infer a = Saga InferState (WriterT [IConstraint] (Except SagaError)) a
-type Infer = RWST CompilerState Trace InferState (Except SagaError)
-data InferState = IST { tvars :: Int, kvars:: Int, unification:: Map.Map String Tyvar  } deriving (Show)
+--type Infer a = Saga IState (WriterT [IConstraint] (Except SagaError)) a
 
 data Trace = Traced Accumulator [IConstraint] deriving (Show)
-
 instance Semigroup Trace where
   (Traced acc1 cs1) <> (Traced acc2 cs2) = Traced (acc1 <> acc2) (cs1 <> cs2)
 instance Monoid Trace where
   mempty = Traced mempty []
 
-
-
-run :: String -> Either String (TypeExpr, Bindings, Expr)
-run input = do
-  Parsed expr _ _ <- runSagaExpr input
-  show `first` runExcept (runInfer defaultEnv (infer $ desugarExpr expr))
-
 type Bindings = Map.Map String Type
 
-runInfer :: CompilerState -> Infer Expr -> Except SagaError (TypeExpr, Bindings, Expr)
-runInfer env m = do
-  traceM "\n\n"
-  traceM "--------------------"
-  traceM "RUNNING INFERENCE"
-  traceM "\n\n"
-  (e, st, Traced acc constraints) <- runRWST m env initState
-
-  case e of
-    Typed e' ty -> do
-      traceM "\n\n"
-      traceM "--------------------"
-      traceM "SOLVING CONSTRAINTS"
-      traceM $ "Inferred Type:\n\t" ++ show ty
-      traceM $ "\nInference state:\n\t" ++ show st
-      --traceM $ "\nAccumulated logs: " ++ show acc
-      -- traceM $ "\nEmitted Constraints:\n\t" ++ show constraints
-
-      (subst, implConstraints, cycles) <- runSolve env constraints
-      traceM "\n\n"
-      traceM "--------------------"
-      traceM "PROCESSING CYCLES"
-      traceM $ "Cycles:\n\t" ++ show cycles
-      traceM $ "\nSubst:\n\t" ++ pretty subst
-      subst' <- resolveCycles subst cycles
-
-      traceM "\n"
-      traceM "--------------------"
-      traceM "CLOSING OVER"
-      traceM $ "\nFinal Subst:\n\t" ++ pretty subst'
-      traceM $ "\nImpl constraints" ++ show implConstraints
-      traceM "\n"
-      let bindings = normalize Set.empty $ apply subst (TVar <$> unification st)
-      let final = ty ||> apply subst' |> simplify
-      traceM $ "\nFinal type:\n\t" ++ show final
-      traceM $ "\nWith bindings:\n\t" ++ show bindings
-
-      return (closeOver implConstraints final, bindings, normalize (ftv final) (apply subst' e))
-
-    _ -> throwError $ Fail $ "Could not infer type for: " ++ show e
 
 
--- inference :: Expr -> CompilerState -> InferState -> m (TypeExpr, Map.Map String Type, Expr)
-inference :: ( MonadWriter Trace (t (Except SagaError))
-  , MonadError SagaError (t (Except SagaError))
-  , MonadTrans t
-  ) => Expr -> CompilerState -> InferState -> t (Except SagaError) (TypeExpr, Map.Map String Type, Expr)
+-- inference :: Expr -> CompilerState -> IState -> m (TypeExpr, Map.Map String Type, Expr)
+-- inference :: ( MonadWriter Trace (t (Except SagaError))
+--   , MonadError SagaError (t (Except SagaError))
+--   , MonadTrans t
+--   ) => Expr -> CompilerState -> IState -> t (Except SagaError) (TypeExpr, Map.Map String Type, Expr)
+--inference :: InferM Trace m => Expr -> CompilerState -> IState -> Either SagaError (TypeExpr, Map.Map String Type, Expr)
 inference expr env st = case runExcept $ runRWST (infer expr) env st of
   Left err -> do
     tell $ Traced (Acc { logs = [], warnings=[], errors = [err] }) []
@@ -171,7 +119,7 @@ qualify impls t
     mkConstraint (ty `IP` p) = ty `T.Implements` p
 
 
-lookupEnv :: String -> Infer Type
+lookupEnv :: InferM Trace m => String -> m Type
 lookupEnv x = do
   Saga { types } <- ask
   IST { unification } <- get
@@ -230,28 +178,94 @@ inferDec (Let id Nothing k expr) = do
       (ty, bindings, expr') <- inference expr env st
       return (ty, expr')
 
+inferDec dec@(Data id k (TClause (TLambda params tyExpr) bindings)) = do
+
+  modify (\e -> e{ kinds = Map.insert id kind $ kinds e })
+  modify (\e -> e{ dataTypes = Map.insert id dataType $ dataTypes e })
+
+  forM_ constructorFns $ \(tag, DCons { constructor  }) -> do
+    traceM $ "Constructor type\n\t" ++ tag ++ "\n\t" ++ show constructor
+    checkReturnType constructor
+    -- | TODO:#namespaces This can be removed when introducing namespaces as we'll know to look for constructors in dataTypes
+    modify (\e -> e{ types = Map.insert tag constructor $ types e })
+  return dec
+
+  where
+
+    dataType = DataType userType (Map.fromList constructorFns)
+    userType = TAtom $ TData (Tycon id kind)
+    kind = foldr (KArrow . KVar) KType params
+    constructorFns = members tyExpr
+
+    members t@(TTagged tag cons)        = [(tag, constructor t)]
+    members (TComposite (TEUnion tys) ) = tys <&> \case
+        t@(TTagged tag cons)        -> (tag, constructor t)
+        _ -> error $ "Union members of data type " ++ id ++ " must be tagged!"
+
+    constructor (TTagged tag cons) = DCons (TLambda params cons) (memberData cons)
+
+    memberData t = TLambda params $ TComposite $ TETuple $ init $ buildType t
+
+    buildType (TComposite (TEArrow t1 t2)) = buildType t1 ++ buildType t2
+    buildType t                            = [t]
 
 
-infer :: Expr -> Infer Expr
+    checkReturnType memberExpr    = do
+      env <- get
+      let extended = env { types =  Map.fromList args `Map.union` types env  }
+      let ret = returnType memberExpr
+      case check ret appliedType extended of
+        Left err  -> throwError $ Fail err
+        Right (sub, _, _) -> do
+          traceM "\nFor type"
+          traceM $ "\t" ++ show memberExpr
+          traceM "Return type is:"
+          traceM $ "\t" ++ show ret
+          return (sub, ret)
+
+      where
+        appliedType = TFnApp userType (fmap snd args)
+        args = params <&> \p -> (p, TAtom $ TVar $ Tyvar p $ KVar p)
+        check t1 t2 env = do
+
+          traceM $ "\nArgs:\n\t" ++ show args
+          traceM $ "\nExtended:\n\t" ++ show (Map.keys $ types env)
+          t1' <- Refine.runIn env t1
+          t2' <- Refine.runIn env t2
+          show `first` runExcept (runSolve env [EqCons $ t1' `EQ` t2'])
+
+
+
+
+
+
+
+
+infer :: InferM Trace m => Expr -> m Expr
 -- infer ex | trace ("Inferring: " ++ show ex) False = undefined
 infer = infer_ 0
 
   where
     infer_ n ex = do
       let ident = intercalate "" (replicate n "\t")
-      --traceM $  ident ++ "Inferring: " ++ show ex
+      traceM $  ident ++ "Inferring: " ++ show ex
       result <- doInfer ex $ n+1
-      --traceM $ "For:\n\t"++ show ex
-     -- traceM $ ident ++ "Result: " ++ show result
+      --traceM $ "\nFor:\n\t"++ show ex
+      traceM $ ident ++ "Result: " ++ show result
       return result
 
     extract (Typed _ ty) = ty
 
-    doInfer :: Expr -> Int-> Infer Expr
+    doInfer :: InferM Trace m => Expr -> Int-> m Expr
     doInfer e n = case e of
       typed@(Typed expr ty) -> do
         Typed expr' inferred <- infer_ n expr
-        emit $ EqCons $ ty `EQ` inferred
+          -- | Inferred type is generalized as much as possible and unification expects the LHS to be the subtype
+        case expr' of
+          -- | When expression is a literal, it doesn't get generalized to preserve the literal type
+          Literal _ -> emit $ EqCons $ inferred `EQ` ty
+          -- | In any other case, we want to unify by instantiating the inferred type to the src type
+          _         -> emit $ EqCons $ ty `EQ` inferred
         return typed
       Identifier x -> Typed e <$> lookupEnv x
 
@@ -266,6 +280,16 @@ infer = infer_ 0
           out = case rest of
             [] -> body
             _  -> Lambda rest body
+
+      FnApp dot@(Identifier ".") args@[recordExpr, Identifier field] -> do
+        fieldType <- TVar <$> fresh KType
+        (Typed _ recordTy) <- infer_ n recordExpr
+        emit $ EqCons $ recordTy `EQ` TRecord [(field, fieldType)]
+        return $ Typed (FnApp dot args) fieldType
+
+      --FnApp dot@(Identifier ".") args -> throwError $ Fail $ "Unrecognised expressions for property access:\n\t" ++ show args
+      FnApp (Identifier ".") args -> throwError $ Fail $ "Unrecognised expressions for property access:\n\t" ++ show args
+
       FnApp fn [arg] -> do
         out <- TVar <$> fresh KType
         fn'@(Typed _ fnTy)   <- infer_ n fn
@@ -308,7 +332,7 @@ infer = infer_ 0
             modify $ \s -> s{ unification = Map.fromList tvars `Map.union` unification s  }
             TypedCase pat patTy <$> infer_ n expr
 
-          inferPat :: Pattern -> Infer (Writer [(String, Tyvar)] Type )
+          inferPat :: InferM Trace m => Pattern -> m (Writer [(String, Tyvar)] Type)
           inferPat Wildcard = do
             tVar <- TVar <$> fresh KType
             return $ return tVar
@@ -321,10 +345,30 @@ infer = infer_ 0
           inferPat (Lit l) = return $ return (TLiteral l)
 
           inferPat (PatData tag pats) = do
-            inferred <- sequence <$> mapM inferPat pats
-            return $ foldl TApplied base <$> inferred
+            env@(Saga { types, dataTypes }) <- ask
+
+            let constructors = Map.toList $ Map.mapMaybeWithKey (\k (DataType { members, userType }) -> Map.lookup tag members ) dataTypes
+            case constructors of
+              [(dataType, DCons { constructor, cdata })] -> do
+                inferred <- sequence <$> mapM inferPat pats
+                let (args, w) = runWriter inferred
+
+                (dat, out) <- inst' env constructor cdata
+                emit $ EqCons $ TTuple args `EQ` dat
+                return $ W.writer (out, w)
+
+              [] -> throwError $ Fail $ "Tag " ++ tag ++ " is not a constructor"
+              multiple -> throwError $ Fail $ "Tag " ++ tag ++ " is a constructor for multiple data types: " ++ show multiple
+
+
             where
-              base = TData (Tycon tag KType)
+              base = TData (Tycon tag (KVar tag))
+
+              inst' env cons dat = do
+                dat'  <- instantiate dat
+                out   <- returnType <$> instantiate cons
+                return (dat', out)
+
 
           inferPat (PatTuple pats rest) = do
             inferred <- sequence <$> mapM inferPat pats
@@ -441,7 +485,7 @@ simplify t@(TUnion {}) = simplified
 
 simplify t = t
 
-generalize :: Type -> Infer Type
+generalize :: InferM Trace m => Type -> m Type
 generalize (TUnion tys) = TUnion . Set.fromList <$> mapM generalize (Set.toList tys)
 generalize (TTuple tys) = TTuple <$> mapM generalize tys
 generalize (TRecord pairs) = TRecord <$> mapM (mapM generalize) pairs
@@ -465,119 +509,60 @@ generalize ty = case ty of
 
 
 
-class Normalized a where
-  normalize :: Set.Set UnificationVar -> a -> a
 
-instance Normalized TypeExpr where
-  normalize ftv tyExpr = case tyExpr of
-    (TQualified (cs :=> tyExpr')) -> TQualified $ (normConstraint <$> cs) :=> normalize ftv tyExpr'
-    (TAtom ty)                    -> TAtom $ normalize ftv ty
-    (TLambda params tyExpr')       -> TLambda (fmap norm' params) (normalize ftv tyExpr')
-    (TTagged tag tyExpr')          -> TTagged tag $ normalize ftv tyExpr'
-    _ -> tyExpr
+initState :: IState
+initState = IST {tvars = 0, kvars = 0, unification = Map.empty, kUnification = Map.empty }
 
-    where
-      ord = zip tvars letters
-      tvars = ftv ||> Set.toList |> fmap (\(Tyvar v _) -> v)
-      norm' x = fromMaybe x (lookup x ord)
-
-      normConstraint (t `T.Implements` p) = normalize ftv t `T.Implements` p
-
-
-instance Normalized Type where
-  normalize ftv = normalize'
-    where
-      mapping = zip tvars letters
-      tvars = ftv ||> Set.toList |> fmap (\(Tyvar v _) -> v)
-      norm' x = fromMaybe x (lookup x mapping)
-
-      normalize' = \case
-        (TTuple tys)        -> TTuple $ fmap normalize' tys
-        (TUnion tys)        -> TUnion . Set.fromList $ fmap normalize' (Set.toList tys)
-        (TRecord pairs)     -> TRecord $ fmap (fmap normalize') pairs
-        (TApplied cons arg) -> normalize' cons `TApplied` normalize' arg
-        (a `TArrow` b)      -> normalize' a `TArrow` normalize' b
-        (TVar (Tyvar v k))  -> TVar $ Tyvar (norm' v) k
-        (TData (Tycon x k)) -> TData $ Tycon (norm' x) k
-        t                   -> t
-
-instance Normalized (Map.Map String Type) where
-  normalize _ unifier = fmap (normalize tvars) unifier
-    where
-      vals = snd <$> Map.toList unifier
-      tvars = foldl (\vars t -> vars <> ftv t) Set.empty vals
-
-instance Normalized Expr where
-  normalize ftv = normalize'
-    where
-      mapping = zip tvars letters
-      tvars = ftv ||> Set.toList |> fmap (\(Tyvar v _) -> v)
-      norm' x = fromMaybe x (lookup x mapping)
-
-      normalize' = \case
-        Typed e ty -> Typed (normalize' e) (normalize ftv ty)
-
-        Lambda ps body -> Lambda (fmap norm' ps) (normalize' body)
-        FnApp fn args  -> FnApp (normalize' fn) (fmap normalize' args)
-        Match cond cases -> Match (normalize' cond) (fmap (normalize ftv) cases)
-
-        Record es -> Record $ fmap normalize' <$> es
-        Tuple es  -> Tuple $ fmap normalize' es
-        List es   -> List $ fmap normalize' es
-
-        Block stmts -> Block $ fmap (normalize ftv) stmts
-        e           -> e
-
-instance Normalized Case where
-  normalize ftv = \case
-    Case pat e -> Case pat (normalize ftv e)
-    TypedCase pat ty e -> TypedCase pat (normalize ftv ty) (normalize ftv e)
-
-instance Normalized Statement where
-  normalize ftv = \case
-    Return e -> Return $ normalize ftv e
-    Procedure e -> Procedure $ normalize ftv e
-    Declaration d -> Declaration $ normalize ftv d
-
-instance Normalized Declaration where
-  normalize ftv = \case
-    Let id ty k e -> Let id (fmap (normalize ftv) ty) k (normalize ftv e)
-    Type id k ty -> Type id k (normalize ftv ty)
-    Data id k dataExps binds -> Data id k (fmap (fmap $ normalize ftv) dataExps) binds
-
-
-
-initState :: InferState
-initState = IST {tvars = 0, kvars = 0, unification = Map.empty }
-
-emit :: IConstraint -> Infer ()
+emit :: InferM Trace m => IConstraint -> m ()
 emit c = tell $ Traced mempty (pure c)
 
-fresh :: Kind -> Infer Tyvar
+fresh :: InferM Trace m => Kind -> m Tyvar
 fresh k = do
   modify $ \s -> s {tvars = tvars s + 1}
   s <- get
   let v = "t" ++ show ([1 ..] !! tvars s)
   return $ Tyvar v k
 
-freshKind :: Infer Kind
+freshKind :: InferM Trace m => m Kind
 freshKind = do
   modify $ \s -> s {kvars = kvars s + 1}
   s <- get
   let v = "k" ++ show ([1 ..] !! kvars s)
   return $ KVar v
 
-extended :: Infer a -> (String, Tyvar) -> Infer a
+extended :: InferM Trace m => m a -> (String, Tyvar) -> m a
 extended m (id, tvar) = do
   modify $ \s -> s{ unification = Map.insert id tvar $ unification s  }
   m
 
-
 log :: MonadWriter Trace m => Log -> m ()
 log str = tell $ Traced (Acc { logs = [str], warnings=[], errors = [] }) []
 
+
+
+
+class ReturnType a where
+  returnType :: a -> a
+
+instance ReturnType TypeExpr where
+  returnType (TAtom t)                   = TAtom $ returnType t
+  returnType (TTagged _ ty)              = returnType ty
+  returnType (TClause ty _)              = returnType ty
+  returnType (TImplementation _ ty)      = returnType ty
+  returnType (TQualified (_ :=> ty))     = returnType ty
+  returnType (TComposite (TEArrow _ ty)) = returnType ty
+  returnType (TLambda _ ty)              = returnType ty
+  --returnType (TFnApp ty _)               = returnType ty
+
+  returnType tyExpr                      = tyExpr
+
+instance ReturnType Type where
+  returnType (TArrow _ t) = returnType t
+  returnType t            = t
+
+
 class Instantiate a where
-  instantiate :: a -> Infer Type
+  instantiate :: InferM Trace m => a -> m Type
 
 
 
@@ -593,13 +578,14 @@ instance Instantiate Type where
 
 instance Instantiate TypeExpr where
   --instantiate te | trace ("\n\n------------\nInstantiating: " ++ show te) False = undefined
+
   instantiate (TQualified (cs :=> te)) = do
     tVars <- mapM (fmap TVar . fresh . getKind) vars
     let sub = Map.fromList $ zip vars tVars
     let te' = apply sub te
 
     -- traceM $ "\nZipped:\t" ++ show sub
-    -- traceM $ "\nSubbed type expression:\t" ++ show te'
+    --traceM $ "\nSubbed type expression:\t" ++ show te'
     tell $ Traced mempty $ mkIConstraint <$> apply sub cs
 
     instantiate te'
@@ -607,7 +593,15 @@ instance Instantiate TypeExpr where
       getKind (Tyvar v k) = k
       vars = Set.toList $ ftv cs
 
-
+  instantiate (TLambda params tyExpr) = do
+    env <- ask
+    let extended = env { types =  Map.fromList args `Map.union` types env  }
+    case Refine.runIn extended tyExpr of
+      Right (TClosure _ body _ ) -> local (const extended) $ instantiate body
+      Right ty                   -> return ty
+      Left err                   -> throwError $ Fail err
+    where
+      args = params <&> \p -> (p, TAtom $ TVar $ Tyvar p $ KVar p)
   instantiate tyExpr = do
     env <- ask
     case Refine.runIn env tyExpr of

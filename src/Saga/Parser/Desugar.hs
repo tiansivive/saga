@@ -1,14 +1,14 @@
 module Saga.Parser.Desugar where
 
-import           Debug.Trace                                  (trace)
-import           Unsafe.Coerce                                (unsafeCoerce)
+import           Debug.Trace                    (trace)
+import           Unsafe.Coerce                  (unsafeCoerce)
 
-import           Data.Functor                                 ((<&>))
-import qualified Saga.Language.Core.Literals                  as Core
-import qualified Saga.Language.Core.Syntax                    as Core
+import           Data.Functor                   ((<&>))
+import qualified Saga.Language.Core.Literals    as Core
+import qualified Saga.Language.Core.Syntax      as Core
 import qualified Saga.Language.TypeSystem.Types as CoreTy
-import qualified Saga.Parser.Expr                             as Parser
-import qualified Saga.Parser.Types                            as ParserTy
+import qualified Saga.Parser.Expr               as Parser
+import qualified Saga.Parser.Types              as ParserTy
 
 
 
@@ -74,7 +74,14 @@ desugarPattern (Parser.PatRecord pairs rest) = Core.PatRecord (fmap (fmap desuga
 desugarDec :: Parser.Declaration -> Core.Declaration
 desugarDec (Parser.Let id ty kind e) = Core.Let id (fmap desugarTypeExpr ty) (fmap desugarKind kind) (desugarExpr e)
 desugarDec (Parser.Type id kind ty) = Core.Type id (fmap desugarKind kind) (desugarTypeExpr ty)
-desugarDec (Parser.Data id kind dataExprs bindings) = Core.Data id (fmap desugarKind kind) (fmap desugarDataExpr dataExprs) (fmap desugarTyBinding bindings)
+desugarDec (Parser.Data id kind typeArgs dataExprs bindings) = Core.Data id (fmap desugarKind kind) (CoreTy.TClause (CoreTy.TLambda typeArgs ty) (fmap desugarTyBinding bindings))
+        where
+            tagged (tag, tyExpr) = CoreTy.TTagged tag (desugarTypeExpr tyExpr)
+            ty = case dataExprs of
+                []         -> error $ "No members for data expression: " ++ show id
+                [single]   -> tagged single
+                _          -> CoreTy.TComposite $ CoreTy.TEUnion (fmap tagged dataExprs)
+
 
 
 desugarScript :: Parser.Script -> Core.Script
