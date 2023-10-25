@@ -49,7 +49,7 @@ run t env = catchError (runWriterT $ runReaderT (evaluate t) env)
 instance Evaluate TypeExpr (Polymorphic Type) where
     evaluate (TE.Atom atom) = evaluate atom
     -- | TODO: need to probably run kind inference first
-    evaluate (TE.Tagged tag tyExp) = evaluate tyExp <&> \(Forall tvars qt) -> Forall tvars $ fmap (T.Applied $ T.Data tag $ K.Var tag) qt
+    evaluate (TE.Tagged tag tyExp) = evaluate tyExp <&> \(Forall tvars qt) -> Forall tvars $ fmap (T.Applied $ T.Data tag $ K.Var (PolyVar tag K.Kind)) qt
     evaluate (TE.Clause tyExpr bindings)      = do
         binds <- Map.fromList <$> bindGroup
         let scoped = local (\s -> s { types = binds `Map.union` types s })
@@ -66,7 +66,7 @@ instance Evaluate TypeExpr (Polymorphic Type) where
 
             constraints = do
                 TE.Constraint (Q.Implements (TE.Atom (TE.Identifier id)) protocol) <- bindings
-                return $ T.Var (PolyVar id $ K.Var id) `Q.Implements` protocol
+                return $ T.Var (PolyVar id $ K.Var (PolyVar id K.Kind)) `Q.Implements` protocol
 
     evaluate (TE.Implementation prtcl tyExpr) = do
         Saga {protocols} <- ask

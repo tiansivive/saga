@@ -31,7 +31,7 @@ type InferM w m  = (MonadRWS CompilerState (Either Info [w]) State m, MonadError
 data State = IST
   { vars        :: Int
   , level       :: Int
-  , unification:: Map.Map String (PolymorphicVar Type)
+  , unification :: Map.Map String (PolymorphicVar Type)
   } deriving (Show)
 
 

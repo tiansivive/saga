@@ -18,8 +18,8 @@ type Saga = MonadRWS Config Info CompilerState
 data CompilerState = Saga
   { protocols :: [Protocol]
   , values    :: Map.Map String Value.Expr
-  , types     :: Map.Map String (Polymorphic Type )
-  , kinds     :: Map.Map String Kind
+  , types     :: Map.Map String (Polymorphic Type)
+  , kinds     :: Map.Map String (Polymorphic Kind)
   , dataTypes :: Map.Map String DataType
   , tags      :: Map.Map String (Polymorphic Type)
   } deriving (Show)
@@ -49,4 +49,5 @@ instance Monoid Info where
 type instance Classifier Expr = Type
 type instance Classifier Type = Kind
 type instance Classifier TypeExpr = Kind
+type instance Classifier Kind = Kind
 

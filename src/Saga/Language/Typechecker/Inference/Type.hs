@@ -58,7 +58,7 @@ type instance VarType Expr I.Skolem         = Var.PolymorphicVar Type
 type instance VarType Expr I.PolyVar        = Var.PolymorphicVar Type
 type instance VarType Expr I.Instantiation  = Var.PolymorphicVar Type
 
-
+-- | Inferring Types of Exprs
 instance Inference Expr where
 
 
@@ -119,12 +119,13 @@ infer' e = case e of
     Lambda ps@(param : rest) body -> do
 
         tVar <- fresh' U
-        modify (\s -> s { unification = Map.insert param tVar $ unification s  })
-
-        o@(Typed _ out') <- infer' out
-        let ty = T.Var tVar `T.Arrow` out'
-        let expr = Lambda ps o
-        return $ Typed expr ty
+        let qt = Forall [] (pure $ T.Var tVar)
+        let scoped = local (\e -> e { types = Map.insert param qt $ types e })
+        scoped $ do
+          o@(Typed _ out') <- infer' out
+          let ty = T.Var tVar `T.Arrow` out'
+          let expr = Lambda ps o
+          return $ Typed expr ty
 
         where
             out = case rest of
@@ -182,12 +183,13 @@ infer' e = case e of
                 walk (Declaration (Let id (Just typeExp) k expr') :processed) rest
             Declaration (Let id Nothing k expr) -> do
               tvar <- fresh' U
-              modify (\s -> s { unification = Map.insert id tvar $ unification s })
-              (Typed expr' ty) <- infer expr
-              ev <- fresh' E
-              emit' $ CST.Equality ev (CST.Mono $ T.Var tvar) (CST.Mono ty)
-              let scoped = local (\e -> e{ types = Map.insert id (Forall [] ([] :=> T.Var tvar)) $ types e })
-              scoped $ walk processed rest
+              let qt = Forall [] (pure $ T.Var tvar)
+              let scoped = local (\e -> e{ types = Map.insert id qt $ types e })
+              scoped $ do
+                (Typed expr' ty) <- infer expr
+                ev <- fresh' E
+                emit' $ CST.Equality ev (CST.Mono $ T.Var tvar) (CST.Mono ty)
+                walk processed rest
             d -> walk (d:processed) rest
     where
       extract (Typed _ ty) = ty
@@ -196,16 +198,15 @@ infer' e = case e of
 lookup' :: InferM CST.Constraint m => String -> m (Qualified Type)
 lookup' x = do
   Saga { types } <- ask
-  IST { unification } <- get
+
   case Map.lookup x types of
     Just scheme -> inst scheme
-    Nothing -> maybe (throwError $ UnboundVariable x) (return . tyvar) $ Map.lookup x unification
+    Nothing     -> throwError $ UnboundVariable x
 
   where
     inst scheme@(Forall [] qt) = return qt
     inst scheme@(Forall tvars _) = fresh' U >>= instantiate scheme . T.Var >>= inst
 
-    tyvar v = [] :=> T.Var v
 
 fresh' :: InferM CST.Constraint m => Tag a -> m (VarType Expr a)
 fresh' t = do
@@ -268,45 +269,3 @@ instance Generalize Type where
         emit' $ Impl e (CST.Mono $ T.Var tvar) protocol
         return $ Forall [tvar] ([T.Var tvar `Q.Implements` protocol] :=> T.Var tvar)
 
-
--- instance Substitutable Type Type where
---   --apply s t | trace ("Applying type sub\n\t" ++ show s ++ "\n\t" ++ show t) False = undefined
-
---   apply s t@(T.Var v)                      = Map.findWithDefault t v s
---   apply s (T.Tuple elems)                  = T.Tuple $ apply s elems
---   apply s (T.Record pairs)                 = T.Record $ apply s pairs
---   apply s (T.Union elems)                  = T.Union $ apply s elems
---   apply s (T.Applied cons arg)             = T.Applied (apply s cons) (apply s arg)
---   --apply s (TClosure params body env)      = TClosure params (apply s body) (apply s env)
---   apply s (inTy `T.Arrow` outTy)           = in' `T.Arrow` out'
---     where
---       in' = apply s inTy
---       out' = apply s outTy
-
---   apply _ ty = ty
-
---   ftv ty = case ty of
---     T.Var id             -> Set.singleton id
---     T.Tuple elems        -> ftv elems
---     T.Record pairs       -> ftv pairs
---     T.Union tys          -> ftv tys
---     cons `T.Applied` arg -> ftv cons `Set.union` ftv arg
---     t `T.Arrow` t'       -> ftv t `Set.union` ftv t'
---     _                    -> Set.empty
---   --ftv (TClosure params body _) = ftv body
-
-
--- instance {-# OVERLAPPING #-} Substitutable (Qualified Type) Type where
---     apply s (cs :=> t) = apply s cs :=> apply s t
---     ftv (cs :=> t) = ftv cs `Set.union` ftv t
-
--- instance Substitutable T.Constraint Type where
---   apply s (t `Q.Implements` prtcl) = apply s t `Q.Implements` prtcl
---   apply s (Q.Resource mul t)       = Q.Resource mul $ apply s t
---   apply s (Q.Refinement expr t)    = Q.Refinement expr $ apply s t
---   apply s (Q.Pure t)               = Q.Pure $ apply s t
-
---   ftv (t `Q.Implements` prtcl) = ftv t
---   ftv (Q.Resource mul t)       = ftv t
---   ftv (Q.Refinement expr t)    = ftv t
---   ftv (Q.Pure t)               = ftv t

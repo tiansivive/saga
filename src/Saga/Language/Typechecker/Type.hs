@@ -33,8 +33,8 @@ data Type where
 
 
 data Scope = Scope
-  { types     :: Map.Map String (Polymorphic Type )
-  , kinds     :: Map.Map String Kind
+  { types     :: Map.Map String (Polymorphic Type)
+  , kinds     :: Map.Map String (Polymorphic Kind)
   , dataTypes :: Map.Map String DataType
   , tags      :: Map.Map String (Polymorphic Type)
   } deriving (Show, Eq, Ord)
