@@ -21,7 +21,7 @@ import           Saga.Language.TypeSystem.Types  hiding
                                                                (Implements,
                                                                 ProtocolID)
 import           Saga.Lexer.Tokens                             (Token (Qualified))
-import Saga.Language.Core.Syntax (Expr)
+import Saga.Language.Core.Expr (Expr)
 import Control.Monad.RWS (MonadReader, MonadWriter, MonadRWS)
 
 

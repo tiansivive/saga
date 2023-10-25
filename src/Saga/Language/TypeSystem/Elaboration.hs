@@ -21,8 +21,8 @@ import qualified Data.Set                             as Set
 import           Data.Traversable                     (for)
 import           Debug.Trace                          (traceM)
 import           Prelude                              hiding (id, log)
+import           Saga.Language.Core.Expr
 import           Saga.Language.Core.Literals          (Literal (..))
-import           Saga.Language.Core.Syntax
 import           Saga.Language.TypeSystem.Constraints (Solve, Subst,
                                                        Substitutable (apply),
                                                        ftv, unify)

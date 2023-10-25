@@ -1,12 +1,15 @@
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
-module Saga.Language.Core.Syntax where
+module Saga.Language.Core.Expr where
 
-import           Saga.Language.Core.Literals    (Literal (LInt))
+import           Saga.Language.Core.Literals        (Literal (LInt))
 
-import qualified Saga.Language.TypeSystem.Types as T
-import           Saga.Language.TypeSystem.Types hiding (Binding)
+
+
+import           Saga.Language.Typechecker.Kind
+import           Saga.Language.Typechecker.Type     as T hiding (Case)
+import           Saga.Language.Typechecker.TypeExpr (TypeExpr)
 
 -- | Term expressions
 data Expr where
@@ -22,7 +25,9 @@ data Expr where
   FnApp :: Expr -> [Expr] -> Expr
 
   Block :: [Statement] -> Expr
-  Typed :: Expr -> Type -> Expr
+  Typed :: Expr -> T.Type -> Expr
+
+
 
   --FieldAccess :: Expr -> String -> Expr
 deriving instance Show Expr
@@ -59,6 +64,7 @@ data Pattern
     | PatList [Pattern] (Maybe String)
     | PatRecord [(String, Maybe Pattern)] (Maybe String)
     | PatData String [Pattern]
+    | TypedPat Pattern Type
   deriving (Show, Eq)
 
 type DataExpr = (String, TypeExpr)

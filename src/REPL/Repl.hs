@@ -15,7 +15,7 @@ import qualified Data.Map                             as Map
 import           Control.Monad.Except                 (ExceptT)
 import           Control.Monad.State                  (StateT)
 import           Debug.Trace                          (traceM)
-import           Saga.Language.Core.Syntax            (Expr)
+import           Saga.Language.Core.Expr              (Expr)
 import           Saga.Language.TypeSystem.Constraints (nullSubst)
 import           Saga.Parser.Desugar
 import           Saga.Parser.ParsingInfo              hiding (Term)

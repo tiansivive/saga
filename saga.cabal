@@ -17,10 +17,29 @@ library
   exposed-modules:
       Main
       REPL.Repl
+      Saga.Language.Core.Expr
+      Saga.Language.Core.Liquid
       Saga.Language.Core.Literals
-      Saga.Language.Core.Syntax
       Saga.Language.Evaluation
       Saga.Language.Generation.JS
+      Saga.Language.Typechecker.Environment
+      Saga.Language.Typechecker.Errors
+      Saga.Language.Typechecker.Evaluation
+      Saga.Language.Typechecker.Inference.Elaboration
+      Saga.Language.Typechecker.Inference.Inference
+      Saga.Language.Typechecker.Inference.Kind
+      Saga.Language.Typechecker.Inference.Pattern
+      Saga.Language.Typechecker.Inference.Type
+      Saga.Language.Typechecker.Kind
+      Saga.Language.Typechecker.Lib
+      Saga.Language.Typechecker.Protocols
+      Saga.Language.Typechecker.Qualification
+      Saga.Language.Typechecker.Shared
+      Saga.Language.Typechecker.Solver.Constraints
+      Saga.Language.Typechecker.Solver.Unification
+      Saga.Language.Typechecker.Type
+      Saga.Language.Typechecker.TypeExpr
+      Saga.Language.Typechecker.Variables
       Saga.Language.TypeSystem.Constraints
       Saga.Language.TypeSystem.Elaboration
       Saga.Language.TypeSystem.Environment

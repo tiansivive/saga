@@ -31,11 +31,11 @@ import qualified Data.Set                             as Set
 import           Debug.Trace
 import           GHC.IO                               (unsafeDupablePerformIO)
 import           Prelude                              hiding (EQ, id)
-import           Saga.Language.Core.Literals          (Literal (..))
-import           Saga.Language.Core.Syntax            (Case (..),
+import           Saga.Language.Core.Expr              (Case (..),
                                                        Declaration (..),
                                                        Expr (..),
                                                        Statement (..))
+import           Saga.Language.Core.Literals          (Literal (..))
 import           Saga.Language.TypeSystem.Environment hiding (Implements,
                                                        unification)
 import           Saga.Language.TypeSystem.Errors      (SagaError (..))

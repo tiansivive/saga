@@ -5,7 +5,7 @@ import qualified Data.Set                                      as Set
 import qualified Saga.Language.TypeSystem.Inference   
 
 
-import qualified Saga.Language.Core.Syntax as E
+import qualified Saga.Language.Core.Expr as E
 import qualified Saga.Language.Core.Literals as L
 
 

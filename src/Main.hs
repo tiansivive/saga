@@ -14,7 +14,7 @@ import qualified Saga.Language.TypeSystem.Elaboration as Elab
 import           Control.Monad.Except                 (runExcept)
 import           Data.Bifunctor                       (first)
 import           Debug.Trace                          (traceM)
-import           Saga.Language.Core.Syntax            (Script (Script))
+import           Saga.Language.Core.Expr              (Script (Script))
 import           Saga.Language.Generation.JS          (Generator (generate))
 
 import           Saga.Language.TypeSystem.Elaboration (elaborateScript)

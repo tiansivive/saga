@@ -2,7 +2,7 @@ module Saga.Language.TypeSystem.Lib where
 
 import           Data.Functor                         ((<&>))
 import qualified Data.Map                             as Map
-import           Saga.Language.Core.Syntax
+import           Saga.Language.Core.Expr
 import           Saga.Language.TypeSystem.Environment
 import qualified Saga.Language.TypeSystem.Types       as T
 import           Saga.Language.TypeSystem.Types

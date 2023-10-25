@@ -25,8 +25,8 @@ import           Data.Maybe                             (fromMaybe, isJust,
 import qualified Data.Set                               as Set
 import           Debug.Trace                            (trace, traceM)
 import           Prelude                                hiding (EQ, id, log)
+import           Saga.Language.Core.Expr
 import           Saga.Language.Core.Literals            (Literal (..))
-import           Saga.Language.Core.Syntax
 import           Saga.Language.TypeSystem.Constraints   hiding (simplify,
                                                          unification)
 import           Saga.Language.TypeSystem.Environment

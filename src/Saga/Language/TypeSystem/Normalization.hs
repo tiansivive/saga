@@ -5,7 +5,7 @@ module Saga.Language.TypeSystem.Normalization where
 import qualified Data.Map                             as Map
 import           Data.Maybe                           (fromMaybe)
 import qualified Data.Set                             as Set
-import           Saga.Language.Core.Syntax
+import           Saga.Language.Core.Expr
 import           Saga.Language.TypeSystem.Constraints
 import           Saga.Language.TypeSystem.Environment
 import           Saga.Language.TypeSystem.Shared
