@@ -36,7 +36,7 @@ import           Saga.Language.Core.Literals                   (Literal (..))
 import           Saga.Language.Typechecker.Environment         (CompilerState (..))
 import           Saga.Language.Typechecker.Inference.Inference hiding (lookup)
 import           Saga.Language.Typechecker.Protocols           (ProtocolID)
-import           Saga.Language.Typechecker.Solver.Unification  (Subst,
+import           Saga.Language.Typechecker.Solver.Substitution (Subst,
                                                                 Substitutable (..),
                                                                 compose,
                                                                 nullSubst)
@@ -61,16 +61,14 @@ type instance VarType Expr I.Instantiation  = Var.PolymorphicVar Type
 -- | Inferring Types of Exprs
 instance Inference Expr where
 
-
     infer = infer'
-
-    --qualify = _q
 
     lookup = lookup'
     fresh = fresh'
 
+type TypeInference m = InferM CST.Constraint m
 
-infer' :: InferM CST.Constraint m => Expr -> m Expr
+infer' :: TypeInference m => Expr -> m Expr
 infer' e = case e of
     e@(Literal literal) -> return $ Typed e (T.Singleton literal)
     Identifier x -> do
@@ -195,7 +193,7 @@ infer' e = case e of
       extract (Typed _ ty) = ty
 
 
-lookup' :: InferM CST.Constraint m => String -> m (Qualified Type)
+lookup' :: TypeInference m => String -> m (Qualified Type)
 lookup' x = do
   Saga { types } <- ask
 
@@ -208,7 +206,7 @@ lookup' x = do
     inst scheme@(Forall tvars _) = fresh' U >>= instantiate scheme . T.Var >>= inst
 
 
-fresh' :: InferM CST.Constraint m => Tag a -> m (VarType Expr a)
+fresh' :: TypeInference m => Tag a -> m (VarType Expr a)
 fresh' t = do
   modify $ \s -> s {vars = vars s + 1}
   s <- get
@@ -262,7 +260,7 @@ instance Generalize Type where
     _ -> return $ Forall [] ([] :=> ty)
 
     where
-      generalize' :: InferM CST.Constraint m => ProtocolID -> m (T.Polymorphic Type)
+      generalize' :: TypeInference m => ProtocolID -> m (T.Polymorphic Type)
       generalize' protocol = do
         tvar <- fresh' P
         e <- fresh' E

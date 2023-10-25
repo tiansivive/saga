@@ -2,20 +2,20 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Saga.Language.Typechecker.Type where
-import           Data.Typeable                                (Typeable)
-import qualified Saga.Language.Core.Liquid                    as Liquid
+import           Data.Typeable                                 (Typeable)
+import qualified Saga.Language.Core.Liquid                     as Liquid
 import           Saga.Language.Core.Literals
-import           Saga.Language.Typechecker.Kind               (Kind)
-import qualified Saga.Language.Typechecker.Qualification      as Q
-import           Saga.Language.Typechecker.TypeExpr           (TypeExpr)
+import           Saga.Language.Typechecker.Kind                (Kind)
+import qualified Saga.Language.Typechecker.Qualification       as Q
+import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 import           Saga.Language.Typechecker.Variables
 
 
-import qualified Data.Map                                     as Map
-import qualified Data.Set                                     as Set
-import           Saga.Language.Typechecker.Qualification      (Qualified (..))
-import           Saga.Language.Typechecker.Solver.Unification (Subst,
-                                                               Substitutable (..))
+import qualified Data.Map                                      as Map
+import qualified Data.Set                                      as Set
+import           Saga.Language.Typechecker.Qualification       (Qualified (..))
+import           Saga.Language.Typechecker.Solver.Substitution (Subst,
+                                                                Substitutable (..))
 
 
 data Type where

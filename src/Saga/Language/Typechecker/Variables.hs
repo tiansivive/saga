@@ -23,3 +23,5 @@ newtype Level = Level Int deriving (Show, Eq, Ord)
 
 type family Classifier a :: *
 type family VarType e a:: *
+
+

@@ -36,6 +36,7 @@ library
       Saga.Language.Typechecker.Qualification
       Saga.Language.Typechecker.Shared
       Saga.Language.Typechecker.Solver.Constraints
+      Saga.Language.Typechecker.Solver.Substitution
       Saga.Language.Typechecker.Solver.Unification
       Saga.Language.Typechecker.Type
       Saga.Language.Typechecker.TypeExpr

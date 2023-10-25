@@ -1,9 +1,8 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs             #-}
-{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NamedFieldPuns    #-}
-{-# LANGUAGE TupleSections     #-}
+
 
 module Saga.Language.TypeSystem.Constraints where
 
@@ -52,7 +51,6 @@ import           Unsafe.Coerce                        (unsafeCoerce)
 -- type Solve = StateT SolveState (Except InferenceError)
 
 type Solve = ReaderT CompilerState (WriterT [Cycle] (Except SagaError))
-
 
 type Subst = Map.Map Tyvar Type
 type Cycle = (Tyvar, Type, Subst)

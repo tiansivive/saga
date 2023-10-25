@@ -1,10 +1,10 @@
 module Saga.Language.Typechecker.Kind where
-import qualified Data.Map                                     as Map
-import qualified Data.Set                                     as Set
-import qualified Saga.Language.Typechecker.Qualification      as Q
-import           Saga.Language.Typechecker.Qualification      (Qualified (..))
-import           Saga.Language.Typechecker.Solver.Unification (Substitutable (..))
-import           Saga.Language.Typechecker.Variables          (PolymorphicVar)
+import qualified Data.Map                                      as Map
+import qualified Data.Set                                      as Set
+import qualified Saga.Language.Typechecker.Qualification       as Q
+import           Saga.Language.Typechecker.Qualification       (Qualified (..))
+import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
+import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
 
 
 data Kind

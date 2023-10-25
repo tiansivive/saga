@@ -2,7 +2,7 @@ module Saga.Language.Typechecker.Protocols where
 
 import           Prelude                                 hiding (id)
 import           Saga.Language.Core.Expr                 (Expr)
-import           Saga.Language.Typechecker.Kind          (Kind)
+
 import           Saga.Language.Typechecker.Qualification (Qualified)
 import           Saga.Language.Typechecker.Type          (Polymorphic, Type)
 import           Saga.Language.Typechecker.TypeExpr      (TypeExpr)

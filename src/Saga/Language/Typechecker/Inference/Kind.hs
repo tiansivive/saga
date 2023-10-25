@@ -24,7 +24,7 @@ import           Saga.Language.Typechecker.Qualification       (Qualified (..))
 import qualified Saga.Language.Typechecker.Solver.Constraints  as CST hiding
                                                                       (Equality)
 import           Saga.Language.Typechecker.Solver.Constraints  (Constraint (..))
-import           Saga.Language.Typechecker.Solver.Unification  (Substitutable (..))
+import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import qualified Saga.Language.Typechecker.Type                as T
 import           Saga.Language.Typechecker.Type                (Polymorphic,
                                                                 Scheme (..),
@@ -122,7 +122,7 @@ lookup' x = do
 
 
 
-fresh' :: KindInference m => Tag a -> m (VarType TypeExpr a)
+fresh' :: InferM w m => Tag a -> m (VarType TypeExpr a)
 fresh' t = do
   modify $ \s -> s {vars = vars s + 1}
   s <- get
@@ -144,7 +144,7 @@ instance Generalize Kind where
     generalize k = return $ Forall (Set.toList $ ftv k) ([] :=> k)
 
 class HasKind t where
-  kind :: KindInference m => t -> m Kind
+  kind :: InferM w m => t -> m Kind
 
 instance HasKind Type where
   kind (T.Data _ k) = return k

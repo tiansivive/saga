@@ -15,7 +15,9 @@ data SagaError where
   -- | UNIFICATION
   UnificationMismatch :: [Type] -> [Type]-> SagaError
   UnificationFail :: Type -> Type-> SagaError
-  UnificationKindFail :: Kind -> Kind-> SagaError
+  UnificationKindFail :: Kind -> Kind -> SagaError
+
+  KindMismatch :: Kind -> Kind -> SagaError
 
   InfiniteType :: (Show a) => (PolymorphicVar a) -> Type-> SagaError
   InfiniteKind :: String ->Kind-> SagaError

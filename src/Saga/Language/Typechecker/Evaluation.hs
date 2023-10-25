@@ -4,36 +4,36 @@
 module Saga.Language.Typechecker.Evaluation where
 import           Control.Monad.RWS
 
-import qualified Saga.Language.Typechecker.Type               as T
-import           Saga.Language.Typechecker.Type               (DataType (..),
-                                                               Polymorphic,
-                                                               Scheme (..),
-                                                               Type)
-import qualified Saga.Language.Typechecker.TypeExpr           as TE
-import           Saga.Language.Typechecker.TypeExpr           (TypeAtom,
-                                                               TypeExpr)
+import qualified Saga.Language.Typechecker.Type                as T
+import           Saga.Language.Typechecker.Type                (DataType (..),
+                                                                Polymorphic,
+                                                                Scheme (..),
+                                                                Type)
+import qualified Saga.Language.Typechecker.TypeExpr            as TE
+import           Saga.Language.Typechecker.TypeExpr            (TypeAtom,
+                                                                TypeExpr)
 
-import           Control.Applicative                          ((<|>))
+import           Control.Applicative                           ((<|>))
 import           Control.Monad.Except
-import           Control.Monad.Trans.Reader                   (ReaderT (runReaderT))
-import           Control.Monad.Trans.Writer                   (WriterT (runWriterT))
-import           Data.Functor                                 ((<&>))
-import qualified Data.List                                    as List
-import qualified Data.Map                                     as Map
-import qualified Data.Set                                     as Set
-import           Prelude                                      hiding (id,
-                                                               lookup)
+import           Control.Monad.Trans.Reader                    (ReaderT (runReaderT))
+import           Control.Monad.Trans.Writer                    (WriterT (runWriterT))
+import           Data.Functor                                  ((<&>))
+import qualified Data.List                                     as List
+import qualified Data.Map                                      as Map
+import qualified Data.Set                                      as Set
+import           Prelude                                       hiding (id,
+                                                                lookup)
 import           Saga.Language.Typechecker.Environment
-import           Saga.Language.Typechecker.Errors             (SagaError (..))
-import qualified Saga.Language.Typechecker.Kind               as K
-import           Saga.Language.Typechecker.Kind               (Kind)
-import           Saga.Language.Typechecker.Protocols          (Protocol (..))
-import qualified Saga.Language.Typechecker.Qualification      as Q
-import           Saga.Language.Typechecker.Qualification      (Qualified ((:=>)))
-import           Saga.Language.Typechecker.Solver.Unification (ftv)
-import           Saga.Language.Typechecker.Variables          (Classifier,
-                                                               PolymorphicVar (..))
-import           Saga.Utils.Utils                             ((|>))
+import           Saga.Language.Typechecker.Errors              (SagaError (..))
+import qualified Saga.Language.Typechecker.Kind                as K
+import           Saga.Language.Typechecker.Kind                (Kind)
+import           Saga.Language.Typechecker.Protocols           (Protocol (..))
+import qualified Saga.Language.Typechecker.Qualification       as Q
+import           Saga.Language.Typechecker.Qualification       (Qualified ((:=>)))
+import           Saga.Language.Typechecker.Solver.Substitution (ftv)
+import           Saga.Language.Typechecker.Variables           (Classifier,
+                                                                PolymorphicVar (..))
+import           Saga.Utils.Utils                              ((|>))
 
 
 
