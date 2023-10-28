@@ -16,6 +16,7 @@ data Constraint a
   | Resource Multiplicity a
   | Refinement Liquid.Expr a
   | Pure a
+  | Equality a a
   deriving (Show, Eq, Ord)
 
 

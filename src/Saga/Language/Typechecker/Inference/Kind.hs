@@ -42,7 +42,7 @@ type instance VarType TypeExpr I.PolyVar        = Var.PolymorphicVar Kind
 type instance VarType TypeExpr I.Instantiation  = Var.PolymorphicVar Kind
 
 
-type instance I.Constraint Kind = UnificationConstraint
+type instance I.EmittedConstraint Kind = UnificationConstraint
 
 data UnificationConstraint = Empty | Unify Kind Kind
 type KindInference m = InferM UnificationConstraint m
@@ -150,13 +150,13 @@ instance HasKind Type where
   kind (T.Data _ k) = return k
   kind (T.Var v)    = kind v
   kind (T.Applied f _) = do
-    k' <- kind f
-    return $ case k' of
-      (K.Arrow _ k) -> k
-      _             -> error "Is this an error? Kind of T.Applied not a K.Arrow"
+    k <- kind f
+    case k of
+      (K.Arrow _ k') -> return k'
+      k'             -> throwError $ UnexpectedKind k' "Tried to apply a type to a non Arrow Kind"
 
   kind (T.Closure ps tyExpr closure) = do
-    kvar <- fresh' U
+    kvar <- fresh' P
     foldrM mkArrow (K.Var kvar) ps
     where
         mkArrow v k = do

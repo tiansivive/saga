@@ -9,3 +9,4 @@ classifier (PolyVar _ c)        = return c
 classifier (Skolem _ c)         = return c
 classifier (Unification _ _ c)  = return c
 classifier v@(Instantiation {}) = throwError $ UnexpectedInstantiationVariable v
+

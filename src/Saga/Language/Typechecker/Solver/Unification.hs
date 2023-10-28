@@ -25,11 +25,13 @@ import           Saga.Language.Typechecker.Inference.Kind      (HasKind (..))
 import           Saga.Language.Typechecker.Kind                (Kind)
 import           Saga.Language.Typechecker.Solver.Substitution (Subst, apply,
                                                                 compose, ftv,
-                                                                nullSubst)
+                                                                nullSubst, Substitutable)
 import qualified Saga.Language.Typechecker.Type                as T
 
 
+import qualified Data.Kind                                     as K
 import qualified Data.List                                     as List
+import qualified Saga.Language.Typechecker.Lib                 as Lib
 import           Saga.Language.Typechecker.Qualification       (Qualified ((:=>)))
 import           Saga.Language.Typechecker.Shared              (classifier)
 import           Saga.Language.Typechecker.Type                (Scheme (..),
@@ -43,7 +45,7 @@ type TypeUnification m = UnificationM Type m
 
 type Cycle t = (PolymorphicVar t, t, Subst t)
 
-class Unification t where
+class Substitutable t t => Unification t where
     unify       :: UnificationM t m => t -> t -> m (Subst t)
     bind        :: UnificationM t m => PolymorphicVar t -> t -> m (Subst t)
     occursCheck :: PolymorphicVar t -> t -> Bool
@@ -125,25 +127,24 @@ instance Unification Type where
                 emit' (a, t, solution)
                 return nullSubst
 
-        -- | TODO: need to check if kinds unify
-        -- | Left err <- Kinds.run (kind a) (kind t) = throwError $ Fail  $ "kinds do not match:\n\tTyvar: " ++ show a ++ "\n\tType: " ++ show t ++ "\nError:\n\t" ++ show err
-        | T.Singleton l <- t = do
-            k <- classifier a
-            if k /= K.Type then
-                throwError $ KindMismatch k K.Type
-            else return . Map.singleton a $ case l of
-                LInt _    -> T.Data "Int" K.Type
-                LString _ -> T.Data "String" K.Type
-                LBool _   -> T.Data "Bool" K.Type
-        | otherwise = return $ Map.singleton a t
+        | otherwise = do
+            ak <- classifier a
+            tk <- kind t
+            when (ak /= tk) $ throwError (KindMismatch ak tk)
+
+            return . Map.singleton a $ case t of
+                T.Singleton (LInt _)    -> Lib.int
+                T.Singleton (LString _) -> Lib.string
+                T.Singleton (LBool _)   -> Lib.bool
+                _                       -> t
 
     occursCheck a t = a `Set.member` set
         where set = ftv t
 
 isSubtype :: TypeUnification m => Type -> Type -> m (Subst Type)
-T.Singleton (LInt _) `isSubtype` T.Data "Int" K.Type = return nullSubst
-T.Singleton (LString _) `isSubtype` T.Data "String" K.Type = return nullSubst
-T.Singleton (LBool _) `isSubtype` T.Data "Bool" K.Type = return nullSubst
+T.Singleton (LInt _) `isSubtype` int | int == Lib.int       = return nullSubst
+T.Singleton (LString _) `isSubtype` str | str == Lib.string = return nullSubst
+T.Singleton (LBool _) `isSubtype` bool | bool == Lib.bool   = return nullSubst
 
 sub@(T.Record pairs1) `isSubtype` parent@(T.Record pairs2) = do
   let check (name, ty2) = case lookup name pairs1 of
@@ -158,4 +159,28 @@ sub `isSubtype` parent = throwError $ SubtypeFailure sub parent
 
 
 instance Unification Kind where
-    unify k k' = error "Kind unification not implemented yet"
+    unify K.Type K.Type = return Map.empty
+    unify K.Kind K.Kind = return Map.empty
+
+    unify (K.Arrow inK1 outK1) (K.Arrow inK2 outK2) = do
+        sub <- unify inK1 inK2
+        s <- unify (apply sub outK1) (apply sub outK2)
+        return $ s `compose` sub
+
+    unify (K.Protocol k1) (K.Protocol k2)       = unify k1 k2
+    unify (K.Constraint k1) (K.Constraint k2)   = unify k1 k2
+
+    unify (K.Data id1 k1) (K.Data id2 k2) | id1 == id2 = unify k1 k2
+
+    unify k (K.Var v)                    = bind v k
+    unify (K.Var v) k                    = bind v k
+
+    unify k1 k2                         = throwError $ UnificationKindFail k1 k2
+
+    bind v k
+        | K.Var v == k  = return Map.empty
+        | occursCheck v k   = throwError $ InfiniteKind v k
+        | otherwise     = return $ Map.singleton v k
+
+    occursCheck v k = v `Set.member` ftv k
+

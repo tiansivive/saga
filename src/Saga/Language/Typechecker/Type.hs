@@ -36,20 +36,23 @@ data Scope = Scope
   { types     :: Map.Map String (Polymorphic Type)
   , kinds     :: Map.Map String (Polymorphic Kind)
   , dataTypes :: Map.Map String DataType
-  , tags      :: Map.Map String (Polymorphic Type)
+  , tags      :: [Tag]
   } deriving (Show, Eq, Ord)
 
 
 type Constraint = Q.Constraint Type
 
-
 data Tycon = Tycon String Kind deriving (Show, Eq, Ord)
 data Scheme t = Forall [PolymorphicVar t] (Qualified t) deriving (Show, Eq, Ord)
 type Polymorphic = Scheme
 
-data DataType = DataType { userType :: Polymorphic Type, members:: Map.Map String Constructor } deriving (Show, Eq, Ord)
-data Constructor = DCons { constructor :: Polymorphic Type, cdata :: Polymorphic Type }  deriving (Show, Eq, Ord)
-
+data DataType = DataType { tycon :: Tycon, definition :: Polymorphic Type } deriving (Show, Eq, Ord)
+data Tag = Constructor
+  { name        :: String
+  , constructor :: Polymorphic Type
+  , package     :: Polymorphic Type
+  , target      :: DataType
+  } deriving (Show, Eq, Ord)
 
 deriving instance Show Type
 deriving instance Eq Type

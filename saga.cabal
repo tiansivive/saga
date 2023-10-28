@@ -22,14 +22,18 @@ library
       Saga.Language.Core.Literals
       Saga.Language.Evaluation
       Saga.Language.Generation.JS
+      Saga.Language.Typechecker.DataType
       Saga.Language.Typechecker.Environment
       Saga.Language.Typechecker.Errors
       Saga.Language.Typechecker.Evaluation
       Saga.Language.Typechecker.Inference.Elaboration
       Saga.Language.Typechecker.Inference.Inference
       Saga.Language.Typechecker.Inference.Kind
-      Saga.Language.Typechecker.Inference.Pattern
-      Saga.Language.Typechecker.Inference.Type
+      Saga.Language.Typechecker.Inference.Type.Expr
+      Saga.Language.Typechecker.Inference.Type.Generalization
+      Saga.Language.Typechecker.Inference.Type.Instantiation
+      Saga.Language.Typechecker.Inference.Type.Pattern
+      Saga.Language.Typechecker.Inference.Type.Shared
       Saga.Language.Typechecker.Kind
       Saga.Language.Typechecker.Lib
       Saga.Language.Typechecker.Protocols
@@ -61,7 +65,10 @@ library
       Saga.Parser.ParsingInfo
       Saga.Parser.Shared
       Saga.Parser.Types
-      Saga.Utils.Utils
+      Saga.Utils.Common
+      Saga.Utils.Operators
+      Saga.Utils.Pretty
+      Saga.Utils.TypeLevel
   other-modules:
       Paths_saga
   hs-source-dirs:

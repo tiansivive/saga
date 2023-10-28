@@ -33,7 +33,7 @@ import           Saga.Language.Typechecker.Qualification       (Qualified ((:=>)
 import           Saga.Language.Typechecker.Solver.Substitution (ftv)
 import           Saga.Language.Typechecker.Variables           (Classifier,
                                                                 PolymorphicVar (..))
-import           Saga.Utils.Utils                              ((|>))
+import           Saga.Utils.Operators                          ((|>))
 
 
 
@@ -157,7 +157,7 @@ lookup id = do
     Saga { types, dataTypes } <- ask
 
     let value
-          =   [ userType | DataType { userType } <- Map.lookup id dataTypes]
+          =   [ definition | DataType { definition } <- Map.lookup id dataTypes]
           <|> Map.lookup id types
 
     maybe (throwError $ UndefinedIdentifier id) return value
