@@ -22,7 +22,7 @@ type TypeInference m = InferM CST.Constraint m
 
 type instance I.EmittedConstraint Type = CST.Constraint
 
-type instance VarType Expr I.Evidence       = CST.Evidence
+type instance VarType Expr I.Evidence       = Var.PolymorphicVar CST.Evidence
 type instance VarType Expr I.Unification    = Var.PolymorphicVar Type
 type instance VarType Expr I.Skolem         = Var.PolymorphicVar Type
 type instance VarType Expr I.PolyVar        = Var.PolymorphicVar Type
@@ -37,7 +37,7 @@ fresh t = do
   s <- get
   let count = show ([1 ..] !! vars s)
   return $ case t of
-    E -> CST.Var $ "e" ++ count
+    E -> Var.Evidence $ "e" ++ count
     U -> Var.Unification ("v" ++ count) (Level $ level s) K.Type
     P -> Var.PolyVar ("p" ++ count) K.Type
 

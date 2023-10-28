@@ -45,7 +45,7 @@ import           Saga.Language.TypeSystem.Types       hiding (ProtocolID,
                                                        implementationTy)
 import           Saga.Parser.ParsingInfo              (implementation,
                                                        tyBinding)
-import           Saga.Utils.Utils
+
 import           Text.Pretty.Simple                   (pPrintDarkBg, pShow)
 import           Unsafe.Coerce                        (unsafeCoerce)
 -- type Solve = StateT SolveState (Except InferenceError)

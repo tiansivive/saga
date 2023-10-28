@@ -1,4 +1,6 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE DataKinds    #-}
+{-# LANGUAGE GADTs        #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Saga.Language.Typechecker.Solver.Constraints where
 import qualified Saga.Language.Core.Liquid               as Liquid
@@ -11,13 +13,14 @@ import           Saga.Language.Typechecker.Variables
 
 
 import qualified Saga.Language.Typechecker.Type          as T
+import qualified Saga.Language.Typechecker.Variables     as V
 
 
 data Constraint where
     Empty       :: Constraint
     Conjunction :: Constraint -> Constraint -> Constraint
-    Equality    :: Evidence -> Item -> Item -> Constraint
-    Impl        :: Evidence -> Item -> ProtocolID -> Constraint
+    Equality    :: PolymorphicVar Evidence -> Item -> Item -> Constraint
+    Impl        :: PolymorphicVar Evidence -> Item -> ProtocolID -> Constraint
     OneOf       :: Item -> Item -> Constraint
     Refined     :: Item -> Liquid.Expr -> Constraint
     Resource    :: Item -> Multiplicity -> Constraint
@@ -42,9 +45,12 @@ data Assumption
     deriving (Show)
 
 data Evidence
-    = Var String
+    = Var (PolymorphicVar Evidence)
     | Protocol Implementation
     | Coercion Mechanism
     deriving (Show)
+
+type instance Restricted Evidence = ()
+
 
 data Mechanism = Nominal | Structural deriving (Show)

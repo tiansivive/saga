@@ -80,9 +80,9 @@ infer' e = case e of
           return $ Typed e' t
       where
         elaborate expr (ty `Q.Implements` protocol) = do
-          evidence@(CST.Var p) <- Shared.fresh E
+          evidence@(Var.Evidence prtclImpl) <- Shared.fresh E
           emit' $ CST.Impl evidence (CST.Mono ty) protocol
-          return $ FnApp expr [Identifier p]
+          return $ FnApp expr [Identifier prtclImpl]
 
     Typed expr ty -> do
         Typed expr' inferred <- infer expr
