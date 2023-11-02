@@ -8,11 +8,12 @@ import qualified Saga.Language.Core.Expr           as Value
 import           Saga.Language.Typechecker.Kind      (Kind)
 import           Saga.Language.Typechecker.Protocols
 import           Saga.Language.Typechecker.Type      (Polymorphic, Type, DataType, Tag)
-import Saga.Language.TypeSystem.Errors (SagaError)
+
 import Saga.Language.Typechecker.Variables
 import Saga.Language.Core.Expr (Expr)
 import Saga.Language.Typechecker.TypeExpr (TypeExpr, Pattern, Case)
 import Saga.Language.Typechecker.Solver.Constraints (Assumption)
+import Saga.Language.Typechecker.Errors (SagaError)
 
 type Saga = MonadRWS Config Info CompilerState 
 data Config = Config { init:: Map.Map String String }

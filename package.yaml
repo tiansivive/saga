@@ -1,12 +1,15 @@
 name: saga
 version: 0.1.0.0
 
+
+language: GHC2021
+
 default-extensions:
-- OverloadedStrings
+  - OverloadedStrings
 
 extra-source-files:
-- README.md
-- LICENSE
+  - README.md
+  - LICENSE
 
 dependencies:
   - array
@@ -20,7 +23,9 @@ dependencies:
 
 
 library:
-  source-dirs: src
+  source-dirs: 
+    - src
+
   build-tools:
   - alex
   - happy

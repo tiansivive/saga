@@ -22,7 +22,7 @@ type ProtocolResolver m = InferM (Cycle Type) m
 
 
 solve :: ImplConstraint -> Subst Evidence
-solve impl = _s
+solve impl = undefined
 
 
 -- -- | Implementation Constraints solving

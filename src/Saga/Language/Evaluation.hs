@@ -22,7 +22,7 @@ import           Debug.Trace                 (traceM)
 import           Saga.Language.Core.Expr     (Binding (Bind), Declaration (..),
                                               Expr (..))
 import           Saga.Language.Core.Literals (Literal (..))
-import           Saga.Utils.Utils            hiding (fromMaybe)
+import           Saga.Utils.Common           hiding (fromMaybe)
 
 
 

@@ -35,7 +35,7 @@ import           Saga.Language.Typechecker.TypeExpr            (TypeAtom,
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables
 
-type instance VarType TypeExpr I.Evidence       = CST.Evidence
+type instance VarType TypeExpr I.Evidence       = Var.PolymorphicVar CST.Evidence
 type instance VarType TypeExpr I.Unification    = Var.PolymorphicVar Kind
 type instance VarType TypeExpr I.Skolem         = Var.PolymorphicVar Kind
 type instance VarType TypeExpr I.PolyVar        = Var.PolymorphicVar Kind
@@ -128,7 +128,7 @@ fresh' t = do
   s <- get
   let count = show ([1 ..] !! vars s)
   return $ case t of
-    E -> CST.Var $ "e" ++ count
+    E -> Var.Evidence $ "e" ++ count
     U -> Var.Unification ("v" ++ count) (Level $ level s) K.Kind
     P -> Var.PolyVar ("p" ++ count) K.Kind
 

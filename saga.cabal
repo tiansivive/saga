@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -21,7 +21,6 @@ library
       Saga.Language.Core.Liquid
       Saga.Language.Core.Literals
       Saga.Language.Evaluation
-      Saga.Language.Generation.JS
       Saga.Language.Typechecker.DataType
       Saga.Language.Typechecker.Environment
       Saga.Language.Typechecker.Errors
@@ -46,17 +45,6 @@ library
       Saga.Language.Typechecker.Type
       Saga.Language.Typechecker.TypeExpr
       Saga.Language.Typechecker.Variables
-      Saga.Language.TypeSystem.Constraints
-      Saga.Language.TypeSystem.Elaboration
-      Saga.Language.TypeSystem.Environment
-      Saga.Language.TypeSystem.Errors
-      Saga.Language.TypeSystem.Inference
-      Saga.Language.TypeSystem.Kinds
-      Saga.Language.TypeSystem.Lib
-      Saga.Language.TypeSystem.Normalization
-      Saga.Language.TypeSystem.Refinement
-      Saga.Language.TypeSystem.Shared
-      Saga.Language.TypeSystem.Types
       Saga.Lexer.Lexer
       Saga.Lexer.Tokens
       Saga.Parser.Desugar
@@ -88,7 +76,7 @@ library
     , mtl
     , pretty-simple
     , transformers
-  default-language: Haskell2010
+  default-language: GHC2021
 
 test-suite saga-test
   type: exitcode-stdio-1.0
@@ -117,4 +105,4 @@ test-suite saga-test
     , pretty-simple
     , saga
     , transformers
-  default-language: Haskell2010
+  default-language: GHC2021
