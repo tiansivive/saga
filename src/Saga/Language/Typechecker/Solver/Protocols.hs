@@ -1,114 +1,133 @@
 module Saga.Language.Typechecker.Solver.Protocols where
 import           Control.Monad.Except
-import qualified Data.List.NonEmpty                            as NonEmpty
+
 import qualified Data.Map                                      as Map
 import           Prelude                                       hiding (id)
 import           Saga.Language.Typechecker.Environment         (CompilerState (..))
-import           Saga.Language.Typechecker.Errors              (SagaError)
-import           Saga.Language.Typechecker.Inference.Inference (InferM)
+import           Saga.Language.Typechecker.Errors              (Exception (NotYetImplemented, Unexpected),
+                                                                SagaError (..),
+                                                                crash)
+import           Saga.Language.Typechecker.Inference.Inference (Instantiate (instantiate))
+import qualified Saga.Language.Typechecker.Protocols           as P
 import           Saga.Language.Typechecker.Protocols           (Protocol (..),
                                                                 ProtocolID)
 import           Saga.Language.Typechecker.Qualification       (Qualified (..))
-import           Saga.Language.Typechecker.Solver.Constraints  (Evidence, Item)
-import           Saga.Language.Typechecker.Solver.Substitution (Subst)
-import           Saga.Language.Typechecker.Solver.Unification  (Cycle)
-import           Saga.Language.Typechecker.Type                (Type)
+import qualified Saga.Language.Typechecker.Solver.Constraints  as C
+import           Saga.Language.Typechecker.Solver.Constraints  (Constraint,
+                                                                Evidence, Item)
+import           Saga.Language.Typechecker.Solver.Substitution (Subst,
+                                                                Substitutable (apply),
+                                                                mkSubst)
+
+import           Control.Monad.RWS                             (MonadReader (ask),
+                                                                MonadState (get),
+                                                                MonadWriter (tell),
+                                                                asks)
+import qualified Data.List                                     as List
+
+import           Data.Functor                                  ((<&>))
+import qualified Saga.Language.Typechecker.Evaluation          as Eval
+import qualified Saga.Language.Typechecker.Qualification       as Q
+import           Saga.Language.Typechecker.Solver.Monad        (Solve (..),
+                                                                SolverM,
+                                                                State (..),
+                                                                Tag (..), emit')
+import qualified Saga.Language.Typechecker.Solver.Shared       as Shared
+import           Saga.Language.Typechecker.Solver.Unification  (Unification (unify))
+import qualified Saga.Language.Typechecker.Type                as T
+import           Saga.Language.Typechecker.Type                (Scheme (..),
+                                                                Type)
+import qualified Saga.Language.Typechecker.Variables           as Var
+import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
 
 
 
-data ImplConstraint = Impl Evidence Item ProtocolID
-
-type ProtocolResolver m = InferM (Cycle Type) m
-
-
-solve :: ImplConstraint -> Subst Evidence
-solve impl = undefined
-
-
--- -- | Implementation Constraints solving
--- resolve :: [ImplConstraint] -> ProtocolResolver ()
--- resolve constraints = do
-
---   forM_ constraintsPerType (check allImplemented)
-
-
---   where
-
---     constraintsPerType = constraints ||> groupWith type' |> fmap pair |> Map.fromList
---     pair group = (type' $ NonEmpty.head group, protocol' <$> NonEmpty.toList group)
-
---     check f ids = do
---       Saga { protocols } <- ask
---       case f ids protocols of
---         Nothing -> throwError $ Fail $ "Could not resolve for protocols: " ++ show ids
---         Just _ -> return ()
-
-
---     allImplemented ids env = do
-
---       check <- implemented <$> sequence protocols'
---       when check (return ())
-
-
---       where
-
---         implemented ps = not $ null $ foldl atLeastOneType [] ps
-
---         atLeastOneType [] p  = extract <$> implementations p
---         atLeastOneType tys p = tys `intersect` (extract <$> implementations p)
-
---         extract (_ :=> (t, _)) = t
---         protocols' = ids <&> \id' -> env ||> find (\(Protocol { id }) -> id == id')
-
-
---     type' (IP ty _)      = ty
---     protocol' (IP _ p) = p
+import           Data.Maybe                                    (isJust)
+import qualified Effectful                                     as Eff
+import qualified Effectful.Error.Static                        as Eff
+import qualified Effectful.Reader.Static                       as Eff
+import qualified Effectful.State.Static.Local                  as Eff
+import           Saga.Utils.Operators                          ((|>), (||>))
 
 
 
--- reduce :: [ImplConstraint] -> Solve [ImplConstraint]
--- --reduce cs | trace ("\nReducing\n\tImplementation constraint:" ++ show cs) False = undefined
--- reduce cs = mapM toHNF cs >>= simplify . concat
-
--- toHNF :: ImplConstraint -> Solve [ImplConstraint]
--- toHNF ip | inHNF ip   = return [ip]
---          | otherwise =  do
---             ipConstraints <- byImplementation ip
---             ipConstraints' <- mapM toHNF ipConstraints
---             return $ concat ipConstraints'
-
--- inHNF :: ImplConstraint -> Bool
--- inHNF (ty `IP` p) = hnf ty
---  where hnf (TVar v) = True
---        hnf _        = False
-
--- byImplementation :: ImplConstraint -> Solve [ImplConstraint]
--- --byImplementation impl | trace ("\nSearch by Implementation:\n\t" ++ show impl) False = undefined
--- byImplementation (ty `IP` p)    = do
---   Saga { protocols } <- ask
---   concat <$> sequence [ tryInst impl | impl <- impls p protocols ]
-
---   where
---     impls id' = find (\(Protocol { id }) -> id == id') |> maybe [] implementations
---     tryInst (cs :=> (ty', e)) = do
---       sub <- catchError (ty' `unify` ty) (handleErr |> throwError)
---       return $ fmap (apply sub . mkIP) cs
-
---     handleErr (UnificationFail t1 t2) = Fail $ "Types do not match:\n\t" ++ show t1 ++ "\n\t" ++ show t2
---     handleErr err = err
---     mkIP (ty `Implements` p) = ty `IP` p
+data ImplConstraint = Impl (PolymorphicVar Evidence) Item ProtocolID
 
 
--- simplify   :: [ImplConstraint] -> Solve [ImplConstraint]
--- -- simplify cs | trace ("\nSimplifying\n\tImplementation constraint:" ++ show cs) False = undefined
--- simplify = loop []
---  where
---   loop checked []     = return checked
---   loop checked (ipc:ipcs) = do
---     entailed <- entail (checked ++ ipcs) ipc
---     if entailed
---       then loop checked ipcs
---       else loop (ipc: checked) ipcs
+instance Solve ImplConstraint where
+    solve = solve'
+    simplify = simplify'
+
+    irreducible = irreducible'
+
+
+
+solve' :: ImplConstraint -> SolverM Constraint
+solve' (Impl e@(Var.Evidence ev) t@(C.Mono ty) prtcl) =
+    case ty of
+        T.Var (Var.Unification {}) -> return $ C.Impl e t prtcl
+        T.Var v                    -> crash $ Unexpected v "Unification Var"
+
+        ty                         -> do
+            impl <- Eff.asks $ protocols
+                |> List.find (\Protocol { id } -> id == prtcl)
+                    -- | TODO: This needs to search via unification. How to make the monads fit though?
+                    >=> implementations |> List.find (\(P.Implementation (id, Forall _ (cs :=> ty'), expr)) -> ty == ty')
+
+
+            impl ||> maybe
+                (Eff.throwError $ MissingProtocolImplementation prtcl ty)
+                (\impl'@(P.Implementation (id, Forall _ (cs :=> ty'), expr)) -> do
+                    emit' E $ mkSubst (e, C.Protocol impl')
+                    propagate cs
+
+                )
+
+solve' (Impl e item prtcl)                           = crash $ NotYetImplemented $ "Solving ImplConstraint for " ++ show item
+
+
+simplify' :: ImplConstraint -> SolverM Constraint
+simplify' (Impl ev t prtcl) = do
+    St { evidence, tvars } <- Eff.get
+    process evidence tvars
+
+    where
+        process evidence tvars
+            | isJust $ Map.lookup ev evidence   = return C.Empty
+            | C.Unification uvar <- t
+            , isJust $ Map.lookup uvar tvars    = return $ C.Impl ev (C.Mono $ apply tvars (T.Var uvar)) prtcl
+            | otherwise                         = return $ C.Impl ev t prtcl
+
+irreducible' = undefined -- | TODO: So what happens here? do we really need this?
+
+
+flatten :: (Instantiate Type) => ImplConstraint -> SolverM Constraint
+flatten (Impl ev item prtcl) = do
+    env <- Eff.ask
+    Protocol { spec } <- env ||> protocols
+        |> List.find (\Protocol { id } -> id == prtcl)
+        |> maybe (Eff.throwError $ UndefinedIdentifier prtcl) return
+
+    spec' <- Eff.inject $ Eval.evaluate spec
+
+
+    let t@(T.Forall tvars (cs :=> qt)) = instantiate spec' ty
+    C.Conjunction impl <$> propagate cs
+
+    where
+        impl = C.Impl ev item prtcl
+        ty = case item of
+            C.Unification u -> T.Var u
+            C.Mono ty -> ty
+
+            _ -> crash $ NotYetImplemented $ "Flattening ImplConstraint for " ++ show item
+
+
+propagate :: [Q.Constraint Type] -> SolverM C.Constraint
+propagate = foldM (\acc c -> C.Conjunction acc <$> Shared.from c) C.Empty
+
+
+
 
 -- entail :: [ImplConstraint] -> ImplConstraint -> Solve Bool
 -- -- entail ipcs current | trace ("\nEntailing\n\tCurrent: " ++ show current ++ "\n\tOthers:" ++ show ipcs) False = undefined
@@ -127,17 +146,4 @@ solve impl = undefined
 --       entailments <- mapM (entail ipcs) constraints
 --       --traceM $ "Entailments:\n\t" ++ show entailments
 --       return (not (null entailments) && and entailments)
-
-
--- byBase :: ImplConstraint -> Solve [ImplConstraint]
--- -- byBase impl | trace ("\nSearching base constraints of\n\t" ++ show impl) False = undefined
--- byBase impl@(ty `IP` p) = do
---     Saga { protocols } <- ask
---     impls <- sequence [ byBase (ty `IP` base) | base <- sups p protocols]
---     let all = impl : concat impls
---     --traceM $ "Found:\n\t" ++ show all
---     return all
---     where
---       sups id' = maybe [] supers . find (\(Protocol { id }) -> id == id')
-
 

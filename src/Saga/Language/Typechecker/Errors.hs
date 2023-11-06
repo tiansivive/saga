@@ -1,5 +1,6 @@
 module Saga.Language.Typechecker.Errors where
 import           Saga.Language.Typechecker.Kind      (Kind)
+import           Saga.Language.Typechecker.Protocols (ProtocolID)
 import           Saga.Language.Typechecker.Type      (Polymorphic, Tag, Type)
 import           Saga.Language.Typechecker.TypeExpr  (TypeExpr)
 import           Saga.Language.Typechecker.Variables (PolymorphicVar)
@@ -26,8 +27,12 @@ data SagaError where
 
   KindMismatch :: Kind -> Kind -> SagaError
 
+
   InfiniteType :: (Show a) => (PolymorphicVar a) -> Type-> SagaError
   InfiniteKind :: (Show a) => PolymorphicVar a -> Kind -> SagaError
+  CircularKind :: Kind -> Kind -> SagaError
+  -- | PROTOCOLS
+  MissingProtocolImplementation :: ProtocolID -> Type -> SagaError
 
   -- | EVALUATION
   TooManyArguments :: TypeExpr-> [TypeExpr]-> SagaError
@@ -36,3 +41,15 @@ data SagaError where
   Fail :: String-> SagaError
 
 deriving instance Show SagaError
+
+
+
+data Exception
+  = forall a b. (Show a, Show b) => Unexpected a b
+  | NotYetImplemented String
+
+
+crash :: Exception -> b
+crash = error . show
+
+deriving instance Show Exception

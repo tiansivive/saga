@@ -3,17 +3,23 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Saga.Language.Typechecker.Solver.Constraints where
-import qualified Saga.Language.Core.Liquid               as Liquid
-import           Saga.Language.Typechecker.Kind          (Kind)
-import           Saga.Language.Typechecker.Protocols     (Implementation,
-                                                          ProtocolID)
-import           Saga.Language.Typechecker.Qualification (Multiplicity)
-import           Saga.Language.Typechecker.Type          (Polymorphic, Type)
+import qualified Saga.Language.Core.Liquid                     as Liquid
+import           Saga.Language.Typechecker.Kind                (Kind)
+import           Saga.Language.Typechecker.Protocols           (Implementation,
+                                                                ProtocolID)
+import           Saga.Language.Typechecker.Qualification       (Multiplicity)
+import           Saga.Language.Typechecker.Type                (Polymorphic,
+                                                                Type)
 import           Saga.Language.Typechecker.Variables
 
 
-import qualified Saga.Language.Typechecker.Type          as T
-import qualified Saga.Language.Typechecker.Variables     as V
+import           Control.Monad.RWS
+import qualified Data.Set                                      as Set
+import qualified Saga.Language.Typechecker.Qualification       as Q
+import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
+import qualified Saga.Language.Typechecker.Type                as T
+import qualified Saga.Language.Typechecker.Variables           as V
+
 
 
 data Constraint where
@@ -33,7 +39,7 @@ deriving instance Show Constraint
 
 data Item
     = Skolem String Kind
-    | Unification Level (PolymorphicVar Type)
+    | Unification (PolymorphicVar Type)
     | Mono Type
     | Poly (Polymorphic Type)
     deriving (Show)
@@ -45,12 +51,14 @@ data Assumption
     deriving (Show)
 
 data Evidence
-    = Var (PolymorphicVar Evidence)
-    | Protocol Implementation
+    = Protocol Implementation
     | Coercion Mechanism
-    deriving (Show)
+    deriving (Show, Eq, Ord)
 
 type instance Restricted Evidence = ()
 
 
-data Mechanism = Nominal | Structural deriving (Show)
+data Mechanism = Nominal | Structural deriving (Show, Eq, Ord)
+
+
+

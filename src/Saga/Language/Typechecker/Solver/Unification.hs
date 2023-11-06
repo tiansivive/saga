@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+
 
 module Saga.Language.Typechecker.Solver.Unification where
 import qualified Data.Map                                      as Map
@@ -6,7 +8,7 @@ import qualified Data.Set                                      as Set
 import           Saga.Language.Typechecker.Variables           (PolymorphicVar (..))
 
 
-import           Control.Monad.Except
+
 import           Control.Monad.RWS
 import           Data.Functor                                  ((<&>))
 import           Data.Maybe                                    (catMaybes)
@@ -16,43 +18,57 @@ import           Saga.Language.Typechecker.Errors              (SagaError (..))
 import qualified Saga.Language.Typechecker.Kind                as K
 
 import           Control.Monad.Trans.Reader                    (ReaderT (runReaderT))
-import           Control.Monad.Trans.Writer                    (runWriterT)
+import           Control.Monad.Trans.Writer                    (WriterT,
+                                                                runWriterT)
 import qualified Saga.Language.Typechecker.Evaluation          as E
 import           Saga.Language.Typechecker.Inference.Inference (InferM,
                                                                 State (..),
-                                                                emit', inform')
-import           Saga.Language.Typechecker.Inference.Kind      (HasKind (..))
+                                                                emit', inform',
+                                                                initialState)
+import           Saga.Language.Typechecker.Inference.Kind      (HasKind (..),
+                                                                KindInference)
 import           Saga.Language.Typechecker.Kind                (Kind)
-import           Saga.Language.Typechecker.Solver.Substitution (Subst, apply,
-                                                                compose, ftv,
-                                                                nullSubst, Substitutable)
+import           Saga.Language.Typechecker.Solver.Substitution (Subst,
+                                                                Substitutable,
+                                                                apply, compose,
+                                                                ftv, nullSubst)
 import qualified Saga.Language.Typechecker.Type                as T
 
 
+import           Control.Monad.Writer                          (Writer)
 import qualified Data.Kind                                     as K
 import qualified Data.List                                     as List
 import qualified Saga.Language.Typechecker.Lib                 as Lib
+import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import           Saga.Language.Typechecker.Qualification       (Qualified ((:=>)))
 import           Saga.Language.Typechecker.Shared              (classifier)
 import           Saga.Language.Typechecker.Type                (Scheme (..),
                                                                 Type)
+import qualified Saga.Language.Typechecker.Variables           as Var
+
+import qualified Effectful                                     as Eff
+import           Effectful.Error.Static                        (catchError,
+                                                                throwError)
+import qualified Effectful.Error.Static                        as Eff
+import qualified Effectful.Reader.Static                       as Eff
+import qualified Effectful.State.Static.Local                  as Eff
+import qualified Effectful.Writer.Static.Local                 as Eff
+import qualified Saga.Language.Typechecker.Inference.Kind      as KI
 
 
-
-
-type UnificationM t m = InferM (Cycle t) m
-type TypeUnification m = UnificationM Type m
-
+type UnificationM t  = TypeCheck '[Eff.Writer [Cycle t]]
 type Cycle t = (PolymorphicVar t, t, Subst t)
 
 class Substitutable t t => Unification t where
-    unify       :: UnificationM t m => t -> t -> m (Subst t)
-    bind        :: UnificationM t m => PolymorphicVar t -> t -> m (Subst t)
+    unify       :: t -> t -> UnificationM t (Subst t)
+    bind        :: PolymorphicVar t -> t -> UnificationM t (Subst t)
     occursCheck :: PolymorphicVar t -> t -> Bool
 
 
 
+type TypeUnification = UnificationM Type
 instance Unification Type where
+    unify :: Type -> Type -> TypeUnification (Subst Type)
     unify (T.Var v) t                                               = bind v t
     unify t (T.Var v)                                               = bind v t
     unify (T.Singleton a) (T.Singleton b) | a == b                  = return nullSubst
@@ -75,12 +91,12 @@ instance Unification Type where
 
     unify u1@(T.Union tys1) u2@(T.Union tys2)  = do
         subs <- forM tys1 $ \t1 -> forM tys2 (unifier t1) <&> catMaybes
-        --traceM $ ("\nAll subs:\n\t" ++ show subs)
+
         if not $ any null subs then
           return $ foldl (foldl compose) nullSubst subs
         else throwError $ UnificationFail u1 u2
         where
-          unifier t1 t2 = catchError (unify t1 t2 <&> Just) (\_ -> return Nothing)
+          unifier t1 t2 = catchError @SagaError (unify t1 t2 <&> Just) (\_ _ -> return Nothing)
 
     unify t1@(T.Union tys) t2 = foldM unifier nullSubst tys
       where
@@ -91,14 +107,17 @@ instance Unification Type where
         throwError $ UnificationFail t1 t2
       else return $ foldl compose nullSubst subs
       where
-        unifier t1 t2 = catchError (unify t1 t2 <&> Just) (\_ -> return Nothing)
+        unifier t1 t2 = catchError @SagaError (unify t1 t2 <&> Just) (\_ _ -> return Nothing)
 
     unify t t' = do
-        k  <- kind t
-        k' <- kind t'
-        if k /= k' then
-            throwError $ KindMismatch k k'
-        else case (t, t') of
+        -- | QUESTION: Should we propagate constraints here?
+        ((k, k'), cs) <- run kinds
+
+        -- | QUESTION: Should we intercept the error here to add extra context? eg. throwError $ KindMismatch k k'
+        (subst, cycles) <- Eff.runWriter @[Cycle Kind] $ Eff.inject $ unify k k'
+        unless (null cycles) (Eff.throwError $ CircularKind k k')
+
+        case (t, t') of
           (t1@(T.Closure {}), t2) -> do
             Forall tvars (cs :=> t1') <- eval t1
             unify t1' t2
@@ -107,15 +126,21 @@ instance Unification Type where
             unify t1 t2'
 
         where
-            eval (T.Closure params tyExpr captured) = do
-                env <- ask
-                (ty, info) <- E.run tyExpr (extended env) throwError
-                inform' info
-                return ty
 
-                where
-                    params' = foldr (\p@(PolyVar id _) -> Map.insert id $ Forall [] (pure $ T.Var p)) Map.empty params
-                    extended env = env{ types = params' `Map.union` T.types captured `Map.union` types env }
+          kinds = do
+            k  <- kind t
+            k' <- kind t'
+            return (k, k')
+
+
+
+          eval (T.Closure params tyExpr captured) = do
+            let scoped =  Eff.local extended
+            Eff.inject $ scoped $ E.evaluate tyExpr
+
+            where
+                params' = foldr (\p@(Var.Type id _) -> Map.insert id $ Forall [] (pure $ T.Var p)) Map.empty params
+                extended env = env{ types = params' `Map.union` T.types captured `Map.union` types env }
 
 
     bind a t
@@ -124,13 +149,17 @@ instance Unification Type where
             T.Union tys | T.Var a `elem` tys    -> do
                 let tys' = List.delete (T.Var a) tys
                 let solution = Map.singleton a $ T.Union tys'
-                emit' (a, t, solution)
+                Eff.tell [(a, t, solution)]
                 return nullSubst
 
         | otherwise = do
+            -- | QUESTION: Should we propagate constraints here?
+            (tk, cs) <-  run $ kind t
             ak <- classifier a
-            tk <- kind t
-            when (ak /= tk) $ throwError (KindMismatch ak tk)
+
+           -- | QUESTION: Should we intercept the error here to add extra context? eg. throwError $ KindMismatch k k'
+            (subst, cycles) <- Eff.runWriter @[Cycle Kind] $ Eff.inject $ unify ak tk
+            unless (null cycles) (Eff.throwError $ CircularKind ak tk)
 
             return . Map.singleton a $ case t of
                 T.Singleton (LInt _)    -> Lib.int
@@ -141,7 +170,7 @@ instance Unification Type where
     occursCheck a t = a `Set.member` set
         where set = ftv t
 
-isSubtype :: TypeUnification m => Type -> Type -> m (Subst Type)
+isSubtype :: Type -> Type -> TypeUnification (Subst Type)
 T.Singleton (LInt _) `isSubtype` int | int == Lib.int       = return nullSubst
 T.Singleton (LString _) `isSubtype` str | str == Lib.string = return nullSubst
 T.Singleton (LBool _) `isSubtype` bool | bool == Lib.bool   = return nullSubst
@@ -157,8 +186,9 @@ sub `isSubtype` parent = throwError $ SubtypeFailure sub parent
 
 
 
-
+type KindUnification = UnificationM Kind
 instance Unification Kind where
+    unify :: Kind -> Kind -> KindUnification (Subst Kind)
     unify K.Type K.Type = return Map.empty
     unify K.Kind K.Kind = return Map.empty
 
@@ -184,3 +214,7 @@ instance Unification Kind where
 
     occursCheck v k = v `Set.member` ftv k
 
+
+
+run :: KindInference a -> TypeUnification (a, [KI.UnificationConstraint])
+run = Eff.evalState initialState . Eff.runWriter @[KI.UnificationConstraint] . Eff.inject

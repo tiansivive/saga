@@ -67,7 +67,7 @@ instance Substitutable Type Type where
   apply s (Record pairs)                 = Record $ apply s pairs
   apply s (Union elems)                  = Union $ apply s elems
   apply s (Applied cons arg)             = Applied (apply s cons) (apply s arg)
-  --apply s (TClosure params body env)      = TClosure params (apply s body) (apply s env)
+  --apply s (Closure params body env)      = Closure params (apply s body) (apply s env)
   apply s (inTy `Arrow` outTy)           = in' `Arrow` out'
     where
       in' = apply s inTy

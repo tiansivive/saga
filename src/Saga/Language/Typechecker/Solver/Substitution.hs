@@ -27,3 +27,6 @@ s1 `compose` s2 = s `Map.union` s1
 
 nullSubst :: forall t. Subst t
 nullSubst = Map.empty
+
+mkSubst :: Ord t => (PolymorphicVar t, t) -> Subst t
+mkSubst (v, t) = Map.insert v t Map.empty

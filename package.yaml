@@ -20,11 +20,14 @@ dependencies:
   - mtl
   - haskeline
   - pretty-simple
+  - effectful
 
 
 library:
   source-dirs: 
     - src
+  ghc-options:
+    - -fdefer-typed-holes
 
   build-tools:
   - alex

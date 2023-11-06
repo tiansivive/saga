@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds    #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Saga.Language.Typechecker.Inference.Type.Pattern where
@@ -19,9 +20,7 @@ import           Control.Monad.RWS                               (MonadReader (.
                                                                   MonadTrans (..),
                                                                   MonadWriter,
                                                                   forM, forM_)
-import           Control.Monad.Trans.Writer                      (Writer,
-                                                                  WriterT (runWriterT),
-                                                                  tell)
+
 
 import qualified Data.Map                                        as Map
 
@@ -33,6 +32,12 @@ import qualified Saga.Language.Typechecker.Lib                   as Lib
 import           Saga.Language.Typechecker.Qualification         (Qualified (..))
 import           Saga.Language.Typechecker.Solver.Constraints    (Constraint (Equality))
 
+import           Effectful                                       (Eff)
+import qualified Effectful                                       as Eff
+import qualified Effectful.Error.Static                          as Eff
+import           Effectful.Reader.Static                         (Reader)
+import qualified Effectful.Reader.Static                         as Eff
+import qualified Effectful.Writer.Static.Local                   as Eff
 import qualified Saga.Language.Typechecker.Type                  as T
 import           Saga.Language.Typechecker.Type                  (DataType (..),
                                                                   Scheme (..),
@@ -46,21 +51,23 @@ import           Saga.Utils.Operators                            ((||>))
 type instance VarType Pattern I.Evidence       = CST.Evidence
 type instance VarType Pattern I.Unification    = Var.PolymorphicVar Type
 type instance VarType Pattern I.Skolem         = Var.PolymorphicVar Type
-type instance VarType Pattern I.PolyVar        = Var.PolymorphicVar Type
+type instance VarType Pattern I.TypeVar        = Var.PolymorphicVar Type
 type instance VarType Pattern I.Instantiation  = Var.PolymorphicVar Type
 
+
+type PatternInference = InferEff '[Eff.Writer TypeVars] CST.Constraint
 type TypeVars = [(String, PolymorphicVar Type)]
-type PatternInference m a = WriterT TypeVars m a
 
 
-infer :: forall m. (Shared.TypeInference m, Instantiate Type) => Pattern -> PatternInference m Type
+
+infer :: Instantiate Type => Pattern -> PatternInference Type
 
 infer Wildcard = T.Var <$> fresh U
 
 infer (Id id) = do
-    tVar <- fresh U
-    emit (id, tVar)
-    return $ T.Var tVar
+    uvar <- fresh U
+    emit (id, uvar)
+    return $ T.Var uvar
 
 infer (Lit l) = return $ T.Singleton l
 infer (PatTuple pats rest) = T.Tuple <$> mapM infer pats
@@ -73,10 +80,10 @@ infer (PatList pats rest) = do
     case rest of
       Nothing -> return result
       Just id -> do
-        tvarList <- fresh U
-        emit (id, tvarList)
+        uvarList <- fresh U
+        emit (id, uvarList)
         ev <- fresh E
-        lift $ emit' $ Equality ev (CST.Mono result) (CST.Mono $ T.Var tvarList)
+        emit' $ Equality ev (CST.Mono result) (CST.Unification uvarList)
         return result
 
     where
@@ -89,8 +96,8 @@ infer (PatRecord pairs rest) = do
     case rest of
       Nothing -> return result
       Just id -> do
-        tvarRecord <- fresh U
-        emit (id, tvarRecord)
+        uvarRecord <- fresh U
+        emit (id, uvarRecord)
         return result
 
     where
@@ -98,12 +105,12 @@ infer (PatRecord pairs rest) = do
             ty <- infer pat
             return (id, ty)
       infer' (id, Nothing) = do
-            tvar <- fresh U
-            emit (id, tvar)
-            return (id, T.Var tvar)
+            uvar <- fresh U
+            emit (id, uvar)
+            return (id, T.Var uvar)
 
 infer (PatData tag pats) = do
-    env@(Saga { tags }) <- ask
+    env@(Saga { tags }) <- Eff.ask
 
     let cons = tags ||> filter (\T.Constructor { name } -> name == tag)
     case cons of
@@ -113,20 +120,20 @@ infer (PatData tag pats) = do
             cs :=> target' <- inst $ definition target
 
             unificationVars <- mapM (\tv -> T.Var <$> fresh U) (ftv constructor)
-            Forall [] (cs' :=> package'    ) <- lift $ package     `instantiateWith` unificationVars
-            Forall [] (cs' :=> constructor') <- lift $ constructor `instantiateWith` unificationVars
+            Forall [] (cs' :=> package'    ) <- Eff.inject $ package     `instantiateWith` unificationVars
+            Forall [] (cs' :=> constructor') <- Eff.inject $ constructor `instantiateWith` unificationVars
 
-            forM_ (cs ++ cs') (lift . propagate)
+            forM_ (cs ++ cs') (Eff.inject . propagate)
 
             e1 <- fresh E
-            lift $ emit' $ Equality e1 (CST.Mono $ T.Tuple tys) (CST.Mono package')
+            emit' $ Equality e1 (CST.Mono $ T.Tuple tys) (CST.Mono package')
             e2 <- fresh E
-            lift $ emit' $ Equality e2 (CST.Mono $ returnType constructor') (CST.Mono target')
+            emit' $ Equality e2 (CST.Mono $ returnType constructor') (CST.Mono target')
 
             return target'
 
-        [] -> throwError $ TagNotConstructor tag
-        multiple -> throwError $ MultipleTagConstructors multiple
+        [] -> Eff.throwError $ TagNotConstructor tag
+        multiple -> Eff.throwError $ MultipleTagConstructors multiple
 
     where
         ftv (Forall tvars _) = tvars
@@ -136,16 +143,24 @@ infer (PatData tag pats) = do
 
         inst ty@(Forall [] qt) = return qt
         inst ty = do
-            tvar  <- fresh U
-            ty'  <- lift $ instantiate ty (T.Var tvar)
-            inst ty'
+            uvar  <- fresh U
+            inst $ instantiate ty (T.Var uvar)
 
 
-fresh :: forall m a. Shared.TypeInference m => I.Tag a -> PatternInference m (VarType Expr a)
-fresh = lift . Shared.fresh
+fresh :: I.Tag a -> PatternInference (VarType Expr a)
+fresh = Eff.inject . Shared.fresh
 
-emit :: Shared.TypeInference m => (String, PolymorphicVar Type) -> PatternInference m ()
-emit pair = tell [pair]
+emit :: (String, PolymorphicVar Type) -> PatternInference ()
+emit pair = Eff.tell [pair]
 
-run :: Shared.TypeInference m => PatternInference m a -> m (a, TypeVars)
-run pi = runWriterT pi
+--run :: PatternInference a -> m (a, TypeVars)
+
+
+
+
+
+run ::PatternInference a -> Shared.TypeInference (a, TypeVars)
+run = Eff.runWriter . Eff.inject
+
+
+    --  Eff.inject $ Eff.runWriter pi

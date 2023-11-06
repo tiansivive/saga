@@ -47,9 +47,9 @@ instance Generalize Type where
     _ -> return $ Forall [] ([] :=> ty)
 
     where
-      generalize' :: Shared.TypeInference m => ProtocolID -> m (T.Polymorphic Type)
+      generalize' ::  ProtocolID -> Shared.TypeInference (T.Polymorphic Type)
       generalize' protocol = do
-        tvar <- Shared.fresh P
+        tvar <- Shared.fresh T
         e <- Shared.fresh E
         emit' $ Impl e (CST.Mono $ T.Var tvar) protocol
         return $ Forall [tvar] ([T.Var tvar `Q.Implements` protocol] :=> T.Var tvar)

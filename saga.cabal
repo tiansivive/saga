@@ -21,7 +21,6 @@ library
       Saga.Language.Core.Liquid
       Saga.Language.Core.Literals
       Saga.Language.Evaluation
-      Saga.Language.Typechecker.DataType
       Saga.Language.Typechecker.Environment
       Saga.Language.Typechecker.Errors
       Saga.Language.Typechecker.Evaluation
@@ -35,11 +34,16 @@ library
       Saga.Language.Typechecker.Inference.Type.Shared
       Saga.Language.Typechecker.Kind
       Saga.Language.Typechecker.Lib
+      Saga.Language.Typechecker.Monad
       Saga.Language.Typechecker.Protocols
       Saga.Language.Typechecker.Qualification
+      Saga.Language.Typechecker.Run
       Saga.Language.Typechecker.Shared
       Saga.Language.Typechecker.Solver.Constraints
+      Saga.Language.Typechecker.Solver.Entailment
+      Saga.Language.Typechecker.Solver.Monad
       Saga.Language.Typechecker.Solver.Protocols
+      Saga.Language.Typechecker.Solver.Shared
       Saga.Language.Typechecker.Solver.Substitution
       Saga.Language.Typechecker.Solver.Unification
       Saga.Language.Typechecker.Type
@@ -64,6 +68,7 @@ library
       src
   default-extensions:
       OverloadedStrings
+  ghc-options: -fdefer-typed-holes
   build-tools:
       alex
     , happy
@@ -72,6 +77,7 @@ library
     , base
     , bytestring
     , containers
+    , effectful
     , haskeline
     , mtl
     , pretty-simple
@@ -99,6 +105,7 @@ test-suite saga-test
     , base
     , bytestring
     , containers
+    , effectful
     , haskeline
     , hspec
     , mtl

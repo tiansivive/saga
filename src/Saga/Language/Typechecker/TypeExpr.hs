@@ -7,13 +7,19 @@ import           Saga.Language.Typechecker.Variables     (PolymorphicVar)
 
 
 data TypeExpr where
-    Atom             :: TypeAtom -> TypeExpr
+    Singleton     :: Literal -> TypeExpr
+    Identifier    :: String -> TypeExpr
+
+    Union         :: [TypeExpr] -> TypeExpr
+    Tuple         :: [TypeExpr] -> TypeExpr
+    Record        :: [(String, TypeExpr)] -> TypeExpr
+    Arrow         :: TypeExpr -> TypeExpr -> TypeExpr
 
     Match            :: TypeExpr -> [Case] -> TypeExpr
     Clause           :: TypeExpr -> [Binding] -> TypeExpr
     Tagged           :: String -> TypeExpr -> TypeExpr
 
-    Lambda           :: [PolymorphicVar TypeExpr] -> TypeExpr -> TypeExpr
+    Lambda           :: [String] -> TypeExpr -> TypeExpr
     Application      :: TypeExpr -> [TypeExpr] -> TypeExpr
 
     Implementation   :: ProtocolID -> TypeExpr -> TypeExpr
@@ -21,12 +27,6 @@ data TypeExpr where
     KindedType        :: TypeExpr -> Kind -> TypeExpr
 
 
-data TypeAtom where
-  Union         :: [TypeExpr] -> TypeAtom
-  Tuple         :: [TypeExpr] -> TypeAtom
-  Record        :: [(String, TypeExpr)] -> TypeAtom
-  Arrow         :: TypeExpr -> TypeExpr -> TypeAtom
-  Identifier    :: String -> TypeAtom
 
 data Case
   = Case Pattern TypeExpr
@@ -51,10 +51,6 @@ data Binding
   deriving (Show, Eq, Ord)
 
 type ProtocolID = String
-
-deriving instance Show TypeAtom
-deriving instance Eq TypeAtom
-deriving instance Ord TypeAtom
 
 deriving instance Show TypeExpr
 deriving instance Eq TypeExpr

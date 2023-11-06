@@ -10,8 +10,8 @@ import           Saga.Language.Typechecker.Type                (Scheme (..),
 
 
 instance Instantiate Type  where
-  instantiate qt@(Forall [] _) t = return qt
-  instantiate (Forall (tvar:tvars) qt) t = return $ Forall tvars qt'
+  instantiate qt@(Forall [] _) t = qt
+  instantiate (Forall (tvar:tvars) qt) t = Forall tvars qt'
     where
       sub = Map.fromList [(tvar, t)]
       qt' = apply sub qt

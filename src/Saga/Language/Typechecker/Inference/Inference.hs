@@ -2,13 +2,14 @@
 
 
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE TypeFamilies        #-}
 {-# LANGUAGE TypeOperators       #-}
 
 
 module Saga.Language.Typechecker.Inference.Inference where
 
-import           Control.Monad.Except
+
 import           Control.Monad.RWS
 import           Control.Monad.Trans.Writer              (WriterT (runWriterT),
                                                           runWriter)
@@ -18,6 +19,14 @@ import           Saga.Language.Typechecker.Environment
 import           Saga.Language.Typechecker.Errors        (SagaError (TooManyArguments, TooManyInstantiationArguments))
 import           Saga.Language.Typechecker.Kind          (Kind)
 
+import           Effectful                               (Eff)
+import qualified Effectful                               as Eff
+import qualified Effectful.Error.Static                  as Eff
+import qualified Effectful.Fail                          as Eff
+import qualified Effectful.Reader.Static                 as Eff
+import qualified Effectful.State.Static.Local            as Eff
+import qualified Effectful.Writer.Static.Local           as Eff
+import           Saga.Language.Typechecker.Monad         (TypeCheck)
 import           Saga.Language.Typechecker.Qualification (Qualified)
 import           Saga.Language.Typechecker.Type          (Polymorphic,
                                                           Scheme (..), Type)
@@ -27,7 +36,8 @@ import           Saga.Language.Typechecker.Variables     (Classifier,
 
 
 
-type InferM w m  = (MonadRWS CompilerState (Either Info [w]) State m, MonadError SagaError m, MonadFail m)
+type InferEff es w = TypeCheck (Eff.State State ': Eff.Writer [w] ': es)
+type InferM w = InferEff '[] w
 
 
 data State = IST
@@ -41,40 +51,37 @@ class
   ( Instantiate (Classifier e)
   , Generalize (Classifier e)
   ) => Inference e where
-    infer       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferM w m)  => e -> m e
-    lookup      :: (t ~ Classifier e, w ~ EmittedConstraint t, InferM w m)  => String -> m (Qualified t)
-    fresh       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferM w m)  => Tag a -> m (VarType e a)
+    infer       :: (t ~ Classifier e, w ~ EmittedConstraint t)  => e -> InferM w e
+    lookup      :: (t ~ Classifier e, w ~ EmittedConstraint t)  => String -> InferM w (Qualified t)
+    fresh       :: (t ~ Classifier e, w ~ EmittedConstraint t)  => Tag a -> InferM w (VarType e a)
 
     --qualify     :: (t ~ Classifier e, w ~ Constraint t)              => w -> Polymorphic t -> Polymorphic t
 
-    emit        :: (t ~ Classifier e, w ~ EmittedConstraint t, InferM w m) => w -> m ()
-    inform      :: (t ~ Classifier e, w ~ EmittedConstraint t, InferM w m) => Info -> m ()
-    emit = emit'
-    inform = inform'
-
-
 class Instantiate t where
-    instantiate :: (w ~ EmittedConstraint t, InferM w m) => Polymorphic t -> t -> m (Polymorphic t)
+    instantiate :: Polymorphic t -> t -> Polymorphic t
 
 class Generalize t where
-    generalize ::  (w ~ EmittedConstraint t, InferM w m) => t -> m (Polymorphic t)
+    generalize :: w ~ EmittedConstraint t => t -> InferM w (Polymorphic t)
 
 
-emit' :: InferM w m => w -> m ()
-emit' = tell .  Right . pure
+emit' :: w -> InferEff es w ()
+emit' = Eff.tell . pure @[]
 
-inform' :: InferM w m => Info -> m ()
-inform' = tell . Left
+inform' :: Info -> InferEff es w ()
+inform' = Eff.tell
 
-instantiateWith :: (Show t, Instantiate t, w ~ EmittedConstraint t, InferM w m) => Polymorphic t -> [t] -> m (Polymorphic t)
+instantiateWith :: (Show t, Instantiate t, w ~ EmittedConstraint t) => Polymorphic t -> [t] -> InferM w (Polymorphic t)
 instantiateWith polymorphic ts = instantiate' polymorphic ts
   where
     instantiate' ty []                 = return ty
-    instantiate' ty@(Forall [] qt) ts = throwError $ TooManyInstantiationArguments polymorphic ts
+    instantiate' ty@(Forall [] qt) ts  = Eff.throwError $ TooManyInstantiationArguments polymorphic ts
     instantiate' ty (t:ts) = do
-      ty' <- instantiate ty t
+      let ty' = instantiate ty t
       instantiate' ty' ts
 
+
+initialState :: State
+initialState = IST 0 0 Map.empty
 
 type family EmittedConstraint t :: *
 
@@ -82,11 +89,11 @@ data Tag a where
   E   :: Tag Evidence
   Sk  :: Tag Skolem
   U   :: Tag Unification
-  P   :: Tag PolyVar
+  T   :: Tag TypeVar
   I   :: Tag Instantiation
 
 data Evidence = Evidence
 data Unification = Unification
 data Instantiation = Instantiation
-data PolyVar = PolyVar
+data TypeVar = TypeVar
 data Skolem = Skolem
