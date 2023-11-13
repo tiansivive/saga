@@ -1,55 +1,60 @@
 module Saga.Language.Typechecker.Solver.Protocols where
 import           Control.Monad.Except
 
-import qualified Data.Map                                      as Map
-import           Prelude                                       hiding (id)
-import           Saga.Language.Typechecker.Environment         (CompilerState (..))
-import           Saga.Language.Typechecker.Errors              (Exception (NotYetImplemented, Unexpected),
-                                                                SagaError (..),
-                                                                crash)
-import           Saga.Language.Typechecker.Inference.Inference (Instantiate (instantiate))
-import qualified Saga.Language.Typechecker.Protocols           as P
-import           Saga.Language.Typechecker.Protocols           (Protocol (..),
-                                                                ProtocolID)
-import           Saga.Language.Typechecker.Qualification       (Qualified (..))
-import qualified Saga.Language.Typechecker.Solver.Constraints  as C
-import           Saga.Language.Typechecker.Solver.Constraints  (Constraint,
-                                                                Evidence, Item)
-import           Saga.Language.Typechecker.Solver.Substitution (Subst,
-                                                                Substitutable (apply),
-                                                                mkSubst)
+import qualified Data.Map                                               as Map
+import           Prelude                                                hiding
+                                                                        (id)
+import           Saga.Language.Typechecker.Environment                  (CompilerState (..))
+import           Saga.Language.Typechecker.Errors                       (Exception (NotYetImplemented, Unexpected),
+                                                                         SagaError (..),
+                                                                         crash)
+import           Saga.Language.Typechecker.Inference.Inference          (Instantiate (instantiate))
+import qualified Saga.Language.Typechecker.Protocols                    as P
+import           Saga.Language.Typechecker.Protocols                    (Protocol (..),
+                                                                         ProtocolID)
+import           Saga.Language.Typechecker.Qualification                (Qualified (..))
+import qualified Saga.Language.Typechecker.Solver.Constraints           as C
+import           Saga.Language.Typechecker.Solver.Constraints           (Constraint,
+                                                                         Evidence,
+                                                                         Item)
+import           Saga.Language.Typechecker.Solver.Substitution          (Subst,
+                                                                         Substitutable (apply),
+                                                                         mkSubst)
 
-import           Control.Monad.RWS                             (MonadReader (ask),
-                                                                MonadState (get),
-                                                                MonadWriter (tell),
-                                                                asks)
-import qualified Data.List                                     as List
+import           Control.Monad.RWS                                      (MonadReader (ask),
+                                                                         MonadState (get),
+                                                                         MonadWriter (tell),
+                                                                         asks)
+import qualified Data.List                                              as List
 
-import           Data.Functor                                  ((<&>))
-import qualified Saga.Language.Typechecker.Evaluation          as Eval
-import qualified Saga.Language.Typechecker.Qualification       as Q
-import           Saga.Language.Typechecker.Solver.Monad        (Solve (..),
-                                                                SolverM,
-                                                                State (..),
-                                                                Tag (..), emit')
-import qualified Saga.Language.Typechecker.Solver.Shared       as Shared
-import           Saga.Language.Typechecker.Solver.Unification  (Unification (unify))
-import qualified Saga.Language.Typechecker.Type                as T
-import           Saga.Language.Typechecker.Type                (Scheme (..),
-                                                                Type)
-import qualified Saga.Language.Typechecker.Variables           as Var
-import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
-
-
-
-import           Data.Maybe                                    (isJust)
-import qualified Effectful                                     as Eff
-import qualified Effectful.Error.Static                        as Eff
-import qualified Effectful.Reader.Static                       as Eff
-import qualified Effectful.State.Static.Local                  as Eff
-import           Saga.Utils.Operators                          ((|>), (||>))
+import           Data.Functor                                           ((<&>))
+import qualified Saga.Language.Typechecker.Evaluation                   as Eval
+import qualified Saga.Language.Typechecker.Qualification                as Q
+import           Saga.Language.Typechecker.Solver.Monad                 (Solution (..),
+                                                                         Solve (..),
+                                                                         SolverM,
+                                                                         Status (..),
+                                                                         Tag (..),
+                                                                         update)
+import qualified Saga.Language.Typechecker.Solver.Shared                as Shared
+import           Saga.Language.Typechecker.Solver.Unification           (Unification (unify))
+import qualified Saga.Language.Typechecker.Type                         as T
+import           Saga.Language.Typechecker.Type                         (Scheme (..),
+                                                                         Type)
+import qualified Saga.Language.Typechecker.Variables                    as Var
+import           Saga.Language.Typechecker.Variables                    (PolymorphicVar)
 
 
+
+import           Data.Maybe                                             (isJust)
+import qualified Effectful                                              as Eff
+import qualified Effectful.Error.Static                                 as Eff
+import qualified Effectful.Reader.Static                                as Eff
+import qualified Effectful.State.Static.Local                           as Eff
+import           Saga.Utils.Operators                                   ((|>),
+                                                                         (||>))
+
+import           Saga.Language.Typechecker.Inference.Type.Instantiation
 
 data ImplConstraint = Impl (PolymorphicVar Evidence) Item ProtocolID
 
@@ -58,14 +63,14 @@ instance Solve ImplConstraint where
     solve = solve'
     simplify = simplify'
 
-    irreducible = irreducible'
 
 
 
-solve' :: ImplConstraint -> SolverM Constraint
+
+solve' :: ImplConstraint -> SolverM (Status, Constraint)
 solve' (Impl e@(Var.Evidence ev) t@(C.Mono ty) prtcl) =
     case ty of
-        T.Var (Var.Unification {}) -> return $ C.Impl e t prtcl
+        T.Var (Var.Unification {}) -> return (Deferred, C.Impl e t prtcl)
         T.Var v                    -> crash $ Unexpected v "Unification Var"
 
         ty                         -> do
@@ -78,17 +83,17 @@ solve' (Impl e@(Var.Evidence ev) t@(C.Mono ty) prtcl) =
             impl ||> maybe
                 (Eff.throwError $ MissingProtocolImplementation prtcl ty)
                 (\impl'@(P.Implementation (id, Forall _ (cs :=> ty'), expr)) -> do
-                    emit' E $ mkSubst (e, C.Protocol impl')
-                    propagate cs
-
+                    update E $ mkSubst (e, C.Protocol impl')
+                    result <- propagate cs
+                    return (Solved, result)
                 )
 
 solve' (Impl e item prtcl)                           = crash $ NotYetImplemented $ "Solving ImplConstraint for " ++ show item
 
 
 simplify' :: ImplConstraint -> SolverM Constraint
-simplify' (Impl ev t prtcl) = do
-    St { evidence, tvars } <- Eff.get
+simplify' impl@(Impl ev t prtcl) = do
+    Solution { evidence, tvars } <- Eff.get
     process evidence tvars
 
     where
@@ -96,12 +101,10 @@ simplify' (Impl ev t prtcl) = do
             | isJust $ Map.lookup ev evidence   = return C.Empty
             | C.Unification uvar <- t
             , isJust $ Map.lookup uvar tvars    = return $ C.Impl ev (C.Mono $ apply tvars (T.Var uvar)) prtcl
-            | otherwise                         = return $ C.Impl ev t prtcl
-
-irreducible' = undefined -- | TODO: So what happens here? do we really need this?
+            | otherwise                         = flatten impl
 
 
-flatten :: (Instantiate Type) => ImplConstraint -> SolverM Constraint
+flatten :: ImplConstraint -> SolverM Constraint
 flatten (Impl ev item prtcl) = do
     env <- Eff.ask
     Protocol { spec } <- env ||> protocols

@@ -6,66 +6,70 @@
 
 module Saga.Language.Typechecker.Inference.Type.Expr where
 
-import           Saga.Language.Core.Expr                          (Case (..),
-                                                                   Declaration (..),
-                                                                   Expr (..),
-                                                                   Statement (..))
+import           Saga.Language.Core.Expr                                 (Case (..),
+                                                                          Declaration (..),
+                                                                          Expr (..),
+                                                                          Statement (..))
 
-import qualified Saga.Language.Typechecker.Inference.Inference    as I
+import qualified Saga.Language.Typechecker.Inference.Inference           as I
 
-import qualified Saga.Language.Typechecker.Kind                   as K
-import           Saga.Language.Typechecker.Kind                   (Kind)
-import qualified Saga.Language.Typechecker.Type                   as T
-import           Saga.Language.Typechecker.Type                   (Scheme (Forall),
-                                                                   Type)
+import qualified Saga.Language.Typechecker.Kind                          as K
+import           Saga.Language.Typechecker.Kind                          (Kind)
+import qualified Saga.Language.Typechecker.Type                          as T
+import           Saga.Language.Typechecker.Type                          (Scheme (Forall),
+                                                                          Type)
 
 import           Control.Monad.RWS
-import qualified Data.Map                                         as Map
-import qualified Saga.Language.Typechecker.Solver.Constraints     as CST
-import           Saga.Language.Typechecker.Solver.Constraints     (Constraint (..))
+import qualified Data.Map                                                as Map
+import qualified Saga.Language.Typechecker.Solver.Constraints            as CST
+import           Saga.Language.Typechecker.Solver.Constraints            (Constraint (..))
 
 import           Control.Monad.Except
 
-import           Prelude                                          hiding
-                                                                  (lookup)
+import           Prelude                                                 hiding
+                                                                         (lookup)
 import           Saga.Language.Typechecker.Errors
-import           Saga.Language.Typechecker.Variables              (Classifier,
-                                                                   Level (..),
-                                                                   VarType)
+import           Saga.Language.Typechecker.Variables                     (Classifier,
+                                                                          Level (..),
+                                                                          VarType)
 
-import           Control.Applicative                              ((<|>))
-import           Data.List                                        hiding
-                                                                  (lookup)
-import qualified Data.Set                                         as Set
-import           Saga.Language.Core.Literals                      (Literal (..))
-import           Saga.Language.Typechecker.Environment            (CompilerState (..))
-import           Saga.Language.Typechecker.Inference.Inference    hiding
-                                                                  (lookup)
-import           Saga.Language.Typechecker.Protocols              (ProtocolID)
-import           Saga.Language.Typechecker.Solver.Substitution    (Subst,
-                                                                   Substitutable (..),
-                                                                   compose,
-                                                                   nullSubst)
+import           Control.Applicative                                     ((<|>))
+import           Data.List                                               hiding
+                                                                         (lookup)
+import qualified Data.Set                                                as Set
+import           Saga.Language.Core.Literals                             (Literal (..))
+import           Saga.Language.Typechecker.Environment                   (CompilerState (..))
+import           Saga.Language.Typechecker.Inference.Inference           hiding
+                                                                         (lookup)
+import           Saga.Language.Typechecker.Protocols                     (ProtocolID)
+import           Saga.Language.Typechecker.Solver.Substitution           (Subst,
+                                                                          Substitutable (..),
+                                                                          compose,
+                                                                          nullSubst)
 
-import qualified Control.Monad.Writer                             as W
-import           Data.Foldable                                    (for_)
-import qualified Effectful                                        as Eff
-import qualified Effectful.Error.Static                           as Eff
-import qualified Effectful.Reader.Static                          as Eff
-import qualified Effectful.Writer.Static.Local                    as Eff
-import qualified Saga.Language.Typechecker.Evaluation             as E
-import qualified Saga.Language.Typechecker.Inference.Type.Pattern as Pat
-import qualified Saga.Language.Typechecker.Inference.Type.Shared  as Shared
+import qualified Control.Monad.Writer                                    as W
+import           Data.Foldable                                           (for_)
+import qualified Effectful                                               as Eff
+import qualified Effectful.Error.Static                                  as Eff
+import qualified Effectful.Reader.Static                                 as Eff
+import qualified Effectful.Writer.Static.Local                           as Eff
+import qualified Saga.Language.Typechecker.Evaluation                    as E
+import qualified Saga.Language.Typechecker.Inference.Type.Pattern        as Pat
+import qualified Saga.Language.Typechecker.Inference.Type.Shared         as Shared
 import           Saga.Language.Typechecker.Lib
-import qualified Saga.Language.Typechecker.Qualification          as Q
-import           Saga.Language.Typechecker.Qualification          (Qualified (..))
-import qualified Saga.Language.Typechecker.TypeExpr               as CST
-import qualified Saga.Language.Typechecker.TypeExpr               as TE
-import           Saga.Language.Typechecker.TypeExpr               (Pattern (..))
-import qualified Saga.Language.Typechecker.Variables              as Var
-import           Saga.Utils.Operators                             ((|>), (||>))
+import qualified Saga.Language.Typechecker.Qualification                 as Q
+import           Saga.Language.Typechecker.Qualification                 (Qualified (..))
+import qualified Saga.Language.Typechecker.TypeExpr                      as CST
+import qualified Saga.Language.Typechecker.TypeExpr                      as TE
+import           Saga.Language.Typechecker.TypeExpr                      (Pattern (..))
+import qualified Saga.Language.Typechecker.Variables                     as Var
+import           Saga.Utils.Operators                                    ((|>),
+                                                                          (||>))
 
-
+import qualified Effectful.Fail                                          as Eff
+import qualified Effectful.State.Static.Local                            as Eff
+import           Saga.Language.Typechecker.Inference.Type.Generalization
+import           Saga.Language.Typechecker.Inference.Type.Instantiation
 
 instance (Generalize Type, Instantiate Type) => Inference Expr where
     infer = infer'
@@ -73,7 +77,7 @@ instance (Generalize Type, Instantiate Type) => Inference Expr where
     fresh = Shared.fresh
 
 
-infer' :: (Generalize Type, Instantiate Type) => Expr -> Shared.TypeInference Expr
+infer' :: Expr -> Shared.TypeInference Expr
 infer' e = case e of
     e@(Literal literal) -> return $ Typed e (T.Singleton literal)
     Identifier x -> do
@@ -86,7 +90,7 @@ infer' e = case e of
       where
         elaborate expr (ty `Q.Implements` protocol) = do
           evidence@(Var.Evidence prtclImpl) <- Shared.fresh E
-          emit' $ CST.Impl evidence (CST.Mono ty) protocol
+          Eff.tell $ CST.Impl evidence (CST.Mono ty) protocol
           return $ FnApp expr [Identifier prtclImpl]
 
     Typed expr ty -> do
@@ -95,9 +99,9 @@ infer' e = case e of
           -- | Inferred type is generalized as much as possible and unification expects the LHS to be the subtype
         case expr' of
           -- | When expression is a literal, it doesn't get generalized to preserve the literal type
-          Literal _ -> emit' $ CST.Equality evidence (CST.Mono inferred) (CST.Mono ty)
+          Literal _ -> Eff.tell $ CST.Equality evidence (CST.Mono inferred) (CST.Mono ty)
           -- | In any other case, we want to unify by instantiating the inferred type to the src type
-          _         -> emit' $ CST.Equality evidence (CST.Mono ty) (CST.Mono inferred)
+          _         -> Eff.tell $ CST.Equality evidence (CST.Mono ty) (CST.Mono inferred)
         return e
 
     Tuple elems -> do
@@ -115,7 +119,7 @@ infer' e = case e of
 
       forM_ tys $ \t -> do
         ev <- Shared.fresh E
-        emit' $ Equality ev (CST.Unification uvar) (CST.Mono t)
+        Eff.tell $ Equality ev (CST.Unification uvar) (CST.Mono t)
 
       return $ Typed (List elems') (T.Applied listConstructor $ T.Var uvar)
 
@@ -142,7 +146,7 @@ infer' e = case e of
         -- | TODO: By adding row polymorphism, we'd use a different constraint type
         -- | This would allow us to use a `CST.Unification` Item, leading to tracking all unification variables
         -- | Right now, that is not really possible here
-        emit' $ CST.Equality evidence (CST.Mono recordTy) (CST.Mono $ T.Record [(field, fieldType)])
+        Eff.tell $ CST.Equality evidence (CST.Mono recordTy) (CST.Mono $ T.Record [(field, fieldType)])
         return $ Typed (FnApp dot args) fieldType
     FnApp (Identifier ".") args -> Eff.throwError $ Fail $ "Unrecognised expressions for property access:\n\t" ++ show args
 
@@ -155,7 +159,7 @@ infer' e = case e of
         evidence <- Shared.fresh E
         -- | TODO: How can we notify the constraint solver that there's a new unification variable
         -- | which stands for the result of this function application
-        emit' $ CST.Equality evidence (CST.Mono fnTy) (CST.Poly inferred)
+        Eff.tell $ CST.Equality evidence (CST.Mono fnTy) (CST.Poly inferred)
 
         return $ Typed (FnApp fn' [arg']) out
     FnApp fn (a : as) -> infer' curried
@@ -174,11 +178,11 @@ infer' e = case e of
 
         for_ ty' $ \t -> do
           ev <- Shared.fresh E
-          emit' $ CST.Equality ev (CST.Mono ty) (CST.Poly t)
+          Eff.tell $ CST.Equality ev (CST.Mono ty) (CST.Poly t)
 
         forM_ tvars $ \v -> do
           ev <- Shared.fresh E
-          emit' $ CST.Equality ev (CST.Mono v) (maybe (CST.Mono ty) CST.Poly ty')
+          Eff.tell $ CST.Equality ev (CST.Mono v) (maybe (CST.Mono ty) CST.Poly ty')
 
         let out = T.Union $ fmap extractTy cases'
         return $ Typed (Match scrutinee' cases') out
@@ -191,8 +195,8 @@ infer' e = case e of
             assumps <- Eff.asks $ assumptions |> mappend bindings
             let scoped = Eff.local (\e -> e { assumptions = assumps })
 
-            (inferred, constraints) <- Eff.listen @[Constraint] $ scoped (infer expr)
-            emit' $ CST.Implication tvars assumps (foldr CST.Conjunction CST.Empty constraints)
+            (inferred, constraint) <- Eff.listen @Constraint $ scoped (infer expr)
+            Eff.tell $ CST.Implication tvars assumps constraint
 
             return $ TypedCase pat patTy inferred
 
@@ -233,7 +237,7 @@ infer' e = case e of
               scoped $ do
                 (Typed expr' ty) <- infer expr
                 ev <- Shared.fresh E
-                emit' $ CST.Equality ev (CST.Unification uvar) (CST.Mono ty)
+                Eff.tell $ CST.Equality ev (CST.Unification uvar) (CST.Mono ty)
                 walk processed rest
             d -> walk (d:processed) rest
     where
@@ -255,3 +259,4 @@ lookup' x = do
 
 
 
+run = Eff.runPureEff . Eff.runWriter . Eff.runState initialState . Eff.runFail . Eff.runError . Eff.runWriter . Eff.runReader defaultEnv . infer @Expr

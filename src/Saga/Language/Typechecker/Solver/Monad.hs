@@ -1,6 +1,5 @@
-{-# LANGUAGE DataKinds      #-}
-{-# LANGUAGE MonoLocalBinds #-}
-{-# LANGUAGE TypeFamilies   #-}
+{-# LANGUAGE DataKinds    #-}
+{-# LANGUAGE TypeFamilies #-}
 
 
 module Saga.Language.Typechecker.Solver.Monad where
@@ -12,41 +11,62 @@ import           Control.Monad.RWS                             (MonadRWS, gets,
 import           Control.Monad.RWS.Class                       (MonadWriter)
 import           Control.Monad.Trans.Writer                    (WriterT)
 import qualified Data.Map                                      as Map
+import qualified Effectful.State.Static.Local                  as Eff
 import           Saga.Language.Typechecker.Environment
 import           Saga.Language.Typechecker.Errors              (SagaError)
 import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import           Saga.Language.Typechecker.Solver.Constraints  (Constraint,
-                                                                Evidence)
+                                                                Evidence,
+                                                                Witnessed)
 import           Saga.Language.Typechecker.Solver.Substitution (Subst,
                                                                 Substitutable,
                                                                 compose)
+
+import           Effectful                                     (Eff)
+import           GHC.Stack.Types                               (CallStack)
+import qualified Saga.Language.Typechecker.Monad               as TC
+import           Saga.Language.Typechecker.Solver.Cycles       (Cycle)
 import           Saga.Language.Typechecker.Type                (Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
-import qualified Effectful.State.Static.Local as Eff
 
 
-type SolverEff es = TypeCheck (Eff.State State : es)
+type SolverEff es = TypeCheck (Eff.State Solution : Eff.State [Cycle Type] : es)
 type SolverM = SolverEff '[]
 
-data State = St { count :: Int, evidence :: Subst Evidence, tvars :: Subst Type }
+data Solution = Solution { count :: Int, evidence :: Subst Evidence, tvars :: Subst Type, witnessed :: Witnessed }
+  deriving (Show)
+data Status = Solved | Deferred | Impossible
 
 class Solve c where
-    solve       :: c -> SolverM Constraint
+    solve       :: c -> SolverM (Status, Constraint)
     simplify    :: c -> SolverM Constraint
 
     irreducible :: c -> Bool
+    irreducible = const True
+
+run :: SolverM a -> Eff '[] ((Either String (Either (CallStack, SagaError) (a, Info)), Solution), [Cycle Type])
+run  = Eff.runState [] . Eff.runState initialSolution .  TC.run
+
+initialSolution :: Solution
+initialSolution = Solution { count = 0, evidence = Map.empty, tvars = Map.empty, witnessed = Map.empty }
 
 
-emit' :: Tag a -> Subst (Of a) -> SolverM ()
-emit' E sub = Eff.modify $ \s -> s{ evidence = sub `Map.union` evidence s }
-emit' T sub = Eff.modify $ \s -> s{ tvars = sub `compose` tvars s }
+
+
+
+update :: Tag a -> Subst (Of a) -> SolverM ()
+update E sub = Eff.modify $ \s -> s{ evidence = sub `Map.union` evidence s }
+update T sub = Eff.modify $ \s -> s{ tvars = sub `compose` tvars s }
 
 data Ev = Ev
 data Ty = Ty
 data Tag a where
   E  :: Tag Ev
   T  :: Tag Ty
+
 type family Of a where
     Of Ev = Evidence
     Of Ty = Type
+
+

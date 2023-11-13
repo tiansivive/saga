@@ -21,6 +21,7 @@ import           Data.Functor                                  ((<&>))
 import qualified Data.List                                     as List
 import qualified Data.Map                                      as Map
 import qualified Data.Set                                      as Set
+import           Debug.Trace                                   (traceM)
 import           Effectful                                     (Eff, (:>))
 import qualified Effectful.Error.Static                        as Eff
 import qualified Effectful.Fail                                as Eff
@@ -29,7 +30,9 @@ import qualified Effectful.Writer.Static.Local                 as Eff
 import           Prelude                                       hiding (id,
                                                                 lookup)
 import           Saga.Language.Typechecker.Environment
-import           Saga.Language.Typechecker.Errors              (SagaError (..))
+import           Saga.Language.Typechecker.Errors              (Exception (NotYetImplemented),
+                                                                SagaError (..),
+                                                                crash)
 import qualified Saga.Language.Typechecker.Kind                as K
 import           Saga.Language.Typechecker.Kind                (Kind)
 import           Saga.Language.Typechecker.Monad               (TypeCheck)
@@ -140,7 +143,19 @@ instance Evaluate TypeExpr (Polymorphic Type) where
             apply _ [] (a: args) = Eff.throwError $ TooManyArguments fnExpr argExprs
 
 
+    evaluate te@(TE.KindedType t k) = do
+        Forall tvars qt <- evaluate t
+
+        return $ Forall tvars qt
+        -- | TODO: Do we need to have a KindType constructor for Type?
+        -- We're currently discarding the kind of the evaluated polymorphic type and merely forwarding the kinds of the type variables
+        where
+            go [] _ = []
+            go ((Var.Type id k):tvars') (K.Arrow kIn kOut) = Var.Type id kIn : go tvars' kOut
+
     evaluate (TE.Match t cases)  = error "Evaluation of Match type expressions not implemented yet"
+
+
 
     evaluate atom  = case atom of
         TE.Union tys -> evaluate' (\(cs, tvars, ts) -> Forall tvars $ cs :=> T.Union ts) tys
@@ -149,7 +164,7 @@ instance Evaluate TypeExpr (Polymorphic Type) where
             pairs' <- mapM (mapM evaluate) pairs
             let (cs, tvars, ps) = foldr (\(key, Forall tvars (cs' :=> qt)) (cs, tvars', ts) -> (cs' ++ cs, tvars' ++ tvars, (key, qt) : ts)) ([],[],[]) pairs'
             return $ Forall tvars $ cs :=> T.Record ps
-
+        atom  -> crash $ NotYetImplemented $ "Evaluation of type atom: " ++ show atom
         where
             evaluate' build = mapM evaluate |> fmap collect >=> (return . build)
 

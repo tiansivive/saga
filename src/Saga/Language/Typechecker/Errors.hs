@@ -4,15 +4,17 @@ import           Saga.Language.Typechecker.Protocols (ProtocolID)
 import           Saga.Language.Typechecker.Type      (Polymorphic, Tag, Type)
 import           Saga.Language.Typechecker.TypeExpr  (TypeExpr)
 import           Saga.Language.Typechecker.Variables (PolymorphicVar)
+import Saga.Language.Typechecker.Solver.Constraints (Item)
 
 data SagaError where
-  UnboundVariable :: String -> SagaError
+  UnboundVariable     :: String -> SagaError
   UndefinedIdentifier :: String-> SagaError
 
-  UnexpectedType :: Type -> String -> SagaError
-  UnexpectedKind :: Kind -> String -> SagaError
-  UnexpectedPolymorphicVariable :: Show a => PolymorphicVar a -> SagaError
-  UnexpectedInstantiationVariable :: Show a =>  PolymorphicVar a -> SagaError
+  UnexpectedType                      :: Type -> String -> SagaError
+  UnexpectedKind                      :: Kind -> String -> SagaError
+  UnexpectedPolymorphicVariable       :: Show a => PolymorphicVar a -> SagaError
+  UnexpectedInstantiationVariable     :: Show a =>  PolymorphicVar a -> SagaError
+  UnexpectedVariable                  :: Show a =>  PolymorphicVar a -> SagaError
 
   TagNotConstructor       :: String -> SagaError
   MultipleTagConstructors :: [Tag] -> SagaError
@@ -22,7 +24,7 @@ data SagaError where
 
   -- | UNIFICATION
   UnificationMismatch :: [Type] -> [Type]-> SagaError
-  UnificationFail :: Type -> Type-> SagaError
+  UnificationFail     :: Type -> Type-> SagaError
   UnificationKindFail :: Kind -> Kind -> SagaError
 
   KindMismatch :: Kind -> Kind -> SagaError
@@ -33,12 +35,13 @@ data SagaError where
   CircularKind :: Kind -> Kind -> SagaError
   -- | PROTOCOLS
   MissingProtocolImplementation :: ProtocolID -> Type -> SagaError
+  MultipleImplementationEvidence :: Item -> ProtocolID -> SagaError
 
   -- | EVALUATION
   TooManyArguments :: TypeExpr-> [TypeExpr]-> SagaError
 
-  SubtypeFailure :: Type ->Type-> SagaError
-  Fail :: String-> SagaError
+  SubtypeFailure  :: Type ->Type-> SagaError
+  Fail            :: String-> SagaError
 
 deriving instance Show SagaError
 

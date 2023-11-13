@@ -40,12 +40,16 @@ library
       Saga.Language.Typechecker.Run
       Saga.Language.Typechecker.Shared
       Saga.Language.Typechecker.Solver.Constraints
+      Saga.Language.Typechecker.Solver.Cycles
       Saga.Language.Typechecker.Solver.Entailment
+      Saga.Language.Typechecker.Solver.Equalities
       Saga.Language.Typechecker.Solver.Monad
       Saga.Language.Typechecker.Solver.Protocols
+      Saga.Language.Typechecker.Solver.Run
       Saga.Language.Typechecker.Solver.Shared
       Saga.Language.Typechecker.Solver.Substitution
       Saga.Language.Typechecker.Solver.Unification
+      Saga.Language.Typechecker.Solver.Zonking
       Saga.Language.Typechecker.Type
       Saga.Language.Typechecker.TypeExpr
       Saga.Language.Typechecker.Variables

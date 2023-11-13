@@ -19,13 +19,14 @@ import           Saga.Language.Typechecker.Environment
 import           Saga.Language.Typechecker.Errors        (SagaError (TooManyArguments, TooManyInstantiationArguments))
 import           Saga.Language.Typechecker.Kind          (Kind)
 
-import           Effectful                               (Eff)
+import           Effectful                               (Eff, (:>))
 import qualified Effectful                               as Eff
 import qualified Effectful.Error.Static                  as Eff
 import qualified Effectful.Fail                          as Eff
 import qualified Effectful.Reader.Static                 as Eff
 import qualified Effectful.State.Static.Local            as Eff
 import qualified Effectful.Writer.Static.Local           as Eff
+import qualified Saga.Language.Typechecker.Monad         as TC
 import           Saga.Language.Typechecker.Monad         (TypeCheck)
 import           Saga.Language.Typechecker.Qualification (Qualified)
 import           Saga.Language.Typechecker.Type          (Polymorphic,
@@ -36,16 +37,13 @@ import           Saga.Language.Typechecker.Variables     (Classifier,
 
 
 
-type InferEff es w = TypeCheck (Eff.State State ': Eff.Writer [w] ': es)
+type InferEff es w = TypeCheck (Eff.State State ': Eff.Writer w ': es)
 type InferM w = InferEff '[] w
 
-
 data State = IST
-  { vars        :: Int
-  , level       :: Int
-  , unification :: Map.Map String (PolymorphicVar Type)
+  { vars  :: Int
+  , level :: Int
   } deriving (Show)
-
 
 class
   ( Instantiate (Classifier e)
@@ -59,29 +57,8 @@ class
 
 class Instantiate t where
     instantiate :: Polymorphic t -> t -> Polymorphic t
-
 class Generalize t where
     generalize :: w ~ EmittedConstraint t => t -> InferM w (Polymorphic t)
-
-
-emit' :: w -> InferEff es w ()
-emit' = Eff.tell . pure @[]
-
-inform' :: Info -> InferEff es w ()
-inform' = Eff.tell
-
-instantiateWith :: (Show t, Instantiate t, w ~ EmittedConstraint t) => Polymorphic t -> [t] -> InferM w (Polymorphic t)
-instantiateWith polymorphic ts = instantiate' polymorphic ts
-  where
-    instantiate' ty []                 = return ty
-    instantiate' ty@(Forall [] qt) ts  = Eff.throwError $ TooManyInstantiationArguments polymorphic ts
-    instantiate' ty (t:ts) = do
-      let ty' = instantiate ty t
-      instantiate' ty' ts
-
-
-initialState :: State
-initialState = IST 0 0 Map.empty
 
 type family EmittedConstraint t :: *
 
@@ -97,3 +74,24 @@ data Unification = Unification
 data Instantiation = Instantiation
 data TypeVar = TypeVar
 data Skolem = Skolem
+
+
+inform' :: Info -> InferEff es w ()
+inform' = Eff.tell
+
+instantiateWith :: (Show t, Instantiate t, w ~ EmittedConstraint t, Eff.Error SagaError :> es) => Polymorphic t -> [t] -> Eff es (Polymorphic t)
+instantiateWith polymorphic ts = instantiate' polymorphic ts
+  where
+    instantiate' ty []                 = return ty
+    instantiate' ty@(Forall [] qt) ts  = Eff.throwError $ TooManyInstantiationArguments polymorphic ts
+    instantiate' ty (t:ts) = do
+      let ty' = instantiate ty t
+      instantiate' ty' ts
+
+
+initialState :: State
+initialState = IST 0 0
+
+
+run :: Monoid w => InferEff es w a -> Eff es ((Either String (Either (Eff.CallStack, SagaError) (a, Info)), State), w)
+run = Eff.runWriter . Eff.runState initialState . TC.run

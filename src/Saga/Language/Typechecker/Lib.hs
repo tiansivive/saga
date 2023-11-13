@@ -183,3 +183,33 @@ mapImplType = Forall [tf, ta, tb] $ [T.Var tf `Q.Implements` "Functor"] :=> (fn 
     fn = T.Var ta `T.Arrow` T.Var tb
     fa = T.Applied (T.Var tf) (T.Var ta)
     fb = T.Applied (T.Var tf) (T.Var tb)
+
+
+
+
+defaultEnv :: CompilerState
+defaultEnv = Saga
+  { values = Map.empty
+  , types = builtInTypes <> builtInFns
+  , kinds = Map.empty
+  , dataTypes = Map.empty
+  , tags = []
+  , assumptions = []
+  , protocols =
+      [ eqProtocol, numProtocol, isStringProtocol
+      , functorProtocol, semigroupProtocol
+      ]
+  }
+
+
+
+builtInTypes :: Map.Map String (Polymorphic Type)
+builtInTypes = Map.fromList
+  [ ("Int", Forall [] $ [] :=> int)
+  , ("Bool", Forall [] $ [] :=> bool)
+  , ("String", Forall [] $ [] :=> string)
+  , ("List", Forall [] $ [] :=> listConstructor)
+  , ("Function", Forall [] $ [] :=> fnConstructor)
+  , ("Record", Forall [] $ [] :=> T.Record [])
+
+  ]

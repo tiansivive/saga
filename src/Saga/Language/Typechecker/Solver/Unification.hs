@@ -23,7 +23,7 @@ import           Control.Monad.Trans.Writer                    (WriterT,
 import qualified Saga.Language.Typechecker.Evaluation          as E
 import           Saga.Language.Typechecker.Inference.Inference (InferM,
                                                                 State (..),
-                                                                emit', inform',
+                                                                inform',
                                                                 initialState)
 import           Saga.Language.Typechecker.Inference.Kind      (HasKind (..),
                                                                 KindInference)
@@ -54,10 +54,11 @@ import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.State.Static.Local                  as Eff
 import qualified Effectful.Writer.Static.Local                 as Eff
 import qualified Saga.Language.Typechecker.Inference.Kind      as KI
+import           Saga.Language.Typechecker.Solver.Cycles       (Cycle)
 
 
 type UnificationM t  = TypeCheck '[Eff.Writer [Cycle t]]
-type Cycle t = (PolymorphicVar t, t, Subst t)
+
 
 class Substitutable t t => Unification t where
     unify       :: t -> t -> UnificationM t (Subst t)

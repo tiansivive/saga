@@ -83,7 +83,7 @@ infer (PatList pats rest) = do
         uvarList <- fresh U
         emit (id, uvarList)
         ev <- fresh E
-        emit' $ Equality ev (CST.Mono result) (CST.Unification uvarList)
+        Eff.tell $ Equality ev (CST.Mono result) (CST.Unification uvarList)
         return result
 
     where
@@ -120,15 +120,15 @@ infer (PatData tag pats) = do
             cs :=> target' <- inst $ definition target
 
             unificationVars <- mapM (\tv -> T.Var <$> fresh U) (ftv constructor)
-            Forall [] (cs' :=> package'    ) <- Eff.inject $ package     `instantiateWith` unificationVars
-            Forall [] (cs' :=> constructor') <- Eff.inject $ constructor `instantiateWith` unificationVars
+            Forall [] (cs' :=> package'    ) <- package     `instantiateWith` unificationVars
+            Forall [] (cs' :=> constructor') <- constructor `instantiateWith` unificationVars
 
             forM_ (cs ++ cs') (Eff.inject . propagate)
 
             e1 <- fresh E
-            emit' $ Equality e1 (CST.Mono $ T.Tuple tys) (CST.Mono package')
+            Eff.tell $ Equality e1 (CST.Mono $ T.Tuple tys) (CST.Mono package')
             e2 <- fresh E
-            emit' $ Equality e2 (CST.Mono $ returnType constructor') (CST.Mono target')
+            Eff.tell $ Equality e2 (CST.Mono $ returnType constructor') (CST.Mono target')
 
             return target'
 

@@ -13,6 +13,7 @@ import           Saga.Language.Typechecker.Type                (Type)
 
 import qualified Effectful.State.Static.Local                  as Eff
 
+import qualified Effectful.Writer.Static.Local                 as Eff
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import qualified Saga.Language.Typechecker.Type                as T
 import qualified Saga.Language.Typechecker.Variables           as Var
@@ -45,7 +46,7 @@ fresh t = do
 
 
 propagate :: T.Constraint -> TypeInference ()
-propagate (ty `Q.Implements` prtcl) = fresh E >>= \e -> emit' $ CST.Impl e (CST.Mono ty) prtcl
-propagate (Q.Resource mul ty) = emit' $ CST.Resource (CST.Mono ty) mul
-propagate (Q.Pure ty) = emit' $ CST.Pure (CST.Mono ty)
-propagate (Q.Refinement expr ty) = emit' $ CST.Refined (CST.Mono ty) expr
+propagate (ty `Q.Implements` prtcl) = fresh E >>= \e -> Eff.tell $ CST.Impl e (CST.Mono ty) prtcl
+propagate (Q.Resource mul ty) = Eff.tell $ CST.Resource (CST.Mono ty) mul
+propagate (Q.Pure ty) = Eff.tell $ CST.Pure (CST.Mono ty)
+propagate (Q.Refinement expr ty) = Eff.tell $ CST.Refined (CST.Mono ty) expr

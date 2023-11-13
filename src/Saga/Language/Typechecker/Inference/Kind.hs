@@ -7,14 +7,13 @@ import           Control.Monad.RWS
 import           Data.Foldable                                 (foldrM)
 import qualified Data.Map                                      as Map
 import           Saga.Language.Typechecker.Environment
-import           Saga.Language.Typechecker.Errors              (SagaError (..))
 import qualified Saga.Language.Typechecker.Inference.Inference as I
 import           Saga.Language.Typechecker.Inference.Inference (Generalize (..),
                                                                 InferM,
                                                                 Inference (..),
                                                                 Instantiate (..),
                                                                 State (..),
-                                                                Tag (..), emit')
+                                                                Tag (..))
 
 import qualified Saga.Language.Typechecker.Kind                as K
 import           Saga.Language.Typechecker.Kind
@@ -24,6 +23,9 @@ import qualified Data.Set                                      as Set
 import qualified Effectful.Error.Static                        as Eff
 import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.State.Static.Local                  as Eff
+import qualified Effectful.Writer.Static.Local                 as Eff
+
+import           Saga.Language.Typechecker.Errors              (SagaError (..))
 import           Saga.Language.Typechecker.Qualification       (Qualified (..))
 import qualified Saga.Language.Typechecker.Solver.Constraints  as CST hiding
                                                                       (Equality)
@@ -45,10 +47,10 @@ type instance VarType TypeExpr I.TypeVar        = Var.PolymorphicVar Kind
 type instance VarType TypeExpr I.Instantiation  = Var.PolymorphicVar Kind
 
 
-type instance I.EmittedConstraint Kind = UnificationConstraint
 
 data UnificationConstraint = Empty | Unify Kind Kind
-type KindInference = InferM UnificationConstraint
+type KindInference = InferM [UnificationConstraint]
+type instance I.EmittedConstraint Kind = [UnificationConstraint]
 
 -- | Inferring Kinds of Types
 instance Inference TypeExpr where
@@ -102,7 +104,7 @@ infer' te = case te of
         arg'@(TE.KindedType _ argK) <- infer' arg
 
         inferred <- generalize $ argK `K.Arrow` out
-        emit' $ Unify fnK out
+        Eff.tell [Unify fnK out]
         return $ TE.KindedType (TE.Application fn' [arg']) out
     TE.Application fn (a : as) -> infer curried
         where
@@ -162,7 +164,8 @@ instance HasKind Type where
 
   kind (T.Closure ps tyExpr closure) = do
     kvar <- fresh' T
-    foldrM mkArrow (K.Var kvar) ps
+    TE.KindedType _ k <- infer tyExpr
+    foldrM mkArrow k ps
     where
         mkArrow v k = do
             k' <- kind v
@@ -172,7 +175,8 @@ instance HasKind Type where
 
 
 instance HasKind (PolymorphicVar Type) where
-    kind (Var.Type _ k)       = return k
-    kind (Skolem _ k)         = return k
-    kind (Unification _ _ k)  = return k
-    kind i@(Instantiation {}) = Eff.throwError $ UnexpectedInstantiationVariable i
+    kind (Var.Type _ k)      = return k
+    kind (Var.Kind _ k)      = return k
+    kind (Skolem _ k)        = return k
+    kind (Unification _ _ k) = return k
+    kind i                   = Eff.throwError $ UnexpectedVariable i

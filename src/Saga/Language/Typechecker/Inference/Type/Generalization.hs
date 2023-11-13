@@ -1,6 +1,7 @@
 module Saga.Language.Typechecker.Inference.Type.Generalization where
 
 import           Data.List                                       (nub)
+import qualified Effectful.Writer.Static.Local                   as Eff
 import           Saga.Language.Core.Literals
 import           Saga.Language.Typechecker.Inference.Inference
 import qualified Saga.Language.Typechecker.Inference.Type.Shared as Shared
@@ -49,8 +50,8 @@ instance Generalize Type where
     where
       generalize' ::  ProtocolID -> Shared.TypeInference (T.Polymorphic Type)
       generalize' protocol = do
-        tvar <- Shared.fresh T
+        tvar <- Shared.fresh U
         e <- Shared.fresh E
-        emit' $ Impl e (CST.Mono $ T.Var tvar) protocol
+        Eff.tell $ Impl e (CST.Mono $ T.Var tvar) protocol
         return $ Forall [tvar] ([T.Var tvar `Q.Implements` protocol] :=> T.Var tvar)
 
