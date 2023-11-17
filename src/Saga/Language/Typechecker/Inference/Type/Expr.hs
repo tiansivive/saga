@@ -171,18 +171,18 @@ infer' e = case e of
         scrutinee'@(Typed _ ty) <- infer scrutinee
         cases' <- mapM inferCase cases
         let (tvars, tys) = foldl separate ([], []) cases'
-        ty' <- mapM generalize $ case length tys of
-              0 -> Nothing
-              1 -> Just $ head tys -- | TODO: do we need this anymore? we now collapse unions...
-              _ -> Just $ T.Union tys
+        let ty' = case length tys of
+                  0 -> Nothing
+                  1 -> Just $ head tys -- | TODO: do we need this anymore? we now collapse unions...
+                  _ -> Just $ T.Union tys
 
         for_ ty' $ \t -> do
           ev <- Shared.fresh E
-          Eff.tell $ CST.Equality ev (CST.Mono ty) (CST.Poly t)
+          Eff.tell $ CST.Equality ev (CST.Mono ty) (CST.Mono t)
 
         forM_ tvars $ \v -> do
           ev <- Shared.fresh E
-          Eff.tell $ CST.Equality ev (CST.Mono v) (maybe (CST.Mono ty) CST.Poly ty')
+          Eff.tell $ CST.Equality ev (CST.Mono v) (maybe (CST.Mono ty) CST.Mono ty')
 
         let out = T.Union $ fmap extractTy cases'
         return $ Typed (Match scrutinee' cases') out

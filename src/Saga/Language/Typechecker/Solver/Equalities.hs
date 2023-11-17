@@ -45,6 +45,7 @@ instance Solve Eq where
 
 
 solve' :: Eq -> SolverM (Status, C.Constraint)
+--solve' eq | pTrace ("\nSOLVING EQ:\n" ++ show eq) False = undefined
 solve' (Eq _ it it') = case (it, it') of
     (Mono ty, Mono ty')        -> ty `equals` ty'
     (Mono ty, Unification var) -> ty `equals` T.Var var

@@ -14,7 +14,8 @@ import qualified Saga.Language.Typechecker.Solver.Monad          as Solve
 import           Saga.Language.Typechecker.Solver.Monad
 import qualified Saga.Language.Typechecker.Solver.Protocols      as P
 
-import           Saga.Language.Typechecker.Type                  (Type)
+import           Saga.Language.Typechecker.Type                  (Polymorphic,
+                                                                  Type)
 
 import           Prelude                                         hiding (Eq)
 
@@ -29,32 +30,45 @@ import           Saga.Language.Typechecker.Solver.Substitution   (Subst,
                                                                   Substitutable (..))
 import           Saga.Utils.Operators                            ((|>), (||>))
 
+import qualified Data.Set                                        as Set
 import           Debug.Pretty.Simple                             (pTrace,
                                                                   pTraceM,
                                                                   pTraceShow)
 import           Debug.Trace                                     (trace)
+import qualified Effectful.Error.Static                          as Eff
 import           Saga.Language.Typechecker.Inference.Type.Expr
+import qualified Saga.Language.Typechecker.Monad                 as Eff
+import           Saga.Language.Typechecker.Monad                 (TypeCheck)
+import qualified Saga.Language.Typechecker.Shared                as Shared
 import           Saga.Language.Typechecker.Solver.Entailment     (entailment)
+import qualified Saga.Language.Typechecker.Solver.Implications   as Imp
+import           Saga.Language.Typechecker.Variables             (PolymorphicVar)
+import           Saga.Language.Typechecker.Zonking.Normalisation (Normalisation (normalise))
+import           Saga.Language.Typechecker.Zonking.Qualification (qualify)
+import           Saga.Language.Typechecker.Zonking.Zonking       (Context (..),
+                                                                  zonk)
 
-
-run :: TypeInference Expr -> SolverM ((String, Expr), (String, Constraint, String, [Constraint]), Subst Type, Subst C.Evidence, I.State, Solution)
-run inference = do
-    ((ast, inferenceState), constraint) <- Eff.runWriter @C.Constraint $ Eff.runState I.initialState $ Eff.inject inference
-
-    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.runWriter @[Cycle Type] . Eff.inject $ process (flatten constraint)
+run :: Constraint -> TypeCheck es Context
+run constraint = do
+    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.runState [] . Eff.inject $ process (flatten constraint) []
     types <- foldM collapse (tvars solution) cycles
 
-    return (("AST", ast), ("Emitted", constraint, "Residuals", residuals), types, evidence solution, inferenceState, solution)
+    return Context { solution = Solution { tvars = types, evidence = evidence solution, witnessed = witnessed solution, count = 0 }, residuals }
 
     where
-        process :: [C.Constraint] -> SolverM [C.Constraint]
-        process [] = return []
-        process cs = do
-            results <- step cs >>= mapM solve
-            let next = fmap snd results
-            if all deferred results then
+        process :: [C.Constraint] -> [(Status, C.Constraint)] -> SolverM [C.Constraint]
+        --process cs done | pTrace ("\n----------------------\nPROCESSING:\n" ++ show cs ++ show done) False = undefined
+        process [] done = let next = fmap snd done in
+            if all deferred done then
                 return next
-            else process next
+            else process next []
+        process cs done = do
+            cs' <- step cs
+            case cs' of
+                (first:rest) -> do
+                    attempt <- solve first
+                    process rest (attempt:done)
+                [] -> process [] done
 
         deferred (Deferred, _) = True
         deferred _             = False
@@ -62,7 +76,7 @@ run inference = do
 
 step :: [C.Constraint] -> SolverM [C.Constraint]
 step cs = do
-    Solution { evidence, tvars } <- Eff.get
+    Solution { tvars } <- Eff.get
     simplified <- forM cs simplify
     entailment $ simplified ||> apply tvars >>= flatten |> List.filter unsolved
 
@@ -77,11 +91,13 @@ flatten c                        = pure c
 
 
 instance Solve C.Constraint where
-    solve (C.Equality ev it it') = solve $ E.Eq ev it it'
-    solve (C.Impl ev it p)       = solve $ P.Impl ev it p
-    solve c                      = return (Deferred, c)
+    solve (C.Equality ev it it')                    = solve $ E.Eq ev it it'
+    solve (C.Impl ev it p)                          = solve $ P.Impl ev it p
+    solve (C.Implication vars assumps constraint)   = solve $ Imp.Implies vars assumps constraint
+    solve c                                         = return (Deferred, c)
 
-    simplify (C.Equality ev it it') = simplify $ E.Eq ev it it'
-    simplify (C.Impl ev it p)       = simplify $ P.Impl ev it p
-    simplify c                      = return c
+    simplify (C.Equality ev it it')                      = simplify $ E.Eq ev it it'
+    simplify (C.Impl ev it p)                            = simplify $ P.Impl ev it p
+    simplify (C.Implication vars assumps constraint)     = simplify $ Imp.Implies vars assumps constraint
+    simplify c                                           = return c
 

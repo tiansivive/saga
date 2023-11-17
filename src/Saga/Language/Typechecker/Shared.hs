@@ -12,3 +12,7 @@ classifier (Skolem _ c)         = return c
 classifier (Unification _ _ c)  = return c
 classifier v@(Instantiation {}) = Eff.throwError $ UnexpectedInstantiationVariable v
 
+
+
+letters :: [String]
+letters = [1 ..] >>= flip replicateM ['α' .. 'ω']

@@ -22,6 +22,7 @@ import           Saga.Language.Typechecker.Solver.Substitution (Subst,
                                                                 Substitutable,
                                                                 compose)
 
+import           Debug.Pretty.Simple                           (pTraceM)
 import           Effectful                                     (Eff)
 import           GHC.Stack.Types                               (CallStack)
 import qualified Saga.Language.Typechecker.Monad               as TC
@@ -36,7 +37,7 @@ type SolverM = SolverEff '[]
 
 data Solution = Solution { count :: Int, evidence :: Subst Evidence, tvars :: Subst Type, witnessed :: Witnessed }
   deriving (Show)
-data Status = Solved | Deferred | Impossible
+data Status = Solved | Deferred | Impossible deriving Show
 
 class Solve c where
     solve       :: c -> SolverM (Status, Constraint)
@@ -45,13 +46,9 @@ class Solve c where
     irreducible :: c -> Bool
     irreducible = const True
 
-run :: SolverM a -> Eff '[] ((Either String (Either (CallStack, SagaError) (a, Info)), Solution), [Cycle Type])
-run  = Eff.runState [] . Eff.runState initialSolution .  TC.run
 
 initialSolution :: Solution
 initialSolution = Solution { count = 0, evidence = Map.empty, tvars = Map.empty, witnessed = Map.empty }
-
-
 
 
 

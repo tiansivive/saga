@@ -17,6 +17,7 @@ library
   exposed-modules:
       Main
       REPL.Repl
+      Saga.Language.CodeGen.JS
       Saga.Language.Core.Expr
       Saga.Language.Core.Liquid
       Saga.Language.Core.Literals
@@ -27,6 +28,7 @@ library
       Saga.Language.Typechecker.Inference.Elaboration
       Saga.Language.Typechecker.Inference.Inference
       Saga.Language.Typechecker.Inference.Kind
+      Saga.Language.Typechecker.Inference.Run
       Saga.Language.Typechecker.Inference.Type.Expr
       Saga.Language.Typechecker.Inference.Type.Generalization
       Saga.Language.Typechecker.Inference.Type.Instantiation
@@ -43,16 +45,21 @@ library
       Saga.Language.Typechecker.Solver.Cycles
       Saga.Language.Typechecker.Solver.Entailment
       Saga.Language.Typechecker.Solver.Equalities
+      Saga.Language.Typechecker.Solver.Implications
       Saga.Language.Typechecker.Solver.Monad
       Saga.Language.Typechecker.Solver.Protocols
       Saga.Language.Typechecker.Solver.Run
       Saga.Language.Typechecker.Solver.Shared
       Saga.Language.Typechecker.Solver.Substitution
       Saga.Language.Typechecker.Solver.Unification
-      Saga.Language.Typechecker.Solver.Zonking
       Saga.Language.Typechecker.Type
       Saga.Language.Typechecker.TypeExpr
       Saga.Language.Typechecker.Variables
+      Saga.Language.Typechecker.Zonking.Normalisation
+      Saga.Language.Typechecker.Zonking.Qualification
+      Saga.Language.Typechecker.Zonking.Run
+      Saga.Language.Typechecker.Zonking.Substitutions
+      Saga.Language.Typechecker.Zonking.Zonking
       Saga.Lexer.Lexer
       Saga.Lexer.Tokens
       Saga.Parser.Desugar
