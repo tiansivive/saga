@@ -250,9 +250,9 @@ spec = do
 --     -- it "can parse qualified constrained types" $ do
 --     --     let T.Type (T.TConstrained qualifiers constraints ty) = parseType "forall f a, exists b. (Functor f, a implements Show), a |-> Obj => f a! -> b"
 --     --     let
---     --         [ T.TPolyVar T.Forall T.None (f)
---     --             , T.TPolyVar T.Forall T.None (a)
---     --             , T.TPolyVar T.Exists T.None (b)
+--     --         [ T.TEvaluation T.Forall T.None (f)
+--     --             , T.TEvaluation T.Forall T.None (a)
+--     --             , T.TEvaluation T.Exists T.None (b)
 --     --             ] = qualifiers
 --     --     let
 --     --         [ T.Implements (T.Type (T.TIdentifier (functor)))  (T.Type (T.TVar (f1)))

@@ -5,7 +5,7 @@ module Saga.Language.EvaluationSpec where
 import Test.Hspec
 import qualified Saga.Language.Evaluation as E
 
-import qualified Saga.Language.Core.Syntax as Expr
+import qualified Saga.Language.Core.Expr as Expr
 import qualified Saga.Language.Core.Literals as L
 
 import qualified Data.Map as Map

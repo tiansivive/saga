@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -17,21 +17,49 @@ library
   exposed-modules:
       Main
       REPL.Repl
+      Saga.Language.CodeGen.JS
+      Saga.Language.Core.Expr
+      Saga.Language.Core.Liquid
       Saga.Language.Core.Literals
-      Saga.Language.Core.Syntax
       Saga.Language.Evaluation
-      Saga.Language.Generation.JS
-      Saga.Language.TypeSystem.Constraints
-      Saga.Language.TypeSystem.Elaboration
-      Saga.Language.TypeSystem.Environment
-      Saga.Language.TypeSystem.Errors
-      Saga.Language.TypeSystem.Inference
-      Saga.Language.TypeSystem.Kinds
-      Saga.Language.TypeSystem.Lib
-      Saga.Language.TypeSystem.Normalization
-      Saga.Language.TypeSystem.Refinement
-      Saga.Language.TypeSystem.Shared
-      Saga.Language.TypeSystem.Types
+      Saga.Language.Typechecker.Environment
+      Saga.Language.Typechecker.Errors
+      Saga.Language.Typechecker.Evaluation
+      Saga.Language.Typechecker.Inference.Elaboration
+      Saga.Language.Typechecker.Inference.Inference
+      Saga.Language.Typechecker.Inference.Kind
+      Saga.Language.Typechecker.Inference.Run
+      Saga.Language.Typechecker.Inference.Type.Expr
+      Saga.Language.Typechecker.Inference.Type.Generalization
+      Saga.Language.Typechecker.Inference.Type.Instantiation
+      Saga.Language.Typechecker.Inference.Type.Pattern
+      Saga.Language.Typechecker.Inference.Type.Shared
+      Saga.Language.Typechecker.Kind
+      Saga.Language.Typechecker.Lib
+      Saga.Language.Typechecker.Monad
+      Saga.Language.Typechecker.Protocols
+      Saga.Language.Typechecker.Qualification
+      Saga.Language.Typechecker.Run
+      Saga.Language.Typechecker.Shared
+      Saga.Language.Typechecker.Solver.Constraints
+      Saga.Language.Typechecker.Solver.Cycles
+      Saga.Language.Typechecker.Solver.Entailment
+      Saga.Language.Typechecker.Solver.Equalities
+      Saga.Language.Typechecker.Solver.Implications
+      Saga.Language.Typechecker.Solver.Monad
+      Saga.Language.Typechecker.Solver.Protocols
+      Saga.Language.Typechecker.Solver.Run
+      Saga.Language.Typechecker.Solver.Shared
+      Saga.Language.Typechecker.Solver.Substitution
+      Saga.Language.Typechecker.Solver.Unification
+      Saga.Language.Typechecker.Type
+      Saga.Language.Typechecker.TypeExpr
+      Saga.Language.Typechecker.Variables
+      Saga.Language.Typechecker.Zonking.Normalisation
+      Saga.Language.Typechecker.Zonking.Qualification
+      Saga.Language.Typechecker.Zonking.Run
+      Saga.Language.Typechecker.Zonking.Substitutions
+      Saga.Language.Typechecker.Zonking.Zonking
       Saga.Lexer.Lexer
       Saga.Lexer.Tokens
       Saga.Parser.Desugar
@@ -41,13 +69,17 @@ library
       Saga.Parser.ParsingInfo
       Saga.Parser.Shared
       Saga.Parser.Types
-      Saga.Utils.Utils
+      Saga.Utils.Common
+      Saga.Utils.Operators
+      Saga.Utils.Pretty
+      Saga.Utils.TypeLevel
   other-modules:
       Paths_saga
   hs-source-dirs:
       src
   default-extensions:
       OverloadedStrings
+  ghc-options: -fdefer-typed-holes
   build-tools:
       alex
     , happy
@@ -56,11 +88,12 @@ library
     , base
     , bytestring
     , containers
+    , effectful
     , haskeline
     , mtl
     , pretty-simple
     , transformers
-  default-language: Haskell2010
+  default-language: GHC2021
 
 test-suite saga-test
   type: exitcode-stdio-1.0
@@ -83,10 +116,11 @@ test-suite saga-test
     , base
     , bytestring
     , containers
+    , effectful
     , haskeline
     , hspec
     , mtl
     , pretty-simple
     , saga
     , transformers
-  default-language: Haskell2010
+  default-language: GHC2021

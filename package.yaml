@@ -1,12 +1,15 @@
 name: saga
 version: 0.1.0.0
 
+
+language: GHC2021
+
 default-extensions:
-- OverloadedStrings
+  - OverloadedStrings
 
 extra-source-files:
-- README.md
-- LICENSE
+  - README.md
+  - LICENSE
 
 dependencies:
   - array
@@ -17,10 +20,15 @@ dependencies:
   - mtl
   - haskeline
   - pretty-simple
+  - effectful
 
 
 library:
-  source-dirs: src
+  source-dirs: 
+    - src
+  ghc-options:
+    - -fdefer-typed-holes
+
   build-tools:
   - alex
   - happy

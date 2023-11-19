@@ -1,29 +1,26 @@
 module REPL.Repl where
 
 
-import qualified Saga.Language.Evaluation             as E
+import qualified Saga.Language.Evaluation      as E
 
+import qualified Saga.Parser.Parser            as P
 
-import qualified Saga.Language.TypeSystem.Inference   as HMI
-import qualified Saga.Language.TypeSystem.Refinement  as HMR
+import           Data.Map                      (Map)
+import qualified Data.Map                      as Map
 
-import qualified Saga.Parser.Parser                   as P
+import           Control.Monad.Except          (ExceptT)
+import           Control.Monad.State           (StateT)
+import           Debug.Trace                   (traceM)
+import           Saga.Language.Core.Expr       (Expr)
 
-import           Data.Map                             (Map)
-import qualified Data.Map                             as Map
-
-import           Control.Monad.Except                 (ExceptT)
-import           Control.Monad.State                  (StateT)
-import           Debug.Trace                          (traceM)
-import           Saga.Language.Core.Syntax            (Expr)
-import           Saga.Language.TypeSystem.Constraints (nullSubst)
+import qualified Effectful                     as Eff
+import qualified Saga.Language.Typechecker.Run as TC
 import           Saga.Parser.Desugar
-import           Saga.Parser.ParsingInfo              hiding (Term)
-import           Saga.Parser.Shared                   (ParsedData (..))
-import           System.Console.Haskeline             (defaultSettings,
-                                                       getInputLine,
-                                                       outputStrLn, runInputT)
-import           Text.Pretty.Simple                   (pPrint)
+import           Saga.Parser.ParsingInfo       hiding (Term)
+import           Saga.Parser.Shared            (ParsedData (..))
+import           System.Console.Haskeline      (defaultSettings, getInputLine,
+                                                outputStrLn, runInputT)
+import           Text.Pretty.Simple            (pPrint)
 
 
 data Sort = Type | Kind | Term
@@ -49,11 +46,11 @@ repl = runInputT defaultSettings $ repl' Map.empty
             | (var, expr) <- break (== '=') binding = Let (trim var) (tail expr)
 
         getCmd (':' : 't' : ' ' : ty) = Infer Type ty
-        getCmd (':' : 'k' : ' ' : k) = Infer Kind k
+        -- getCmd (':' : 'k' : ' ' : k) = Infer Kind k
 
         getCmd (':' : 'p' : 'e' : ' ' : e) = Parse Term e
         getCmd (':' : 'p' : 't' : ' ' : ty) = Parse Type ty
-        getCmd (':' : 'p' : 'k' : ' ' : k) = Parse Kind k
+        -- getCmd (':' : 'p' : 'k' : ' ' : k) = Parse Kind k
 
 
         getCmd ":env" = Env
@@ -65,14 +62,14 @@ repl = runInputT defaultSettings $ repl' Map.empty
             (Just line) <- getInputLine "Saga λ> "
             case getCmd line of
                 Quit -> return ()
-                Let var expr -> evalDec var expr
+                --Let var expr -> evalDec var expr
                 None -> evalExpr line
                 Env -> print' env
                 Infer Type ty -> inferType ty
-                -- Infer Kind k -> inferKind k
+                --Infer Kind k -> inferKind k
                 Parse Term e -> parseTerm e
                 Parse Type ty -> parseType ty
-                Parse Kind k -> parseKind k
+                --Parse Kind k -> parseKind k
 
                 _    -> do
                     outputStrLn "Not implemented yet!"
@@ -92,15 +89,15 @@ repl = runInputT defaultSettings $ repl' Map.empty
                             Parsed expr _ _ <- desugaredExpr $ P.runSagaExpr line
                             E.run (Just env) (E.eval expr)
 
-                evalDec var expr = case result of
-                    Left e -> do { pPrint e; repl' env }
-                    Right val -> do
-                        pPrint val
-                        repl' $ Map.insert var val env
-                    where
-                        result = do
-                            Parsed e _ _ <- desugaredExpr $ P.runSagaExpr expr
-                            E.run (Just env) (E.eval e)
+                -- evalDec var expr = case result of
+                --     Left e -> do { pPrint e; repl' env }
+                --     Right val -> do
+                --         pPrint val
+                --         repl' $ Map.insert var val env
+                --     where
+                --         result = do
+                --             Parsed e _ _ <- desugaredExpr $ P.runSagaExpr expr
+                --             E.run (Just env) (E.eval e)
 
 
                 parseTerm input = do
@@ -115,17 +112,17 @@ repl = runInputT defaultSettings $ repl' Map.empty
                         (Right ty) -> pPrint ty
                     repl' env
 
-                parseKind input = do
-                    case P.runSagaKind input of
-                        (Left e)   -> pPrint e
-                        (Right ty) -> pPrint ty
-                    repl' env
+                -- parseKind input = do
+                --     case P.runSagaKind input of
+                --         (Left e)   -> pPrint e
+                --         (Right ty) -> pPrint ty
+                --     repl' env
 
                 inferType input = do
-                    pPrint "Disabled"
-                    -- case HMI.run input of
-                    --     (Left e)   -> pPrint e
-                    --     (Right ty) -> pPrint ty
+                    let inferred = fmap (fmap (TC.run . TC.typecheck)) $ desugaredExpr $ P.runSagaExpr input
+                    case inferred of
+                        (Left e)                 -> pPrint e
+                        (Right (Parsed res _ _)) -> pPrint res
                     repl' env
 
                 print' env' = do

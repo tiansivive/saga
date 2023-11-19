@@ -19,10 +19,10 @@ import           Data.List                   (find, findIndex)
 import           Data.Maybe                  (fromJust, fromMaybe)
 import           Debug.Trace                 (traceM)
 
-import           Saga.Language.Core.Literals (Literal (..))
-import           Saga.Language.Core.Syntax   (Binding (Bind), Declaration (..),
+import           Saga.Language.Core.Expr     (Binding (Bind), Declaration (..),
                                               Expr (..))
-import           Saga.Utils.Utils            hiding (fromMaybe)
+import           Saga.Language.Core.Literals (Literal (..))
+import           Saga.Utils.Common           hiding (fromMaybe)
 
 
 

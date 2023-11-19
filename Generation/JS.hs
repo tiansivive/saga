@@ -5,8 +5,8 @@ module Saga.Language.Generation.JS where
 import           Control.Monad.State
 import           Data.List                           (intercalate)
 import           Data.Maybe                          (fromMaybe)
+import           Saga.Language.Core.Expr             hiding (Binding)
 import           Saga.Language.Core.Literals         (Literal (..))
-import           Saga.Language.Core.Syntax           hiding (Binding)
 import           Saga.Language.TypeSystem.Refinement
 import           Saga.Language.TypeSystem.Types      (Binding,
                                                       CompositeExpr (..),
@@ -52,43 +52,43 @@ instance Generator Statement where
 instance Generator Declaration where
     generate (Type {})              = ""
     generate (Let id tyExpr _ expr) = "let " ++ id ++ " = " ++ generate expr
-    generate (Data id k (TClause (TLambda _ ty) bindings)) = main ++ standalone constructors ++ "\n"
-        where
-            main = "let " ++ id ++ " = " ++ generate constructors ++ "\n"
+    -- generate (Data id k (TClause (TLambda _ ty) bindings)) = main ++ standalone constructors ++ "\n"
+    --     where
+    --         main = "let " ++ id ++ " = " ++ generate constructors ++ "\n"
 
 
-            standalone (Record cs) = intercalate "\n" $ fmap code cs
-                where
-                    code (name, _) = "let " ++ name ++ " = " ++ id ++ "." ++ name
+    --         standalone (Record cs) = intercalate "\n" $ fmap code cs
+    --             where
+    --                 code (name, _) = "let " ++ name ++ " = " ++ id ++ "." ++ name
 
-            constructors = case ty of
-                TComposite (TEUnion tys) -> Record (fmap build tys)
-                t@(TTagged _ _)          -> Record [build t]
-                _                        -> error "In generate Declaration: Unexpected type expression in data declaration"
+    --         constructors = case ty of
+    --             TComposite (TEUnion tys) -> Record (fmap build tys)
+    --             t@(TTagged _ _)          -> Record [build t]
+    --             _                        -> error "In generate Declaration: Unexpected type expression in data declaration"
 
-            build (TTagged tag ty) = (tag, Lambda args record)
-                where
-                    args = fmap (\n -> "_" ++ show n) [0 .. count 0 ty]
-                    record = Record [("tag", Literal (LString tag)), ("values", Tuple $ fmap Identifier args)]
+    --         build (TTagged tag ty) = (tag, Lambda args record)
+    --             where
+    --                 args = fmap (\n -> "_" ++ show n) [0 .. count 0 ty]
+    --                 record = Record [("tag", Literal (LString tag)), ("values", Tuple $ fmap Identifier args)]
 
-            count n (TComposite (TEArrow t1 t2)) = n + count n t1 + count n t2
-            count n _                            = n
-            --"const " ++ id ++ " = {" ++ intercalate "," (fmap generate dataExprs)  ++ "}"
+    --         count n (TComposite (TEArrow t1 t2)) = n + count n t1 + count n t2
+    --         count n _                            = n
+    --         --"const " ++ id ++ " = {" ++ intercalate "," (fmap generate dataExprs)  ++ "}"
 
 
 instance Generator DataExpr where
-    generate (tag, TAtom ty) = tag ++ ": (" ++ values ++ ") => ({_tag: \"" ++ tag ++ "\"," ++ values ++ "})"
-        where
-            params :: Type -> State Int [String]
-            params (TArrow one two) = do
-                one' <- params one
-                two' <- params two
-                return $ one' ++ two'
-            params _ = do
-                count <- get
-                return ["val" ++ show count]
+    -- generate (tag, TAtom ty) = tag ++ ": (" ++ values ++ ") => ({_tag: \"" ++ tag ++ "\"," ++ values ++ "})"
+    --     where
+    --         params :: Type -> State Int [String]
+    --         params (TArrow one two) = do
+    --             one' <- params one
+    --             two' <- params two
+    --             return $ one' ++ two'
+    --         params _ = do
+    --             count <- get
+    --             return ["val" ++ show count]
 
-            values = intercalate "," $ evalState (params ty) 0
+    --         values = intercalate "," $ evalState (params ty) 0
     generate (_, tyExpr) = error "No code generation implemented yet for this type of TypeExpr:\n" ++ show tyExpr
 
 
