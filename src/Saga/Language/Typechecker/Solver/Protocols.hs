@@ -131,22 +131,3 @@ propagate = foldM (\acc c -> C.Conjunction acc <$> Shared.from c) C.Empty
 
 
 
-
--- entail :: [ImplConstraint] -> ImplConstraint -> Solve Bool
--- -- entail ipcs current | trace ("\nEntailing\n\tCurrent: " ++ show current ++ "\n\tOthers:" ++ show ipcs) False = undefined
--- entail ipcs ipConstraint = do
---   protocols <- ask
---   baseConstraints <- mapM byBase ipcs
---   --traceM $ "Checking by base constraints:\n\t" ++ show baseConstraints
---   if any (ipConstraint `elem`) baseConstraints
---     then return True
---     else checkImpls
-
---   where
---     checkImpls = do
---       constraints <- byImplementation ipConstraint
---       --traceM $ "Checking by implementations:\n\t" ++ show constraints
---       entailments <- mapM (entail ipcs) constraints
---       --traceM $ "Entailments:\n\t" ++ show entailments
---       return (not (null entailments) && and entailments)
-
