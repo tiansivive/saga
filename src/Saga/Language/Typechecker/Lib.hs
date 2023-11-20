@@ -7,7 +7,8 @@ import qualified Saga.Language.Core.Expr                 as E
 import qualified Saga.Language.Typechecker.Kind          as K
 import qualified Saga.Language.Typechecker.Protocols     as P
 import           Saga.Language.Typechecker.Protocols     (Protocol (..))
-import           Saga.Language.Typechecker.Qualification (Qualified ((:=>)))
+import           Saga.Language.Typechecker.Qualification (Given (..),
+                                                          Qualified ((:=>)))
 import qualified Saga.Language.Typechecker.Type          as T
 import           Saga.Language.Typechecker.Type          (Polymorphic,
                                                           Scheme (..), Type)
@@ -39,9 +40,9 @@ eqProtocol =
       )
       K.Type
     )
-    [ P.Implementation (eqID, Forall [] ([] :=> int),    E.Record [("==", E.Identifier "$int_$eq_$equals")])
-    , P.Implementation (eqID, Forall [] ([] :=> string), E.Record [("==", E.Identifier "$string_$eq_$equals")])
-    , P.Implementation (eqID, Forall [] ([] :=> bool),   E.Record [("==", E.Identifier "$bool_$eq_$equals")])
+    [ P.Implementation (eqID, Forall [] (Map.empty :| [] :=> int),    E.Record [("==", E.Identifier "$int_$eq_$equals")])
+    , P.Implementation (eqID, Forall [] (Map.empty :| [] :=> string), E.Record [("==", E.Identifier "$string_$eq_$equals")])
+    , P.Implementation (eqID, Forall [] (Map.empty :| [] :=> bool),   E.Record [("==", E.Identifier "$bool_$eq_$equals")])
     ]
     where
       var = "t"
@@ -61,7 +62,7 @@ numProtocol =
       )
       K.Type
     )
-    [ P.Implementation (numID, Forall [] ([] :=> int), E.Record [ ("+", E.Identifier "$int_$num_$add")
+    [ P.Implementation (numID, Forall [] (Map.empty :| [] :=> int), E.Record [ ("+", E.Identifier "$int_$num_$add")
                                                      , ("-", E.Identifier "$int_$num_$sub")
                                                      , ("*", E.Identifier "$int_$num_$mul")
                                                      , ("/", E.Identifier "$int_$num_$div")
@@ -85,7 +86,7 @@ isStringProtocol =
       K.Type
     )
     [ P.Implementation ( isStringID
-                       , Forall [] ([] :=> string)
+                       , Forall [] (Map.empty :| [] :=> string)
                        , E.Record [("isString", E.Identifier "$str_$is_string_$is_String")]
                        )
     ]
@@ -105,7 +106,7 @@ functorProtocol =
       (K.Arrow K.Type K.Type)
     )
     [ P.Implementation ( functorID
-                       , Forall [] ([] :=> listConstructor)
+                       , Forall [] (Map.empty :| [] :=> listConstructor)
                        , E.Record [("map", E.Identifier "$list_$functor_$map")]
                        )
     ]
@@ -130,7 +131,7 @@ semigroupProtocol =
       K.Type
     )
     [ P.Implementation ( semigroupID
-                       , Forall [polyvar'] ([] :=> T.Applied listConstructor (T.Var polyvar'))
+                       , Forall [polyvar'] (Map.empty :| [] :=> T.Applied listConstructor (T.Var polyvar'))
                        , E.Record [("++", E.Identifier "$list_a_$semigroup_$append")]
                        )
     ]
@@ -167,12 +168,12 @@ builtInFns =
       var = "a"
       tvar = Var.Type var K.Type
 
-      binaryEqTypeExpr  = Forall [tvar] $ [T.Var tvar `Q.Implements` "Eq"]          :=> T.Var tvar `T.Arrow` (T.Var tvar `T.Arrow` bool)
-      binaryNumTypeExpr = Forall [tvar] $ [T.Var tvar `Q.Implements` "Num"]         :=> T.Var tvar `T.Arrow` (T.Var tvar `T.Arrow` T.Var tvar)
-      appendFn          = Forall [tvar] $ [T.Var tvar `Q.Implements` "Semigroup"]   :=> T.Var tvar `T.Arrow` (T.Var tvar `T.Arrow` T.Var tvar)
+      binaryEqTypeExpr  = Forall [tvar] $ Map.empty :| [T.Var tvar `Q.Implements` "Eq"]          :=> T.Var tvar `T.Arrow` (T.Var tvar `T.Arrow` bool)
+      binaryNumTypeExpr = Forall [tvar] $ Map.empty :| [T.Var tvar `Q.Implements` "Num"]         :=> T.Var tvar `T.Arrow` (T.Var tvar `T.Arrow` T.Var tvar)
+      appendFn          = Forall [tvar] $ Map.empty :| [T.Var tvar `Q.Implements` "Semigroup"]   :=> T.Var tvar `T.Arrow` (T.Var tvar `T.Arrow` T.Var tvar)
 
 mapImplType :: Polymorphic Type
-mapImplType = Forall [tf, ta, tb] $ [T.Var tf `Q.Implements` "Functor"] :=> (fn `T.Arrow` (fa `T.Arrow` fb ))
+mapImplType = Forall [tf, ta, tb] $ Map.empty :| [T.Var tf `Q.Implements` "Functor"] :=> (fn `T.Arrow` (fa `T.Arrow` fb ))
   where
     f = "f"
     a = "a"
@@ -205,11 +206,10 @@ defaultEnv = Saga
 
 builtInTypes :: Map.Map String (Polymorphic Type)
 builtInTypes = Map.fromList
-  [ ("Int", Forall [] $ [] :=> int)
-  , ("Bool", Forall [] $ [] :=> bool)
-  , ("String", Forall [] $ [] :=> string)
-  , ("List", Forall [] $ [] :=> listConstructor)
-  , ("Function", Forall [] $ [] :=> fnConstructor)
-  , ("Record", Forall [] $ [] :=> T.Record [])
-
+  [ ("Int",       Forall [] $ Map.empty :| [] :=> int)
+  , ("Bool",      Forall [] $ Map.empty :| [] :=> bool)
+  , ("String",    Forall [] $ Map.empty :| [] :=> string)
+  , ("List",      Forall [] $ Map.empty :| [] :=> listConstructor)
+  , ("Function",  Forall [] $ Map.empty :| [] :=> fnConstructor)
+  , ("Record",    Forall [] $ Map.empty :| [] :=> T.Record [])
   ]

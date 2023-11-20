@@ -29,7 +29,8 @@ import           Saga.Language.Typechecker.Errors                (SagaError (..)
 import qualified Saga.Language.Typechecker.Inference.Type.Shared as Shared
 import           Saga.Language.Typechecker.Inference.Type.Shared (propagate)
 import qualified Saga.Language.Typechecker.Lib                   as Lib
-import           Saga.Language.Typechecker.Qualification         (Qualified (..))
+import           Saga.Language.Typechecker.Qualification         (Given (..),
+                                                                  Qualified (..))
 import           Saga.Language.Typechecker.Solver.Constraints    (Constraint (Equality))
 
 import           Effectful                                       (Eff)
@@ -117,13 +118,13 @@ infer (PatData tag pats) = do
         [T.Constructor { name, constructor, package, target }] -> do
             tys <- mapM infer pats
 
-            cs :=> target' <- inst $ definition target
+            bs :| cs :=> target' <- inst $ definition target
 
             unificationVars <- mapM (\tv -> T.Var <$> fresh U) (ftv constructor)
-            Forall [] (cs' :=> package'    ) <- package     `instantiateWith` unificationVars
-            Forall [] (cs' :=> constructor') <- constructor `instantiateWith` unificationVars
+            Forall [] (bs' :| cs' :=> package'    ) <- package     `instantiateWith` unificationVars
+            Forall [] (bs' :| cs' :=> constructor') <- constructor `instantiateWith` unificationVars
 
-            forM_ (cs ++ cs') (Eff.inject . propagate)
+            forM_ (cs <> cs') (Eff.inject . propagate)
 
             e1 <- fresh E
             Eff.tell $ Equality e1 (CST.Mono $ T.Tuple tys) (CST.Mono package')

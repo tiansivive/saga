@@ -7,7 +7,8 @@ import           Prelude                                                hiding
 
 import qualified Saga.Language.Typechecker.Inference.Inference          as Inf
 import           Saga.Language.Typechecker.Inference.Inference          (instantiateWith)
-import           Saga.Language.Typechecker.Qualification                (Qualified ((:=>)))
+import           Saga.Language.Typechecker.Qualification                (Given (..),
+                                                                         Qualified ((:=>)))
 import qualified Saga.Language.Typechecker.Solver.Constraints           as C
 import           Saga.Language.Typechecker.Solver.Constraints           (Evidence,
                                                                          Item (..))
@@ -58,7 +59,7 @@ solve' (Eq _ it it') = case (it, it') of
         ty `equals`  ty' = unify' ty ty' >> return (Solved, C.Empty)
 
         instAndUnify poly ty = do
-            r@(constraint, pt@(Forall [] (cs :=> qt))) <- inst poly
+            (constraint, pt@(Forall [] (bs :| cs :=> qt))) <- inst poly
             unify' ty qt
             result <- propagate cs
             return (Solved, C.Conjunction constraint result)

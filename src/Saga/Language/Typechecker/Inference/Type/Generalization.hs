@@ -1,13 +1,15 @@
 module Saga.Language.Typechecker.Inference.Type.Generalization where
 
 import           Data.List                                       (nub)
+import qualified Data.Map                                        as Map
 import qualified Effectful.Writer.Static.Local                   as Eff
 import           Saga.Language.Core.Literals
 import           Saga.Language.Typechecker.Inference.Inference
 import qualified Saga.Language.Typechecker.Inference.Type.Shared as Shared
 import           Saga.Language.Typechecker.Protocols             (ProtocolID)
 import qualified Saga.Language.Typechecker.Qualification         as Q
-import           Saga.Language.Typechecker.Qualification         (Qualified (..))
+import           Saga.Language.Typechecker.Qualification         (Given (..),
+                                                                  Qualified (..))
 import qualified Saga.Language.Typechecker.Solver.Constraints    as CST
 import           Saga.Language.Typechecker.Solver.Constraints    (Constraint (..))
 import qualified Saga.Language.Typechecker.Type                  as T
@@ -17,16 +19,16 @@ import           Saga.Language.Typechecker.Type                  (Scheme (..),
 instance Generalize Type where
   generalize (T.Tuple tys) = do
     ts <- mapM generalize tys
-    let (cs, tvars, ts') = foldl accumulate ([], [], []) ts
-    return $ Forall tvars (cs :=> T.Tuple ts')
+    let (bs, cs, tvars, ts') = foldl accumulate (Map.empty, [], [], []) ts
+    return $ Forall tvars (bs :| cs :=> T.Tuple ts')
     where
-      accumulate (cs, tvars, ts) (Forall tvars' (cs' :=> t)) = (nub $ cs ++ cs', nub $ tvars ++ tvars', nub $ ts ++ [t])
+      accumulate (bs, cs, tvars, ts) (Forall tvars' (bs' :| cs' :=> t)) = (bs <> bs', nub $ cs ++ cs', nub $ tvars ++ tvars', nub $ ts ++ [t])
   generalize (T.Record pairs) = do
     qPairs <- mapM (mapM generalize) pairs
-    let (cs, tvars, pairs') = foldl accumulate ([], [], []) qPairs
-    return $ Forall tvars (cs :=> T.Record pairs')
+    let (bs, cs, tvars, pairs') = foldl accumulate (Map.empty, [], [], []) qPairs
+    return $ Forall tvars (bs :| cs :=> T.Record pairs')
     where
-      accumulate (cs, tvars, pairs) (key, Forall tvars' (cs' :=> t)) = (nub $ cs ++ cs', nub $ tvars ++ tvars', nub $ pairs ++ [(key, t)])
+      accumulate (bs, cs, tvars, pairs) (key, Forall tvars' (bs' :| cs' :=> t)) = (bs <> bs', nub $ cs ++ cs', nub $ tvars ++ tvars', nub $ pairs ++ [(key, t)])
 
   generalize (T.Arrow arg out) = do
     Forall tvars (cs :=> arg') <- generalize arg
@@ -34,8 +36,8 @@ instance Generalize Type where
 
   generalize (T.Union tys) = do
     tys' <- mapM generalize tys
-    let (tvars, cs, qts) = mapM (\(Forall tvars (cs :=> qt)) -> (tvars, cs, qt)) tys'
-    return $ Forall (nub tvars) (nub cs :=> T.Union (nub qts))
+    let (tvars, bs, cs, qts) = mapM (\(Forall tvars (bs :| cs :=> qt)) -> (tvars, bs, cs, qt)) tys'
+    return $ Forall (nub tvars) (bs :| nub cs :=> T.Union (nub qts))
   generalize ty = case ty of
     T.Singleton lit -> generalize' $ case lit of
       LString _ -> "IsString"
@@ -45,7 +47,7 @@ instance Generalize Type where
       "Int"    -> "Num"
       "String" -> "IsString"
       "Bool"   -> "IsBool"
-    _ -> return $ Forall [] ([] :=> ty)
+    _ -> return $ Forall [] (Q.none :=> ty)
 
     where
       generalize' ::  ProtocolID -> Shared.TypeInference (T.Polymorphic Type)
@@ -53,5 +55,5 @@ instance Generalize Type where
         tvar <- Shared.fresh U
         e <- Shared.fresh E
         Eff.tell $ Impl e (CST.Mono $ T.Var tvar) protocol
-        return $ Forall [tvar] ([T.Var tvar `Q.Implements` protocol] :=> T.Var tvar)
+        return $ Forall [tvar] (Map.empty :| [T.Var tvar `Q.Implements` protocol] :=> T.Var tvar)
 

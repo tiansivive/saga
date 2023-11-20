@@ -14,7 +14,9 @@ import           Data.Functor                                  ((<&>))
 import           Data.Maybe                                    (catMaybes)
 import           Saga.Language.Core.Literals                   (Literal (..))
 import           Saga.Language.Typechecker.Environment
-import           Saga.Language.Typechecker.Errors              (SagaError (..))
+import           Saga.Language.Typechecker.Errors              (Exception (NotYetImplemented),
+                                                                SagaError (..),
+                                                                crash)
 import qualified Saga.Language.Typechecker.Kind                as K
 
 import           Control.Monad.Trans.Reader                    (ReaderT (runReaderT))
@@ -54,6 +56,7 @@ import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.State.Static.Local                  as Eff
 import qualified Effectful.Writer.Static.Local                 as Eff
 import qualified Saga.Language.Typechecker.Inference.Kind      as KI
+import qualified Saga.Language.Typechecker.Qualification       as Q
 import           Saga.Language.Typechecker.Solver.Cycles       (Cycle)
 
 
@@ -140,11 +143,12 @@ instance Unification Type where
             Eff.inject $ scoped $ E.evaluate tyExpr
 
             where
-                params' = foldr (\p@(Var.Type id _) -> Map.insert id $ Forall [] (pure $ T.Var p)) Map.empty params
+                params' = foldr (\p@(Var.Type id _) -> Map.insert id $ Forall [] (Q.none :=> T.Var p)) Map.empty params
                 extended env = env{ types = params' `Map.union` T.types captured `Map.union` types env }
 
 
     bind a t
+        | Var.Local id <- a = crash $ NotYetImplemented "Unifying and Binding locally scoped type vars"
         | t == T.Var a = return nullSubst
         | occursCheck a t = case t of
             T.Union tys | T.Var a `elem` tys    -> do

@@ -58,7 +58,8 @@ import qualified Saga.Language.Typechecker.Inference.Type.Pattern        as Pat
 import qualified Saga.Language.Typechecker.Inference.Type.Shared         as Shared
 import           Saga.Language.Typechecker.Lib
 import qualified Saga.Language.Typechecker.Qualification                 as Q
-import           Saga.Language.Typechecker.Qualification                 (Qualified (..))
+import           Saga.Language.Typechecker.Qualification                 (Given (..),
+                                                                          Qualified (..))
 import qualified Saga.Language.Typechecker.TypeExpr                      as CST
 import qualified Saga.Language.Typechecker.TypeExpr                      as TE
 import           Saga.Language.Typechecker.TypeExpr                      (Pattern (..))
@@ -81,13 +82,20 @@ infer' :: Expr -> Shared.TypeInference Expr
 infer' e = case e of
     e@(Literal literal) -> return $ Typed e (T.Singleton literal)
     Identifier x -> do
-      cs :=> t <- lookup' x
-      case cs of
-        [] -> return $ Typed e t
-        _  -> do
-          e' <- foldM elaborate (Identifier x) cs
-          return $ Typed e' t
+      bs :| cs :=> t <- lookup' x
+      expand bs cs t
       where
+        expand bindings cs t@(T.Var tvar) = case Map.lookup tvar bindings of
+          Just (bs :| cs' :=> qt) -> expand bs (cs <> cs') qt
+          Nothing                 -> typed cs t
+        expand _ cs t = typed cs t
+
+        typed cs ty = case cs of
+            [] -> return $ Typed e ty
+            _  -> do
+              e' <- foldM elaborate (Identifier x) cs
+              return $ Typed e' ty
+
         elaborate expr (ty `Q.Implements` protocol) = do
           evidence@(Var.Evidence prtclImpl) <- Shared.fresh E
           Eff.tell $ CST.Impl evidence (CST.Mono ty) protocol
@@ -126,7 +134,7 @@ infer' e = case e of
     Lambda ps@(param : rest) body -> do
 
         tvar <- T.Var <$> Shared.fresh U
-        let qt = Forall [] (pure tvar)
+        let qt = Forall [] (Q.none :=> tvar)
         let scoped = Eff.local (\e -> e { types = Map.insert param qt $ types e })
         scoped $ do
           o@(Typed _ out') <- infer' out
@@ -232,7 +240,7 @@ infer' e = case e of
                 walk (Declaration (Let id (Just typeExp) k expr') : processed) rest
             Declaration (Let id Nothing k expr) -> do
               uvar <- Shared.fresh U
-              let qt = Forall [] (pure $ T.Var uvar)
+              let qt = Forall [] (Q.none :=> T.Var uvar)
               let scoped = Eff.local (\e -> e{ types = Map.insert id qt $ types e })
               scoped $ do
                 (Typed expr' ty) <- infer expr

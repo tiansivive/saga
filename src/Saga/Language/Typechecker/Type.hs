@@ -3,17 +3,18 @@
 
 module Saga.Language.Typechecker.Type where
 import           Data.Typeable                                 (Typeable)
-import qualified Saga.Language.Core.Liquid                     as Liquid
 import           Saga.Language.Core.Literals
 import           Saga.Language.Typechecker.Kind                (Kind)
 import qualified Saga.Language.Typechecker.Qualification       as Q
+import qualified Saga.Language.Typechecker.Refinement.Liquid   as Liquid
 import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 import           Saga.Language.Typechecker.Variables
 
 
 import qualified Data.Map                                      as Map
 import qualified Data.Set                                      as Set
-import           Saga.Language.Typechecker.Qualification       (Qualified (..))
+import           Saga.Language.Typechecker.Qualification       (Given (..),
+                                                                Qualified (..))
 import           Saga.Language.Typechecker.Solver.Substitution (Subst,
                                                                 Substitutable (..))
 
@@ -86,17 +87,17 @@ instance Substitutable Type Type where
   --ftv (TClosure params body _) = ftv body
 
 instance {-# OVERLAPS #-} Substitutable (Qualified Type) Type where
-    apply s (cs :=> t) = apply s cs :=> apply s t
-    ftv (cs :=> t) = ftv cs `Set.union` ftv t
+    apply s (bindings :| cs :=> t) = apply s bindings :| apply s cs :=> apply s t
+    ftv (bindings :| cs :=> t) = ftv bindings <> ftv cs <> ftv t
 
 
 instance Substitutable Constraint Type where
   apply s (t `Q.Implements` prtcl) = apply s t `Q.Implements` prtcl
   apply s (Q.Resource mul t)       = Q.Resource mul $ apply s t
-  apply s (Q.Refinement expr t)    = Q.Refinement expr $ apply s t
+  apply s (Q.Refinement bs expr t) = Q.Refinement (apply s bs) expr $ apply s t
   apply s (Q.Pure t)               = Q.Pure $ apply s t
 
   ftv (t `Q.Implements` prtcl) = ftv t
   ftv (Q.Resource mul t)       = ftv t
-  ftv (Q.Refinement expr t)    = ftv t
+  ftv (Q.Refinement bs expr t) = ftv t
   ftv (Q.Pure t)               = ftv t

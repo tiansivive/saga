@@ -2,6 +2,7 @@ module Saga.Language.Typechecker.Errors where
 import           Saga.Language.Core.Expr                      (Expr)
 import           Saga.Language.Typechecker.Kind               (Kind)
 import           Saga.Language.Typechecker.Protocols          (ProtocolID)
+import           Saga.Language.Typechecker.Refinement.Liquid  (Liquid)
 import           Saga.Language.Typechecker.Solver.Constraints (Evidence, Item)
 import           Saga.Language.Typechecker.Type               (Polymorphic, Tag,
                                                                Type)
@@ -25,6 +26,9 @@ data SagaError where
 
   UntypedInferredExpr :: Expr -> SagaError
 
+  -- | REFINEMENTS
+  UnexpectedLiquidNegation :: Liquid -> SagaError
+
   -- | INSTANTIATION
   TooManyInstantiationArguments :: Show t => Polymorphic t -> [t] -> SagaError
 
@@ -47,6 +51,7 @@ data SagaError where
   UnexpectedEvidence :: Evidence -> String -> SagaError
 
   -- | EVALUATION
+  UnexpectedLocalPolymorphicType :: Polymorphic Type -> SagaError
   TooManyArguments :: TypeExpr-> [TypeExpr]-> SagaError
 
   SubtypeFailure  :: Type ->Type-> SagaError

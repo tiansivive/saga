@@ -40,6 +40,6 @@ instance Substitutable Kind Kind where
 
 instance {-# OVERLAPS #-} Substitutable (Qualified Kind) Kind where
     -- Polymorphic Kinds do not have Constraints
-    apply s (_ :=> t) = [] :=> apply s t
+    apply s (given :=> t) = given :=> apply s t
     ftv (_ :=> t) = ftv t
 

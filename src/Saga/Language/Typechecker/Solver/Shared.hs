@@ -27,7 +27,7 @@ import qualified Saga.Language.Typechecker.Kind                as K
 from :: Q.Constraint Type -> SolverM Constraint
 from (Q.Pure t)          = return $ C.Pure $ Mono t
 from (Q.Resource m t)    = return $ C.Resource (Mono t) m
-from (Q.Refinement re t) = return $ C.Refined (Mono t) re
+from (Q.Refinement bs re t) = return $ C.Refined (Mono t) re
 from (Q.Implements t p)  = do
     superEv <- fresh E
     return $ C.Impl superEv (Mono t) p

@@ -26,6 +26,7 @@ import qualified Effectful.State.Static.Local                  as Eff
 import qualified Effectful.Writer.Static.Local                 as Eff
 
 import           Saga.Language.Typechecker.Errors              (SagaError (..))
+import qualified Saga.Language.Typechecker.Qualification       as Q
 import           Saga.Language.Typechecker.Qualification       (Qualified (..))
 import qualified Saga.Language.Typechecker.Solver.Constraints  as CST hiding
                                                                       (Equality)
@@ -85,7 +86,7 @@ infer' te = case te of
 
     TE.Lambda ps@(param : rest) body -> do
         kVar <- fresh' U
-        let qk = Forall [] (pure $ K.Var kVar)
+        let qk = Forall [] (Q.none :=> K.Var kVar)
         let scoped = Eff.local (\e -> e { kinds = Map.insert param qk $ kinds e })
         scoped $ do
             o@(TE.KindedType _ out') <- infer out
@@ -148,7 +149,7 @@ instance Instantiate Kind  where
       qt' = apply sub qt
 
 instance Generalize Kind where
-    generalize k = return $ Forall (Set.toList $ ftv k) ([] :=> k)
+    generalize k = return $ Forall (Set.toList $ ftv k) (Q.none :=> k)
 
 class HasKind t where
   kind :: t -> KindInference Kind

@@ -3,11 +3,11 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Saga.Language.Typechecker.Solver.Constraints where
-import qualified Saga.Language.Core.Liquid                     as Liquid
 import           Saga.Language.Typechecker.Kind                (Kind)
 import           Saga.Language.Typechecker.Protocols           (Implementation,
                                                                 ProtocolID)
 import           Saga.Language.Typechecker.Qualification       (Multiplicity)
+
 import           Saga.Language.Typechecker.Type                (Polymorphic,
                                                                 Type)
 import           Saga.Language.Typechecker.Variables           hiding
@@ -18,6 +18,7 @@ import           Control.Monad.RWS
 import qualified Data.Map                                      as Map
 import qualified Data.Set                                      as Set
 import qualified Saga.Language.Typechecker.Qualification       as Q
+import qualified Saga.Language.Typechecker.Refinement.Liquid   as Liquid
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import qualified Saga.Language.Typechecker.Type                as T
 import qualified Saga.Language.Typechecker.Variables           as V hiding
@@ -31,7 +32,7 @@ data Constraint where
     Equality    :: PolymorphicVar Evidence -> Item -> Item -> Constraint
     Impl        :: PolymorphicVar Evidence -> Item -> ProtocolID -> Constraint
     OneOf       :: Item -> Item -> Constraint
-    Refined     :: Item -> Liquid.Expr -> Constraint
+    Refined     :: Item -> Liquid.Liquid -> Constraint
     Resource    :: Item -> Multiplicity -> Constraint
     Consumed    :: Item -> Constraint
     Pure        :: Item -> Constraint

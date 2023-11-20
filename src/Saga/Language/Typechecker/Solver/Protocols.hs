@@ -12,7 +12,8 @@ import           Saga.Language.Typechecker.Inference.Inference          (Instant
 import qualified Saga.Language.Typechecker.Protocols                    as P
 import           Saga.Language.Typechecker.Protocols                    (Protocol (..),
                                                                          ProtocolID)
-import           Saga.Language.Typechecker.Qualification                (Qualified (..))
+import           Saga.Language.Typechecker.Qualification                (Given (..),
+                                                                         Qualified (..))
 import qualified Saga.Language.Typechecker.Solver.Constraints           as C
 import           Saga.Language.Typechecker.Solver.Constraints           (Constraint,
                                                                          Evidence,
@@ -71,18 +72,19 @@ solve' :: ImplConstraint -> SolverM (Status, Constraint)
 solve' (Impl e@(Var.Evidence ev) t@(C.Mono ty) prtcl) =
     case ty of
         T.Var (Var.Unification {}) -> return (Deferred, C.Impl e t prtcl)
+        T.Var (Var.Local id)       -> crash $ NotYetImplemented "Solving ImplConstraint for locally scoped type Vars"
         T.Var v                    -> crash $ Unexpected v "Unification Var"
 
         ty                         -> do
             impl <- Eff.asks $ protocols
                 |> List.find (\Protocol { id } -> id == prtcl)
                     -- | TODO: This needs to search via unification. How to make the monads fit though?
-                    >=> implementations |> List.find (\(P.Implementation (id, Forall _ (cs :=> ty'), expr)) -> ty == ty')
+                    >=> implementations |> List.find (\(P.Implementation (id, Forall _ (_ :=> ty'), expr)) -> ty == ty')
 
 
             impl ||> maybe
                 (Eff.throwError $ MissingProtocolImplementation prtcl ty)
-                (\impl'@(P.Implementation (id, Forall _ (cs :=> ty'), expr)) -> do
+                (\impl'@(P.Implementation (id, Forall _ (bs :| cs :=> ty'), expr)) -> do
                     update E $ mkSubst (e, C.Protocol impl')
                     result <- propagate cs
                     return (Solved, result)
@@ -114,7 +116,7 @@ flatten (Impl ev item prtcl) = do
     spec' <- Eff.inject $ Eval.evaluate spec
 
 
-    let t@(T.Forall tvars (cs :=> qt)) = instantiate spec' ty
+    let t@(T.Forall tvars (bs :| cs :=> qt)) = instantiate spec' ty
     C.Conjunction impl <$> propagate cs
 
     where

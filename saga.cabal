@@ -19,7 +19,6 @@ library
       REPL.Repl
       Saga.Language.CodeGen.JS
       Saga.Language.Core.Expr
-      Saga.Language.Core.Liquid
       Saga.Language.Core.Literals
       Saga.Language.Evaluation
       Saga.Language.Typechecker.Environment
@@ -39,6 +38,8 @@ library
       Saga.Language.Typechecker.Monad
       Saga.Language.Typechecker.Protocols
       Saga.Language.Typechecker.Qualification
+      Saga.Language.Typechecker.Refinement.Liquid
+      Saga.Language.Typechecker.Refinement.Solve
       Saga.Language.Typechecker.Run
       Saga.Language.Typechecker.Shared
       Saga.Language.Typechecker.Solver.Constraints

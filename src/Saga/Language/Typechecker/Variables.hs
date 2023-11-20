@@ -23,10 +23,13 @@ data PolymorphicVar t where
   Unification      :: Classifiable t => String -> Level -> Classifier t -> PolymorphicVar t
   Instantiation    :: Classifiable t => String -> PolymorphicVar t
   Evidence         :: Restricted t   => String -> PolymorphicVar t
+  Refinement       :: Restricted t   => String -> PolymorphicVar t
+  Local            :: Restricted t   => String -> PolymorphicVar t
 
 deriving instance Eq t    => Eq   (PolymorphicVar t)
 deriving instance Ord t   => Ord  (PolymorphicVar t)
 deriving instance Show t  => Show (PolymorphicVar t)
+
 
 
 newtype Level = Level Int deriving (Show, Eq, Ord)
