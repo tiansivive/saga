@@ -1,8 +1,9 @@
 module Saga.Language.Typechecker.Errors where
 import           Saga.Language.Core.Expr                      (Expr)
+import           Saga.Language.Core.Literals                  (Literal)
 import           Saga.Language.Typechecker.Kind               (Kind)
 import           Saga.Language.Typechecker.Protocols          (ProtocolID)
-import           Saga.Language.Typechecker.Refinement.Liquid  (Liquid)
+import           Saga.Language.Typechecker.Refinement.Liquid  (Liquid, Op)
 import           Saga.Language.Typechecker.Solver.Constraints (Evidence, Item)
 import           Saga.Language.Typechecker.Type               (Polymorphic, Tag,
                                                                Type)
@@ -28,6 +29,8 @@ data SagaError where
 
   -- | REFINEMENTS
   UnexpectedLiquidNegation :: Liquid -> SagaError
+  UnexpectedUnsimplifiedExpr :: Op -> Liquid -> Liquid -> SagaError
+
 
   -- | INSTANTIATION
   TooManyInstantiationArguments :: Show t => Polymorphic t -> [t] -> SagaError
@@ -64,6 +67,8 @@ deriving instance Show SagaError
 data Exception
   = forall a b. (Show a, Show b) => Unexpected a b
   | NotYetImplemented String
+  | DivideByZero Literal Literal
+  | forall a b c. (Show a, Show b, Show c) => EvalTypeError a b c
 
 
 crash :: Exception -> b

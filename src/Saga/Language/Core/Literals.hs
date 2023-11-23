@@ -5,7 +5,7 @@
 module Saga.Language.Core.Literals where
 
 data Literal where
-  LInt :: Int -> Literal
+  LInt :: Float -> Literal
   LBool :: Bool -> Literal
   LString :: String -> Literal
 

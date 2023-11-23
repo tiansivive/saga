@@ -32,22 +32,21 @@ data Type where
     Void        :: Type
     Any         :: Type
 
-
 data Scope = Scope
-  { types     :: Map.Map String (Polymorphic Type)
-  , kinds     :: Map.Map String (Polymorphic Kind)
-  , dataTypes :: Map.Map String DataType
-  , tags      :: [Tag]
+  { types :: Map.Map String (Polymorphic Type)
+  , kinds :: Map.Map String (Polymorphic Kind)
+  , tags  :: [Tag]
   } deriving (Show, Eq, Ord)
-
 
 type Constraint = Q.Constraint Type
 
-data Tycon = Tycon String Kind deriving (Show, Eq, Ord)
 data Scheme t = Forall [PolymorphicVar t] (Qualified t) deriving (Show, Eq, Ord)
 type Polymorphic = Scheme
 
+
+
 data DataType = DataType { tycon :: Tycon, definition :: Polymorphic Type } deriving (Show, Eq, Ord)
+data Tycon = Tycon String Kind deriving (Show, Eq, Ord)
 data Tag = Constructor
   { name        :: String
   , constructor :: Polymorphic Type

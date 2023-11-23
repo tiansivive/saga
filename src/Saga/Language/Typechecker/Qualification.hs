@@ -23,11 +23,12 @@ infixl 1 :|
 data Constraint a
   = a `Implements` String
   | Resource Multiplicity a
-  | Refinement (Map String a) Liquid.Liquid a
+  | Refinement (Binding a) Liquid.Liquid a
   | Pure a
   | Equality a a
   deriving (Show, Eq, Ord)
 
+type Binding a = Map String a
 
 data Multiplicity
   = Erased

@@ -41,6 +41,8 @@ import           Saga.Language.Typechecker.Protocols           (Protocol (..))
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import           Saga.Language.Typechecker.Qualification       (Given (..),
                                                                 Qualified ((:=>)))
+
+
 import           Saga.Language.Typechecker.Solver.Substitution (ftv)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables           (Classifier,
@@ -138,7 +140,7 @@ instance Evaluate TypeExpr (Polymorphic Type) where
             apply tyExpr [] [] = evaluate tyExpr
             apply tyExpr tvars [] = do
                 Saga { types, dataTypes, kinds, tags } <- Eff.ask
-                return $ Forall tvars $ Map.empty :| [] :=> T.Closure tvars tyExpr (T.Scope types kinds dataTypes tags)
+                return $ Forall tvars $ Map.empty :| [] :=> T.Closure tvars tyExpr (T.Scope types kinds tags)
 
             apply tyExpr (p@(Var.Type id k) :params) (a :args) = do
                 let scoped = Eff.local (\e -> e{ types = Map.insert id (Forall [p] (Map.empty :| [] :=> T.Var p)) (types e) })
@@ -193,8 +195,8 @@ collect = foldr (\(Forall tvars (bs' :| cs' :=> qt)) (bs, cs, tvars', ts) -> (bs
 
 closure :: TypeExpr -> [String] -> EvaluationM (Polymorphic Type)
 closure body params = do
-    Saga { types, dataTypes, kinds, tags } <- Eff.ask
-    return $ Forall tvars $ Map.empty :| [] :=> T.Closure tvars body (T.Scope types kinds dataTypes tags)
+    Saga { types, kinds, tags } <- Eff.ask
+    return $ Forall tvars $ Map.empty :| [] :=> T.Closure tvars body (T.Scope types kinds tags)
 
     where
         tvars = fmap (\v -> Var.Type v (K.Var $ Var.Kind v K.Kind)) params

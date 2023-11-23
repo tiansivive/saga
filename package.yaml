@@ -21,6 +21,7 @@ dependencies:
   - haskeline
   - pretty-simple
   - effectful
+  - sbv
 
 
 library:

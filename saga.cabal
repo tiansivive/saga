@@ -39,6 +39,7 @@ library
       Saga.Language.Typechecker.Protocols
       Saga.Language.Typechecker.Qualification
       Saga.Language.Typechecker.Refinement.Liquid
+      Saga.Language.Typechecker.Refinement.SMT
       Saga.Language.Typechecker.Refinement.Solve
       Saga.Language.Typechecker.Run
       Saga.Language.Typechecker.Shared
@@ -93,6 +94,7 @@ library
     , haskeline
     , mtl
     , pretty-simple
+    , sbv
     , transformers
   default-language: GHC2021
 
@@ -123,5 +125,6 @@ test-suite saga-test
     , mtl
     , pretty-simple
     , saga
+    , sbv
     , transformers
   default-language: GHC2021
