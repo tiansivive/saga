@@ -22,6 +22,7 @@ dependencies:
   - pretty-simple
   - effectful
   - sbv
+  - z3
 
 
 library:
