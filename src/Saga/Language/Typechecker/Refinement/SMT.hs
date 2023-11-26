@@ -36,34 +36,6 @@ data State = St { nums :: Map String SInteger, bools :: Map String SBool }
 empty :: State
 empty = St { nums = mempty, bools = mempty }
 
--- data Logger a = Logger { logMessage :: a -> IO () }
--- data Log a :: Effect
--- type instance Eff.DispatchOf (Log a) = Eff.Static Eff.WithSideEffects
--- newtype instance Eff.StaticRep (Log a) = Log (Logger a)
-
--- data Reader r :: Effect
-
--- noEffect = Eff.Static Eff.WithSideEffects
-
--- type instance Eff.DispatchOf (Reader r) = 'Eff.Static 'Eff.NoSideEffects
--- newtype instance Eff.StaticRep (Reader r) = Reader r
-
--- runReader
---   :: r -- ^ The initial environment.
---   -> Eff (Reader r : es) a
---   -> Eff es a
--- runReader r = evalStaticRep (Reader r)
-
--- data SymEff s  :: Effect
--- type instance Eff.DispatchOf (SymEff s) = Eff.Static Eff.WithSideEffects
--- newtype instance Eff.StaticRep (SymEff s)  = SymEff s
--- newtype SymEffWrapper s = SymEffWrapper { unSymEffWrapper :: s }
-
--- data SymbolicEffect :: Effect where
---   RunSymbolic :: Symbolic a -> SymbolicEffect m a
-
-
-
 
 type Sym = StateT State Symbolic
 
@@ -141,39 +113,6 @@ test expr = do
             mapM_ pPrint (modelAssocs model)
         res -> pPrint res
 
-
-
-
--- translate ::  Liquid -> Refined (Symbolic SBool)
--- translate expr = case expr of
---     Number n -> return  $ shiftL n
---     Literal lit -> return $ translate' lit
---     Var x       -> lookup x
---     where
--- translate ::  Liquid -> Refined (SBV a)
--- translate expr = case expr of
---     Literal lit -> return $ translate' lit
---     Var x       -> lookup x
---     where
-
---         lookup :: String -> Refined (SBV Bool)
---         lookup id = do
---             env <- Eff.ask @Environment
---             return $ case Map.lookup id env of
---                 Just (T.Singleton lit) -> translate' lit
---                 _                      -> _free id
-
---         translate' (LInt x)  = literal x
---         translate' (LBool b) = literal b
-
--- translateLiteral :: Literal -> SBV a
--- translateLiteral (LInt i)    = literal i
--- translateLiteral (LBool b)   = literal b
--- -- Handling of strings needs special attention
--- translateLiteral (LString s) = error "String"
--- -- translate
--- -- translate (BinaryOp op a b) = translateOp op (translate env a) (translate env b)
--- -- translate (Negation a)      = bnot (translate env a)
 
 
 
