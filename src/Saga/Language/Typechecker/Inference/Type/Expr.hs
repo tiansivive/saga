@@ -60,7 +60,7 @@ import           Saga.Language.Typechecker.Lib
 import qualified Saga.Language.Typechecker.Qualification                 as Q
 import           Saga.Language.Typechecker.Qualification                 (Given (..),
                                                                           Qualified (..))
-import qualified Saga.Language.Typechecker.TypeExpr                      as CST
+
 import qualified Saga.Language.Typechecker.TypeExpr                      as TE
 import           Saga.Language.Typechecker.TypeExpr                      (Pattern (..))
 import qualified Saga.Language.Typechecker.Variables                     as Var
@@ -177,7 +177,7 @@ infer' e = case e of
 
     Match scrutinee cases -> do
         scrutinee'@(Typed _ ty) <- infer scrutinee
-        cases' <- mapM inferCase cases
+        cases' <- forM cases inferCase
         let (tvars, tys) = foldl separate ([], []) cases'
         let ty' = case length tys of
                   0 -> Nothing
@@ -199,11 +199,10 @@ infer' e = case e of
 
           inferCase (Case pat expr) = do
             (patTy, tyvars) <- Pat.run $ Pat.infer pat
-            let (bindings, tvars) = tyvars ||> fmap (\(id, tvar) -> (CST.Binding id tvar, tvar)) |> unzip
-            assumps <- Eff.asks $ assumptions |> mappend bindings
-            let scoped = Eff.local (\e -> e { assumptions = assumps })
+            let (assumps, tvars) = tyvars ||> fmap (\(e, tvar) -> (CST.Assume e tvar, tvar)) |> unzip
 
-            (inferred, constraint) <- Eff.listen @Constraint $ scoped (infer expr)
+
+            (inferred, constraint) <- Eff.listen @Constraint $ infer expr
             Eff.tell $ CST.Implication tvars assumps constraint
 
             return $ TypedCase pat patTy inferred

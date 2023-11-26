@@ -39,6 +39,7 @@ import qualified Effectful.Error.Static                          as Eff
 import           Effectful.Reader.Static                         (Reader)
 import qualified Effectful.Reader.Static                         as Eff
 import qualified Effectful.Writer.Static.Local                   as Eff
+import qualified Saga.Language.Core.Expr                         as E
 import qualified Saga.Language.Typechecker.Type                  as T
 import           Saga.Language.Typechecker.Type                  (DataType (..),
                                                                   Scheme (..),
@@ -57,7 +58,7 @@ type instance VarType Pattern I.Instantiation  = Var.PolymorphicVar Type
 
 
 type PatternInference = InferEff '[Eff.Writer TypeVars] CST.Constraint
-type TypeVars = [(String, PolymorphicVar Type)]
+type TypeVars = [(Expr, PolymorphicVar Type)]
 
 
 
@@ -67,7 +68,7 @@ infer Wildcard = T.Var <$> fresh U
 
 infer (Id id) = do
     uvar <- fresh U
-    emit (id, uvar)
+    emit (E.Identifier id, uvar)
     return $ T.Var uvar
 
 infer (Lit l) = return $ T.Singleton l
@@ -82,7 +83,7 @@ infer (PatList pats rest) = do
       Nothing -> return result
       Just id -> do
         uvarList <- fresh U
-        emit (id, uvarList)
+        emit (E.Identifier id, uvarList)
         ev <- fresh E
         Eff.tell $ Equality ev (CST.Mono result) (CST.Unification uvarList)
         return result
@@ -98,7 +99,7 @@ infer (PatRecord pairs rest) = do
       Nothing -> return result
       Just id -> do
         uvarRecord <- fresh U
-        emit (id, uvarRecord)
+        emit (E.Identifier id, uvarRecord)
         return result
 
     where
@@ -107,7 +108,7 @@ infer (PatRecord pairs rest) = do
             return (id, ty)
       infer' (id, Nothing) = do
             uvar <- fresh U
-            emit (id, uvar)
+            emit (E.Identifier id, uvar)
             return (id, T.Var uvar)
 
 infer (PatData tag pats) = do
@@ -151,7 +152,7 @@ infer (PatData tag pats) = do
 fresh :: I.Tag a -> PatternInference (VarType Expr a)
 fresh = Eff.inject . Shared.fresh
 
-emit :: (String, PolymorphicVar Type) -> PatternInference ()
+emit :: (Expr, PolymorphicVar Type) -> PatternInference ()
 emit pair = Eff.tell [pair]
 
 --run :: PatternInference a -> m (a, TypeVars)

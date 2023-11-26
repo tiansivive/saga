@@ -41,7 +41,6 @@ library
       Saga.Language.Typechecker.Refinement.Liquid
       Saga.Language.Typechecker.Refinement.SMT
       Saga.Language.Typechecker.Refinement.Solve
-      Saga.Language.Typechecker.Refinement.Z3
       Saga.Language.Typechecker.Run
       Saga.Language.Typechecker.Shared
       Saga.Language.Typechecker.Solver.Constraints
@@ -97,7 +96,6 @@ library
     , pretty-simple
     , sbv
     , transformers
-    , z3
   default-language: GHC2021
 
 test-suite saga-test
@@ -129,5 +127,4 @@ test-suite saga-test
     , saga
     , sbv
     , transformers
-    , z3
   default-language: GHC2021

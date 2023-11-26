@@ -17,6 +17,7 @@ import           Saga.Language.Typechecker.Variables           hiding
 import           Control.Monad.RWS
 import qualified Data.Map                                      as Map
 import qualified Data.Set                                      as Set
+import           Saga.Language.Core.Expr                       (Expr)
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import qualified Saga.Language.Typechecker.Refinement.Liquid   as Liquid
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
@@ -48,12 +49,6 @@ data Item
     | Poly (Polymorphic Type)
     deriving (Show, Eq)
 
-data Assumption
-    = TypeLevel  T.Constraint
-    | ValueLevel T.Constraint
-    | Binding String (PolymorphicVar Type)
-    deriving (Show, Eq)
-
 data Evidence
     = Protocol Implementation
     | Coercion Mechanism
@@ -63,6 +58,17 @@ type instance Restricted Evidence = ()
 data Mechanism = Nominal | Structural deriving (Show, Eq, Ord)
 
 type Witnessed = Map.Map (PolymorphicVar Evidence) (PolymorphicVar Evidence)
+
+
+data Assumption
+    = Assume Expr (PolymorphicVar Type)
+
+    deriving (Show, Eq)
+
+
+
+
+
 
 instance Monoid Constraint where
     mempty = Empty

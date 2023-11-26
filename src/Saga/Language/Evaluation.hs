@@ -30,7 +30,7 @@ builtInEnv :: [String]
 builtInEnv = ["+", "-","*", "^", "/", "%", "<", ">", "<=", ">=", "==", "!=", "||", "&&"]
 
 data Value
-  = VNum Float
+  = VNum Int
   | VBool Bool
   | VString String
   | VList [Value ]
@@ -103,7 +103,7 @@ eval (FnApp fnExpr argExprs) = do
     (BuiltIn "+") -> return $ VNum (x + y)
     (BuiltIn "-") -> return $ VNum (x - y)
     (BuiltIn "*") -> return $ VNum (x * y)
-    (BuiltIn "/") -> return $ VNum (x / y)
+    (BuiltIn "/") -> return $ VNum (x `div` y)
     --(BuiltIn "%") -> return $ VNum (x `mod` y)
 
     (BuiltIn "||") -> return $ VBool (b1 || b2)

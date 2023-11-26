@@ -1,6 +1,8 @@
-{-# LANGUAGE DataKinds      #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE TypeFamilies   #-}
+
+{-# LANGUAGE DataKinds    #-}
+{-# LANGUAGE TypeFamilies #-}
+
+
 module Saga.Language.Typechecker.Refinement.SMT where
 
 import           Control.Arrow                               (ArrowChoice (left))
@@ -15,6 +17,10 @@ import           Data.SBV
 import qualified Data.SBV                                    as SBV
 import qualified Data.SBV.Control                            as SBV
 import           Data.SBV.Internals                          (SMTModel (..))
+import           Effectful                                   (Eff, Effect)
+import qualified Effectful                                   as Eff
+
+import qualified Effectful.Dispatch.Static                   as Eff
 import qualified Effectful.Reader.Static                     as Eff
 import           Prelude                                     hiding (GT, LT)
 import           Saga.Language.Core.Literals                 (Literal (..))
@@ -29,11 +35,35 @@ import           Text.Pretty.Simple                          (pPrint)
 data State = St { nums :: Map String SInteger, bools :: Map String SBool }
 empty :: State
 empty = St { nums = mempty, bools = mempty }
--- data Sym s :: Effect
--- type instance Eff.DispatchOf (Sym s) = Eff.Static Eff.WithSideEffects
--- newtype instance Eff.StaticRep (Sym s)  = Sym s
--- -- data SymbolicEffect :: Effect where
+
+-- data Logger a = Logger { logMessage :: a -> IO () }
+-- data Log a :: Effect
+-- type instance Eff.DispatchOf (Log a) = Eff.Static Eff.WithSideEffects
+-- newtype instance Eff.StaticRep (Log a) = Log (Logger a)
+
+-- data Reader r :: Effect
+
+-- noEffect = Eff.Static Eff.WithSideEffects
+
+-- type instance Eff.DispatchOf (Reader r) = 'Eff.Static 'Eff.NoSideEffects
+-- newtype instance Eff.StaticRep (Reader r) = Reader r
+
+-- runReader
+--   :: r -- ^ The initial environment.
+--   -> Eff (Reader r : es) a
+--   -> Eff es a
+-- runReader r = evalStaticRep (Reader r)
+
+-- data SymEff s  :: Effect
+-- type instance Eff.DispatchOf (SymEff s) = Eff.Static Eff.WithSideEffects
+-- newtype instance Eff.StaticRep (SymEff s)  = SymEff s
+-- newtype SymEffWrapper s = SymEffWrapper { unSymEffWrapper :: s }
+
+-- data SymbolicEffect :: Effect where
 --   RunSymbolic :: Symbolic a -> SymbolicEffect m a
+
+
+
 
 type Sym = StateT State Symbolic
 
