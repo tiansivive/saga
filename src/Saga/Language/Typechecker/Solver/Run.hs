@@ -40,8 +40,10 @@ import           Saga.Language.Typechecker.Inference.Type.Expr
 import qualified Saga.Language.Typechecker.Monad                 as Eff
 import           Saga.Language.Typechecker.Monad                 (TypeCheck)
 import qualified Saga.Language.Typechecker.Shared                as Shared
-import           Saga.Language.Typechecker.Solver.Entailment     (entailment)
+import           Saga.Language.Typechecker.Solver.Entailment     (Entails (..))
+
 import qualified Saga.Language.Typechecker.Solver.Implications   as Imp
+import qualified Saga.Language.Typechecker.Solver.Refinements    as R
 import           Saga.Language.Typechecker.Variables             (PolymorphicVar)
 import           Saga.Language.Typechecker.Zonking.Normalisation (Normalisation (normalise))
 import           Saga.Language.Typechecker.Zonking.Qualification (qualify)
@@ -89,6 +91,22 @@ flatten :: C.Constraint -> [C.Constraint]
 flatten (Conjunction left right) = flatten left ++ flatten right
 flatten c                        = pure c
 
+
+entailment ::  [Constraint] -> SolverM [Constraint]
+entailment cs = List.nub <$> loop cs cs
+    where
+        loop [] done        = return done
+        loop (c:cs') done   = do
+            done' <- entails c done
+            loop cs' done'
+
+
+
+instance Entails Constraint where
+
+    entails (C.Impl ev it p)            = entails $ P.Impl ev it p
+    entails (C.Refined scope it liquid) = entails $ R.Refine scope it liquid
+    entails _                           = return
 
 instance Solve C.Constraint where
     solve (C.Equality ev it it')                    = solve $ E.Eq ev it it'

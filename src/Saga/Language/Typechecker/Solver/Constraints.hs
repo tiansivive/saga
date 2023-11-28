@@ -33,7 +33,7 @@ data Constraint where
     Equality    :: PolymorphicVar Evidence -> Item -> Item -> Constraint
     Impl        :: PolymorphicVar Evidence -> Item -> ProtocolID -> Constraint
     OneOf       :: Item -> Item -> Constraint
-    Refined     :: Item -> Liquid.Liquid -> Constraint
+    Refined     :: Scope -> Item -> Liquid.Liquid -> Constraint
     Resource    :: Item -> Multiplicity -> Constraint
     Consumed    :: Item -> Constraint
     Pure        :: Item -> Constraint
@@ -56,14 +56,14 @@ data Evidence
 type instance Restricted Evidence = ()
 
 data Mechanism = Nominal | Structural deriving (Show, Eq, Ord)
-
 type Witnessed = Map.Map (PolymorphicVar Evidence) (PolymorphicVar Evidence)
 
 
 data Assumption
-    = Assume Expr (PolymorphicVar Type)
-
+    = Assume Constraint
     deriving (Show, Eq)
+
+type Scope = Map.Map String Item
 
 
 
@@ -79,12 +79,14 @@ instance Substitutable Constraint Type where
     apply sub (Conjunction c c')   = Conjunction (apply sub c) (apply sub c')
     apply sub (Equality ev it it') = Equality ev (apply sub it) (apply sub it')
     apply sub (Impl ev it prtcl)   = Impl ev (apply sub it) prtcl
+    apply sub (Refined scope it liquid)   = Refined scope (apply sub it) liquid
     apply sub c                    = c
 
-    ftv (Conjunction c c')   = ftv c <> ftv c'
-    ftv (Equality ev it it') = ftv it <> ftv it'
-    ftv (Impl ev it prtcl)   = ftv it
-    ftv _                    = Set.empty
+    ftv (Conjunction c c')        = ftv c <> ftv c'
+    ftv (Equality ev it it')      = ftv it <> ftv it'
+    ftv (Impl ev it prtcl)        = ftv it
+    ftv (Refined scope it liquid) = ftv it
+    ftv _                         = Set.empty
 
 instance Substitutable Item Type where
     apply sub v@(Unification uvar) = maybe v Mono $ Map.lookup uvar sub

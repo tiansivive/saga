@@ -40,7 +40,6 @@ library
       Saga.Language.Typechecker.Qualification
       Saga.Language.Typechecker.Refinement.Liquid
       Saga.Language.Typechecker.Refinement.SMT
-      Saga.Language.Typechecker.Refinement.Solve
       Saga.Language.Typechecker.Run
       Saga.Language.Typechecker.Shared
       Saga.Language.Typechecker.Solver.Constraints
@@ -50,6 +49,7 @@ library
       Saga.Language.Typechecker.Solver.Implications
       Saga.Language.Typechecker.Solver.Monad
       Saga.Language.Typechecker.Solver.Protocols
+      Saga.Language.Typechecker.Solver.Refinements
       Saga.Language.Typechecker.Solver.Run
       Saga.Language.Typechecker.Solver.Shared
       Saga.Language.Typechecker.Solver.Substitution

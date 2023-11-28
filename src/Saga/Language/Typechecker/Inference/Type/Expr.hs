@@ -31,6 +31,7 @@ import           Prelude                                                 hiding
 import           Saga.Language.Typechecker.Errors
 import           Saga.Language.Typechecker.Variables                     (Classifier,
                                                                           Level (..),
+                                                                          PolymorphicVar,
                                                                           VarType)
 
 import           Control.Applicative                                     ((<|>))
@@ -45,6 +46,7 @@ import           Saga.Language.Typechecker.Protocols                     (Protoc
 import           Saga.Language.Typechecker.Solver.Substitution           (Subst,
                                                                           Substitutable (..),
                                                                           compose,
+                                                                          mkSubst,
                                                                           nullSubst)
 
 import qualified Control.Monad.Writer                                    as W
@@ -67,6 +69,13 @@ import qualified Saga.Language.Typechecker.Variables                     as Var
 import           Saga.Utils.Operators                                    ((|>),
                                                                           (||>))
 
+import           Data.Functor                                            ((<&>))
+import           Data.Map                                                (Map)
+import           Data.Maybe                                              (catMaybes)
+import           Debug.Pretty.Simple                                     (pTrace,
+                                                                          pTraceM)
+import           Effectful                                               (Eff,
+                                                                          (:>))
 import qualified Effectful.Fail                                          as Eff
 import qualified Effectful.State.Static.Local                            as Eff
 import           Saga.Language.Typechecker.Inference.Type.Generalization
@@ -77,29 +86,52 @@ instance (Generalize Type, Instantiate Type) => Inference Expr where
     lookup = lookup'
     fresh = Shared.fresh
 
+type Bindings = Map (PolymorphicVar Type) (Qualified Type)
 
 infer' :: Expr -> Shared.TypeInference Expr
 infer' e = case e of
     e@(Literal literal) -> return $ Typed e (T.Singleton literal)
     Identifier x -> do
-      bs :| cs :=> t <- lookup' x
-      expand bs cs t
-      where
-        expand bindings cs t@(T.Var tvar) = case Map.lookup tvar bindings of
-          Just (bs :| cs' :=> qt) -> expand bs (cs <> cs') qt
-          Nothing                 -> typed cs t
-        expand _ cs t = typed cs t
+      (cs, _ :=> ty) <- contextualize x
+      case cs of
+        [] -> return $ Typed e ty
+        _  -> do
+          e' <- foldM elaborate (Identifier x) cs
+          return $ Typed e' ty
 
-        typed cs ty = case cs of
-            [] -> return $ Typed e ty
-            _  -> do
-              e' <- foldM elaborate (Identifier x) cs
-              return $ Typed e' ty
+      where
+
+        contextualize x = do
+          ty@(bs :| cs :=> t) <- lookup' x
+          ((_, sub), cs') <-  Eff.runWriter @[Q.Constraint Type] . Eff.runState @(Subst Type) nullSubst  . Eff.runReader bs $ forM_ (locals t) collect
+
+          return (apply sub (cs <> cs'), apply sub ty)
+
 
         elaborate expr (ty `Q.Implements` protocol) = do
           evidence@(Var.Evidence prtclImpl) <- Shared.fresh E
           Eff.tell $ CST.Impl evidence (CST.Mono ty) protocol
           return $ FnApp expr [Identifier prtclImpl]
+        elaborate expr (Q.Refinement binds liquid ty) = do
+          Eff.tell $ CST.Refined (fmap CST.Mono binds) (CST.Mono ty) liquid
+          return expr
+
+
+        locals :: Type -> [PolymorphicVar Type]
+        locals t = [ v | v@(Var.Local {}) <- Set.toList $ ftv t ]
+
+        collect :: (Eff.Reader Bindings :> es, Eff.Writer [Q.Constraint Type] :> es, Eff.State (Subst Type) :> es) => PolymorphicVar Type -> Eff es ()
+        collect v@(Var.Local {}) = do
+          bs <- Eff.ask
+
+          case Map.lookup v bs of
+            Just (bs' :| cs :=> t) | null $ locals t -> do
+              Eff.tell cs
+              Eff.modify $ \sub -> mkSubst (v, t) `compose` sub
+            Just (bs' :| cs :=> t) -> do
+              Eff.tell cs
+              forM_ (locals t) collect
+
 
     Typed expr ty -> do
         Typed expr' inferred <- infer expr
@@ -177,7 +209,7 @@ infer' e = case e of
 
     Match scrutinee cases -> do
         scrutinee'@(Typed _ ty) <- infer scrutinee
-        cases' <- forM cases inferCase
+        cases' <- forM cases (inferCase ty)
         let (tvars, tys) = foldl separate ([], []) cases'
         let ty' = case length tys of
                   0 -> Nothing
@@ -197,15 +229,18 @@ infer' e = case e of
 
         where
 
-          inferCase (Case pat expr) = do
+          inferCase scrutineeType (Case pat expr)  = do
             (patTy, tyvars) <- Pat.run $ Pat.infer pat
-            let (assumps, tvars) = tyvars ||> fmap (\(e, tvar) -> (CST.Assume e tvar, tvar)) |> unzip
+            let (pairs, tvars) = unzip $ tyvars ||> fmap (\(id, tvar) -> ((id, Forall [tvar] (Q.none :=> T.Var tvar)), tvar))
+            let scoped = Eff.local $ \env -> env { types = Map.fromList pairs <> types env }
+            scoped $ do
+              (inferred, constraint) <- Eff.listen @Constraint $ infer expr
+              ev <- Shared.fresh E
+              Eff.tell $ CST.Implication tvars [assume ev scrutineeType patTy] constraint
 
+              return $ TypedCase pat patTy inferred
 
-            (inferred, constraint) <- Eff.listen @Constraint $ infer expr
-            Eff.tell $ CST.Implication tvars assumps constraint
-
-            return $ TypedCase pat patTy inferred
+            where assume ev ty ty' = CST.Assume $ CST.Equality ev (CST.Mono ty) (CST.Mono ty')
 
           extractTy (TypedCase _ _ (Typed _ ty)) = ty
           separate (tvars, tys) caseExpr = case caseExpr of

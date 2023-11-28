@@ -24,7 +24,7 @@ data PolymorphicVar t where
   Instantiation    :: Classifiable t => String -> PolymorphicVar t
   Evidence         :: Restricted t   => String -> PolymorphicVar t
   Refinement       :: Restricted t   => String -> PolymorphicVar t
-  Local            :: Restricted t   => String -> PolymorphicVar t
+  Local            :: Classifiable t => String -> Classifier t -> PolymorphicVar t
 
 deriving instance Eq t    => Eq   (PolymorphicVar t)
 deriving instance Ord t   => Ord  (PolymorphicVar t)

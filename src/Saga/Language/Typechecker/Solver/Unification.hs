@@ -148,7 +148,7 @@ instance Unification Type where
 
 
     bind a t
-        | Var.Local id <- a = crash $ NotYetImplemented "Unifying and Binding locally scoped type vars"
+        | Var.Local id k <- a = crash $ NotYetImplemented "Unifying and Binding locally scoped type vars"
         | t == T.Var a = return nullSubst
         | occursCheck a t = case t of
             T.Union tys | T.Var a `elem` tys    -> do

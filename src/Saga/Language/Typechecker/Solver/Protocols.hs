@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 module Saga.Language.Typechecker.Solver.Protocols where
 import           Control.Monad.Except
 
@@ -56,15 +57,41 @@ import           Saga.Utils.Operators                                   ((|>),
                                                                          (||>))
 
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
+import           Saga.Language.Typechecker.Solver.Entailment            (Entails (..))
 
 data ImplConstraint = Impl (PolymorphicVar Evidence) Item ProtocolID
-
 
 instance Solve ImplConstraint where
     solve = solve'
     simplify = simplify'
 
+instance Entails ImplConstraint where
+    entails i@(Impl e it pid) cs = do
+        env@Solution { evidence, witnessed } <- Eff.get
 
+        evar <- case exists evidence of
+            []       -> return e
+            [evar]   -> return evar
+            multiple -> Eff.throwError $ MultipleImplementationEvidence it pid
+
+        Eff.modify @Solution $ \s -> s { witnessed = witnessed `Map.union` next witnessed evar }
+        return $ fmap (normalize evars evar) cs
+
+        where
+            next ws e = evars ||>List.filter (\e -> e `notElem` Map.keys ws ) |> fmap (,e) |> Map.fromList
+            exists evidence = evars ||> List.filter (\var -> isJust $ Map.lookup var evidence)
+
+            evars = fmap snd impls
+            impls = [ (c, e') | c@(C.Impl e' it' pid') <- cs
+                        , it == it'
+                        , pid == pid'
+                        , e /= e'
+
+                    ]
+
+            normalize es e (C.Impl e' it' pid') | e' `elem` es   = C.Impl e it' pid'
+            normalize _ _ (C.Impl e it pid)                      = C.Impl e it pid
+            normalize _ _ constraint                             = constraint
 
 
 
@@ -72,7 +99,7 @@ solve' :: ImplConstraint -> SolverM (Status, Constraint)
 solve' (Impl e@(Var.Evidence ev) t@(C.Mono ty) prtcl) =
     case ty of
         T.Var (Var.Unification {}) -> return (Deferred, C.Impl e t prtcl)
-        T.Var (Var.Local id)       -> crash $ NotYetImplemented "Solving ImplConstraint for locally scoped type Vars"
+        T.Var (Var.Local id k)     -> crash $ NotYetImplemented "Solving ImplConstraint for locally scoped type Vars"
         T.Var v                    -> crash $ Unexpected v "Unification Var"
 
         ty                         -> do

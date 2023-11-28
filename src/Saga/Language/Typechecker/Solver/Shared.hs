@@ -24,21 +24,19 @@ import qualified Saga.Language.Typechecker.Kind                as K
 
 
 
+type family Discriminate a
+
+
 from :: Q.Constraint Type -> SolverM Constraint
 from (Q.Pure t)          = return $ C.Pure $ Mono t
 from (Q.Resource m t)    = return $ C.Resource (Mono t) m
-from (Q.Refinement bs re t) = return $ C.Refined (Mono t) re
+from (Q.Refinement bs re t) = return $ C.Refined (fmap Mono bs) (Mono t) re
 from (Q.Implements t p)  = do
     superEv <- fresh E
     return $ C.Impl superEv (Mono t) p
 from (Q.Equality t t')   = do
     eqEv <- fresh E
     return $ C.Equality eqEv (Mono t) (Mono t')
-
-
-
-type instance VarType Type I.Evidence       = Var.PolymorphicVar Evidence
-type instance VarType Type I.Unification    = Var.PolymorphicVar Type
 
 
 fresh :: Tag a -> SolverM (VarType Type a)
@@ -50,4 +48,6 @@ fresh t = do
         E -> Var.Evidence $ "cst_ev_" ++ count
         U -> Var.Unification ("cst_uvar_" ++ count) (Level 0) K.Type -- Level 0 = top level
 
+type instance VarType Type I.Evidence       = Var.PolymorphicVar Evidence
+type instance VarType Type I.Unification    = Var.PolymorphicVar Type
   --return $ Var.Evidence $ "cst_ev_" ++ count

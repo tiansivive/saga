@@ -2,7 +2,7 @@ module Saga.Language.Typechecker.Zonking.Substitutions where
 import qualified Data.Set                                      as Set
 import qualified Saga.Language.Core.Expr                       as AST
 import           Saga.Language.Core.Expr                       (Expr)
-import           Saga.Language.Typechecker.Solver.Entailment   (entailment)
+
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import           Saga.Language.Typechecker.Type                (Type)
 

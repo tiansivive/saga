@@ -49,4 +49,4 @@ propagate :: T.Constraint -> TypeInference ()
 propagate (ty `Q.Implements` prtcl) = fresh E >>= \e -> Eff.tell $ CST.Impl e (CST.Mono ty) prtcl
 propagate (Q.Resource mul ty) = Eff.tell $ CST.Resource (CST.Mono ty) mul
 propagate (Q.Pure ty) = Eff.tell $ CST.Pure (CST.Mono ty)
-propagate (Q.Refinement bs expr ty) = Eff.tell $ CST.Refined (CST.Mono ty) expr
+propagate (Q.Refinement bs expr ty) = Eff.tell $ CST.Refined (fmap CST.Mono bs) (CST.Mono ty) expr

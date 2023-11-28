@@ -3,21 +3,24 @@
 
 module Saga.Language.Typechecker.Lib where
 
-import qualified Saga.Language.Core.Expr                 as E
-import qualified Saga.Language.Typechecker.Kind          as K
-import qualified Saga.Language.Typechecker.Protocols     as P
-import           Saga.Language.Typechecker.Protocols     (Protocol (..))
-import           Saga.Language.Typechecker.Qualification (Given (..),
-                                                          Qualified ((:=>)))
-import qualified Saga.Language.Typechecker.Type          as T
-import           Saga.Language.Typechecker.Type          (Polymorphic,
-                                                          Scheme (..), Type)
-import qualified Saga.Language.Typechecker.TypeExpr      as TE
-import qualified Saga.Language.Typechecker.Variables     as Var
+import qualified Saga.Language.Core.Expr                     as E
+import qualified Saga.Language.Typechecker.Kind              as K
+import qualified Saga.Language.Typechecker.Protocols         as P
+import           Saga.Language.Typechecker.Protocols         (Protocol (..))
+import           Saga.Language.Typechecker.Qualification     (Given (..),
+                                                              Qualified ((:=>)))
+import qualified Saga.Language.Typechecker.Type              as T
+import           Saga.Language.Typechecker.Type              (Polymorphic,
+                                                              Scheme (..), Type)
+import qualified Saga.Language.Typechecker.TypeExpr          as TE
+import qualified Saga.Language.Typechecker.Variables         as Var
 
-import qualified Data.Map                                as Map
+import qualified Data.Map                                    as Map
 import           Saga.Language.Typechecker.Environment
-import qualified Saga.Language.Typechecker.Qualification as Q
+import qualified Saga.Language.Typechecker.Qualification     as Q
+import qualified Saga.Language.Typechecker.Refinement.Liquid as L
+
+
 
 listConstructor, fnConstructor :: Type
 listConstructor = T.Data "List" (K.Arrow K.Type K.Type)
@@ -159,7 +162,7 @@ builtInFns =
     --, (".", fieldAccessTypeExpr)
     , ("-", binaryNumTypeExpr)
     , ("*", binaryNumTypeExpr)
-    , ("/", binaryNumTypeExpr)
+    , ("/", div)
     , ("++", appendFn)
     , ("==", binaryEqTypeExpr)
     , ("map", mapImplType)
@@ -167,6 +170,14 @@ builtInFns =
     where
       var = "a"
       tvar = Var.Type var K.Type
+
+      nonZeroNum = Var.Local "NonZero" K.Type
+      clause = Map.fromList [(nonZeroNum, Q.none :=> T.Var tvar)]
+      liquidBindings = Map.fromList [("x", T.Var nonZeroNum)]
+      refinement = L.Negation $ L.Equality (L.Number 0) (L.Var "x")
+      div =  Forall [tvar] $ clause
+              :| [T.Var tvar `Q.Implements` "Num", Q.Refinement liquidBindings refinement (T.Var nonZeroNum)  ]
+              :=> T.Var tvar `T.Arrow` (T.Var nonZeroNum `T.Arrow` T.Var tvar)
 
       binaryEqTypeExpr  = Forall [tvar] $ Map.empty :| [T.Var tvar `Q.Implements` "Eq"]          :=> T.Var tvar `T.Arrow` (T.Var tvar `T.Arrow` bool)
       binaryNumTypeExpr = Forall [tvar] $ Map.empty :| [T.Var tvar `Q.Implements` "Num"]         :=> T.Var tvar `T.Arrow` (T.Var tvar `T.Arrow` T.Var tvar)
