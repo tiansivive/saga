@@ -4,7 +4,8 @@ import           Saga.Language.Core.Literals                  (Literal)
 import           Saga.Language.Typechecker.Kind               (Kind)
 import           Saga.Language.Typechecker.Protocols          (ProtocolID)
 import           Saga.Language.Typechecker.Refinement.Liquid  (Liquid, Op)
-import           Saga.Language.Typechecker.Solver.Constraints (Evidence, Item)
+import           Saga.Language.Typechecker.Solver.Constraints (Constraint,
+                                                               Evidence, Item)
 import           Saga.Language.Typechecker.Type               (Polymorphic, Tag,
                                                                Type)
 import           Saga.Language.Typechecker.TypeExpr           (TypeExpr)
@@ -52,6 +53,9 @@ data SagaError where
   MultipleImplementationEvidence :: Item -> ProtocolID -> SagaError
   EvidenceNotFound :: String -> SagaError
   UnexpectedEvidence :: Evidence -> String -> SagaError
+
+  -- | REFINEMENTS
+  UnsatisfiableRefinement :: Constraint -> SagaError
 
   -- | EVALUATION
   UnexpectedLocalPolymorphicType :: Polymorphic Type -> SagaError

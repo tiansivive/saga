@@ -24,6 +24,7 @@ import           Saga.Language.Typechecker.Solver.Substitution (Subst,
 
 import           Debug.Pretty.Simple                           (pTraceM)
 import           Effectful                                     (Eff)
+import qualified Effectful                                     as Eff
 import           GHC.Stack.Types                               (CallStack)
 import qualified Saga.Language.Typechecker.Monad               as TC
 import           Saga.Language.Typechecker.Solver.Cycles       (Cycle)
@@ -31,9 +32,9 @@ import           Saga.Language.Typechecker.Type                (Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
 
-
+-- | FIXME: Change to member constraints rather than specific types
 type SolverEff es = TypeCheck (Eff.State Solution : Eff.State [Cycle Type] : es)
-type SolverM = SolverEff '[]
+type SolverM = SolverEff '[Eff.IOE]
 
 data Solution = Solution { count :: Int, evidence :: Subst Evidence, tvars :: Subst Type, witnessed :: Witnessed }
   deriving (Show)

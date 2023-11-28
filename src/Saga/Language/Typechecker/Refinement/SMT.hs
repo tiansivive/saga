@@ -31,7 +31,7 @@ import qualified Saga.Language.Typechecker.Type              as T
 import           Saga.Language.Typechecker.Type              (Type)
 import           Text.Pretty.Simple                          (pPrint)
 
---type Refined = TypeCheck '[Eff.Reader Environment]
+
 data State = St { nums :: Map String SInteger, bools :: Map String SBool }
 empty :: State
 empty = St { nums = mempty, bools = mempty }
@@ -99,13 +99,13 @@ arithmetic (Arithmetic op left right) = do
         MUL -> l * r
         DIV -> l `sDiv` r
 
-run :: Liquid -> Symbolic SBool
-run expr = evalStateT (translate expr) empty
+prepare :: Liquid -> Symbolic SBool
+prepare expr = evalStateT (translate expr) empty
 
 test :: Liquid -> IO ()
 test expr = do
-    runSMT (run expr) >>= pPrint
-    result <- sat (run expr)
+    runSMT (prepare expr) >>= pPrint
+    result <- sat (prepare expr)
     case result of
         SatResult (SBV.Satisfiable _ model) -> do
             pPrint model

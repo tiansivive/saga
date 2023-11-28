@@ -66,6 +66,8 @@ instance Solve ImplConstraint where
     simplify = simplify'
 
 instance Entails ImplConstraint where
+    -- | FIXME Entailment: Check if current protocol is implied by any other implementation constraint. If so, it's safe to remove
+
     entails i@(Impl e it pid) cs = do
         env@Solution { evidence, witnessed } <- Eff.get
 
@@ -105,7 +107,7 @@ solve' (Impl e@(Var.Evidence ev) t@(C.Mono ty) prtcl) =
         ty                         -> do
             impl <- Eff.asks $ protocols
                 |> List.find (\Protocol { id } -> id == prtcl)
-                    -- | TODO: This needs to search via unification. How to make the monads fit though?
+                    -- | TODO This needs to search via unification. How to make the monads fit though?
                     >=> implementations |> List.find (\(P.Implementation (id, Forall _ (_ :=> ty'), expr)) -> ty == ty')
 
 
