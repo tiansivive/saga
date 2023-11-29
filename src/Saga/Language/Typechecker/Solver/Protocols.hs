@@ -146,11 +146,11 @@ flatten (Impl ev item prtcl) = do
 
 
     let t@(T.Forall tvars (bs :| cs :=> qt)) = instantiate spec' ty
-    C.Conjunction (impl t) <$> propagate cs
+    C.Conjunction impl <$> propagate cs
 
     where
-        impl (T.Forall [] (_ :=> qt)) = C.Impl ev (C.Mono qt) prtcl
-        impl t@(T.Forall tvars _)     = C.Impl ev (C.Poly t) prtcl
+        impl = C.Impl ev item prtcl
+
         ty = case item of
             C.Unification u -> T.Var u
             C.Mono ty -> ty
