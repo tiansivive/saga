@@ -101,7 +101,6 @@ entailment cs = List.nub <$> loop cs cs
             loop cs' done'
 
 
-
 instance Entails Constraint where
 
     entails (C.Impl ev it p)            = entails $ P.Impl ev it p

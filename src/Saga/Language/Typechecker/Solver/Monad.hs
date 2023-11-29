@@ -32,7 +32,7 @@ import           Saga.Language.Typechecker.Type                (Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
 
--- | FIXME: Change to member constraints rather than specific types
+-- | FIXME: #23 @tiansivive Effects: Use member constraints
 type SolverEff es = TypeCheck (Eff.State Solution : Eff.State [Cycle Type] : es)
 type SolverM = SolverEff '[Eff.IOE]
 

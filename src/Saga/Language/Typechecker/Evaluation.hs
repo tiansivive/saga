@@ -84,7 +84,7 @@ instance Evaluate TypeExpr (Polymorphic Type) where
             locals = [ (id, ty) | TE.Bind id ty <- bindings]
             binds = fmap Map.fromList $ forM locals $ \(id, ty) -> evaluate ty >>= \case
                     Forall [] qt@(given :=> t) -> do
-                        -- | TODO: What happens with these constraints?
+                        -- | QUESTION: What happens with these constraints?
                         (k, cs) <-  Eff.runWriter @[KInf.UnificationConstraint] . Eff.evalState @I.State I.initialState . Eff.inject $ kind t
                         return (Var.Local @Type id k, qt)
                     poly         -> Eff.throwError $ UnexpectedLocalPolymorphicType poly
@@ -122,17 +122,17 @@ instance Evaluate TypeExpr (Polymorphic Type) where
         args <- mapM evaluate argExprs
 
         case qt of
-            -- | TODO:#Kinds we probably need some kind check here
+            -- | TODO: #21 @tiansivive :Kinds:TypeEvaluation we probably need some kind check here
             t@(T.Data {}) -> application t args (tvars, bs, cs)
-            -- | TODO:#Kinds we probably need some kind check here
+            -- | TODO: #21 @tiansivive :Kinds:TypeEvaluation we probably need some kind check here
             t@(T.Applied {}) -> application t args (tvars, bs, cs)
             T.Closure params closure env -> apply closure params args
             T.Var (Var.Type t _) -> do
                 Forall tvars' (bs' :| cs' :=> qt') <- lookup t
                 case qt' of
-                    -- | TODO:#Kinds we probably need some kind check here
+                    -- | TODO: #21 @tiansivive :Kinds:TypeEvaluation we probably need some kind check here
                     t@(T.Data tycon k) -> application t args (tvars', bs', cs')
-                    -- | TODO:#Kinds we probably need some kind check here
+                    -- | TODO: #21 @tiansivive :Kinds:TypeEvaluation we probably need some kind check here
                     t@(T.Applied cons arg) -> application t args (tvars', bs', cs')
                     T.Closure params closure env -> apply closure params args
                     _ -> Eff.throwError $ UnexpectedType qt' "Cannot apply this variable expression"

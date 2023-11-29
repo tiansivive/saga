@@ -18,7 +18,8 @@ import           Saga.Utils.Operators                         ((|>), (||>))
 
 
 
-
+-- | ISSUE #23
+-- | TODO #24 Move Constraint list to a state effect within the Solver monad
 class Entails a where
     entails :: a -> [Constraint] -> SolverM [Constraint]
 

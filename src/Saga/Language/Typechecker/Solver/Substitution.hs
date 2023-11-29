@@ -11,6 +11,7 @@ type Subst t = Map.Map (PolymorphicVar t) t
 
 -- | Substitute t in data structure a
 class Substitutable a t where
+    -- | ENHANCEMENT: #26 Use associated types instead of a second type argument
     apply :: Subst t -> a -> a
     ftv :: a -> Set.Set (PolymorphicVar t)
 

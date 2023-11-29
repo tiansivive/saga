@@ -53,7 +53,7 @@ simplify' r = do
     _r
 
 
--- | PROBLEM: Liquid vars are strings, Substitution works with PolymorphicVars.($)
+-- | PROBLEM:Liquids #19 @tiansivive Liquid vars are strings, Substitution works with PolymorphicVars.
 -- | SUGGESTION: Add a new Liquid PolymorphicVar?
 instance Substitutable Liquid Liquid where
     apply sub = _p

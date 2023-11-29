@@ -36,4 +36,10 @@ newtype Level = Level Int deriving (Show, Eq, Ord)
 
 type family Classifier a  :: GHC.Type
 type family VarType e a   :: GHC.Type
+-- | ENHANCEMENT We want different constraints for different constructors.
+-- | TODO #25
+-- | Right now, if both refinements and evidence implement an instance of `Restricted`, then a refinement var could be used where an evidence var is expected, and vice-versa
+-- | SUGGESTION More type families - one for each.
+-- | SUGGESTION One more elaborate type family: `Context`
+-- | QUESTION: How to implement a `Context` type family?
 type family Restricted a  :: GHC.Constraint
