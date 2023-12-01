@@ -36,13 +36,12 @@ import           Saga.Language.Typechecker.TypeExpr              (TypeExpr)
 type Normalized t = TypeCheck '[Eff.Reader [(PolymorphicVar t, String)]]
 
 class Normalisation a where
-    type Target a
-    normalise :: a -> Normalized (Target a) a
+    type Of a
+    normalise :: a -> Normalized (Of a) a
 
 instance Normalisation Expr where
-    type Target Expr = Type
+    type Of Expr = Type
 
-    normalise :: Expr -> Normalized (Target Expr) Expr
     normalise =  \case
         AST.Typed e ty -> AST.Typed <$> normalise e <*> normalise ty
 
@@ -59,27 +58,27 @@ instance Normalisation Expr where
 
 
 instance Normalisation AST.Case where
-    type Target AST.Case = Type
+    type Of AST.Case = Type
     normalise = \case
         AST.Case pat e -> AST.Case pat <$> normalise e
         AST.TypedCase pat ty e -> AST.TypedCase pat <$> normalise ty <*> normalise e
 
 instance Normalisation AST.Statement where
-    type Target AST.Statement = Type
+    type Of AST.Statement = Type
     normalise = \case
         AST.Return e -> AST.Return <$> normalise  e
         AST.Procedure e -> AST.Procedure <$> normalise e
         AST.Declaration d -> AST.Declaration <$> normalise d
 
 instance Normalisation AST.Declaration where
-    type Target AST.Declaration = Type
+    type Of AST.Declaration = Type
     normalise = \case
         AST.Let id ty k e -> AST.Let id ty k <$> normalise e
         d -> return d
 
 
 instance Normalisation Type where
-    type Target Type = Type
+    type Of Type = Type
 
     normalise = \case
         T.Var tvar                      -> T.Var <$> normalise tvar
@@ -92,7 +91,7 @@ instance Normalisation Type where
         t                               -> return t
 
 instance Normalisation (PolymorphicVar Type) where
-    type Target (PolymorphicVar Type) = Type
+    type Of (PolymorphicVar Type) = Type
 
     normalise tvar = do
         mapping <- Eff.ask
@@ -107,7 +106,7 @@ instance Normalisation (PolymorphicVar Type) where
 
 
 instance Normalisation Solver.Constraint where
-    type Target Solver.Constraint = Type
+    type Of Solver.Constraint = Type
 
     normalise = \case
         Solver.Impl ev (Solver.Mono ty) pid -> do

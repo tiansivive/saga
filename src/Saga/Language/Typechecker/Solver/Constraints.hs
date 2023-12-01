@@ -59,7 +59,7 @@ data Mechanism = Nominal | Structural deriving (Show, Eq, Ord)
 type Witnessed = Map.Map (PolymorphicVar Evidence) (PolymorphicVar Evidence)
 
 
-data Assumption
+newtype Assumption
     = Assume Constraint
     deriving (Show, Eq)
 
@@ -75,7 +75,8 @@ instance Monoid Constraint where
 instance Semigroup Constraint where
     c <> c' = Conjunction c c'
 
-instance Substitutable Constraint Type where
+instance Substitutable Constraint where
+    type Target Constraint = Type
     apply sub (Conjunction c c')   = Conjunction (apply sub c) (apply sub c')
     apply sub (Equality ev it it') = Equality ev (apply sub it) (apply sub it')
     apply sub (Impl ev it prtcl)   = Impl ev (apply sub it) prtcl
@@ -88,7 +89,8 @@ instance Substitutable Constraint Type where
     ftv (Refined scope it liquid) = ftv it
     ftv _                         = Set.empty
 
-instance Substitutable Item Type where
+instance Substitutable Item where
+    type Target Item = Type
     apply sub v@(Unification uvar) = maybe v Mono $ Map.lookup uvar sub
     apply sub v@(Mono ty)          = Mono $ apply sub ty
     apply _ it                     = it

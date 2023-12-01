@@ -55,5 +55,5 @@ simplify' r = do
 
 -- | PROBLEM:Liquids #19 @tiansivive Liquid vars are strings, Substitution works with PolymorphicVars.
 -- | SUGGESTION: Add a new Liquid PolymorphicVar?
-instance Substitutable Liquid Liquid where
+instance Substitutable Liquid where
     apply sub = _p
