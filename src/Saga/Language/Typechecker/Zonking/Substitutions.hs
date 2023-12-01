@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 module Saga.Language.Typechecker.Zonking.Substitutions where
 import qualified Data.Set                                      as Set
 import qualified Saga.Language.Core.Expr                       as AST
@@ -9,7 +10,8 @@ import           Saga.Language.Typechecker.Type                (Type)
 
 
 
-instance Substitutable Expr Type where
+instance Substitutable Expr where
+    type Target Expr = Type
 
     apply sub (AST.Typed e ty) = AST.Typed (apply sub e) (apply sub ty)
 
@@ -43,7 +45,8 @@ instance Substitutable Expr Type where
     ftv e = Set.empty
 
 
-instance Substitutable AST.Case Type where
+instance Substitutable AST.Case where
+    type Target AST.Case = Type
     apply sub (AST.TypedCase pat ty expr) = AST.TypedCase (apply sub pat) (apply sub ty) (apply sub expr)
     apply sub (AST.Case pat expr) = AST.Case (apply sub pat) (apply sub expr)
 
@@ -51,7 +54,8 @@ instance Substitutable AST.Case Type where
     ftv (AST.Case pat expr)         = ftv pat <> ftv expr
 
 
-instance Substitutable AST.Pattern Type where
+instance Substitutable AST.Pattern where
+    type Target AST.Pattern = Type
     apply sub (AST.PatTuple pats rest) = AST.PatTuple (apply sub <$> pats) rest
     apply sub (AST.PatList pats rest) = AST.PatList (apply sub <$> pats) rest
     apply sub (AST.PatRecord pairs rest) = AST.PatRecord (apply sub <$> pairs) rest
@@ -67,7 +71,8 @@ instance Substitutable AST.Pattern Type where
     ftv pat = Set.empty
 
 
-instance Substitutable AST.Statement Type where
+instance Substitutable AST.Statement where
+    type Target AST.Statement = Type
     apply sub (AST.Return expr)     = AST.Return $ apply sub expr
     apply sub (AST.Procedure expr)  = AST.Procedure $ apply sub expr
     apply sub (AST.Declaration dec) = AST.Declaration $ apply sub dec
@@ -77,7 +82,8 @@ instance Substitutable AST.Statement Type where
     ftv (AST.Declaration dec) = ftv dec
 
 
-instance Substitutable AST.Declaration Type where
+instance Substitutable AST.Declaration where
+    type Target AST.Declaration = Type
     apply sub (AST.Let id tyExpr k expr) = AST.Let id tyExpr k $ apply sub expr
     apply sub d                          = d
 

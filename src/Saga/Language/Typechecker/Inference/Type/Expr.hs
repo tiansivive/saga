@@ -29,8 +29,7 @@ import           Control.Monad.Except
 import           Prelude                                                 hiding
                                                                          (lookup)
 import           Saga.Language.Typechecker.Errors
-import           Saga.Language.Typechecker.Variables                     (Classifier,
-                                                                          Level (..),
+import           Saga.Language.Typechecker.Variables                     (Level (..),
                                                                           PolymorphicVar,
                                                                           VarType)
 

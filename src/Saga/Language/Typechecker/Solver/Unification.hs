@@ -63,7 +63,7 @@ import           Saga.Language.Typechecker.Solver.Cycles       (Cycle)
 type UnificationM t  = TypeCheck '[Eff.Writer [Cycle t]]
 
 
-class Substitutable t t => Unification t where
+class Substitutable t => Unification t where
     unify       :: t -> t -> UnificationM t (Subst t)
     bind        :: PolymorphicVar t -> t -> UnificationM t (Subst t)
     occursCheck :: PolymorphicVar t -> t -> Bool

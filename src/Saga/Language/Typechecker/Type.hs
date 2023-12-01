@@ -38,12 +38,9 @@ data Scope = Scope
   , tags  :: [Tag]
   } deriving (Show, Eq, Ord)
 
-type Constraint = Q.Constraint Type
 
 data Scheme t = Forall [PolymorphicVar t] (Qualified t) deriving (Show, Eq, Ord)
 type Polymorphic = Scheme
-
-
 
 data DataType = DataType { tycon :: Tycon, definition :: Polymorphic Type } deriving (Show, Eq, Ord)
 data Tycon = Tycon String Kind deriving (Show, Eq, Ord)
@@ -59,7 +56,8 @@ deriving instance Eq Type
 deriving instance Ord Type
 
 
-instance Substitutable Type Type where
+instance Substitutable Type where
+  type Target Type = Type
   --apply s t | trace ("Applying type sub\n\t" ++ show s ++ "\n\t" ++ show t) False = undefined
 
   apply s t@(Var v)                      = Map.findWithDefault t v s
@@ -85,12 +83,15 @@ instance Substitutable Type Type where
     _                  -> Set.empty
   --ftv (TClosure params body _) = ftv body
 
-instance {-# OVERLAPS #-} Substitutable (Qualified Type) Type where
+instance {-# OVERLAPS #-} Substitutable (Qualified Type) where
+    type Target (Qualified Type) = Target Type
     apply s (bindings :| cs :=> t) = apply s bindings :| apply s cs :=> apply s t
     ftv (bindings :| cs :=> t) = ftv bindings <> ftv cs <> ftv t
 
 
-instance Substitutable Constraint Type where
+type Constraint = Q.Constraint Type
+instance Substitutable Constraint where
+  type Target Constraint = Target Type
   apply s (t `Q.Implements` prtcl) = apply s t `Q.Implements` prtcl
   apply s (Q.Resource mul t)       = Q.Resource mul $ apply s t
   apply s (Q.Refinement bs expr t) = Q.Refinement (apply s bs) expr $ apply s t
