@@ -6,13 +6,15 @@ import           Saga.Language.Typechecker.Inference.Type.Expr
 import           Saga.Language.Typechecker.Inference.Type.Generalization
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
 
+import           Effectful                                               (Eff)
 import qualified Effectful                                               as Eff
 import qualified Effectful.Error.Static                                  as Eff
 import qualified Effectful.Fail                                          as Eff
 import qualified Effectful.Reader.Static                                 as Eff
 import qualified Effectful.State.Static.Local                            as Eff
 import qualified Effectful.Writer.Static.Local                           as Eff
-import           Saga.Language.Typechecker.Environment                   (Info)
+import           Saga.Language.Typechecker.Environment                   (CompilerState,
+                                                                          Info)
 import           Saga.Language.Typechecker.Errors                        (SagaError)
 import qualified Saga.Language.Typechecker.Inference.Inference           as I
 import qualified Saga.Language.Typechecker.Inference.Run                 as Inf
@@ -26,7 +28,7 @@ import qualified Saga.Language.Typechecker.Zonking.Run                   as Zonk
 
 
 
-typecheck :: Expr -> TypeCheck '[] (Expr, Polymorphic Type)
+typecheck :: TypeCheck es => Expr -> Eff es(Expr, Polymorphic Type)
 typecheck (expr :: Expr) = do
     ((ast, st), constraint) <- Inf.run expr
     context <- Eff.inject $ Solver.run constraint
@@ -35,5 +37,6 @@ typecheck (expr :: Expr) = do
     return (ast', ty)
 
 
-run :: TypeCheck '[] a -> Either String (Either (Eff.CallStack, SagaError) (a, Info))
-run = Eff.runPureEff . Eff.runFail . Eff.runError . Eff.runWriter . Eff.runReader defaultEnv
+
+run :: Eff '[Eff.Reader CompilerState, Eff.Writer Info, Eff.Error SagaError, Eff.Fail, Eff.IOE] a -> IO (Either String (Either (Eff.CallStack, SagaError) (a, Info)))
+run e = Eff.runEff . Eff.runFail . Eff.runError . Eff.runWriter $ Eff.runReader defaultEnv e

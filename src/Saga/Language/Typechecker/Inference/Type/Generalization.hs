@@ -1,3 +1,4 @@
+{-# LANGUAGE MonoLocalBinds #-}
 module Saga.Language.Typechecker.Inference.Type.Generalization where
 
 import           Data.List                                       (nub)

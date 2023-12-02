@@ -12,7 +12,7 @@ import qualified Data.Map                                        as Map
 import           Data.Maybe                                      (fromMaybe)
 import           Data.Set                                        (Set)
 import qualified Data.Set                                        as Set
-import           Effectful                                       (Eff)
+import           Effectful                                       (Eff, (:>))
 import qualified Effectful.Reader.Static                         as Eff
 
 import qualified Saga.Language.Core.Expr                         as AST
@@ -26,6 +26,7 @@ import           Saga.Language.Typechecker.Variables             (PolymorphicVar
 import           Saga.Language.Typechecker.Zonking.Substitutions
 
 
+import           Control.Monad                                   (forM)
 import           Data.Functor                                    ((<&>))
 import qualified Effectful.Error.Static                          as Eff
 import           Saga.Language.Typechecker.Environment
@@ -33,8 +34,8 @@ import           Saga.Language.Typechecker.Errors                (SagaError (Une
 import qualified Saga.Language.Typechecker.Solver.Constraints    as Solver
 import           Saga.Language.Typechecker.TypeExpr              (TypeExpr)
 
-type Normalized t = TypeCheck '[Eff.Reader [(PolymorphicVar t, String)]]
-
+type NormalizedEff es t = (TypeCheck es,  Eff.Reader [(PolymorphicVar t, String)] :> es)
+type Normalized t a = forall es. NormalizedEff es t => Eff es a
 class Normalisation a where
     type Of a
     normalise :: a -> Normalized (Of a) a
@@ -46,14 +47,14 @@ instance Normalisation Expr where
         AST.Typed e ty -> AST.Typed <$> normalise e <*> normalise ty
 
         AST.Lambda ps body -> AST.Lambda ps <$> normalise body
-        AST.FnApp fn args  -> AST.FnApp <$> normalise fn <*> mapM normalise args
-        AST.Match cond cases -> AST.Match <$> normalise cond <*> mapM normalise cases
+        AST.FnApp fn args  -> AST.FnApp <$> normalise fn <*> forM args (\a -> normalise a)
+        AST.Match cond cases -> AST.Match <$> normalise cond <*> forM cases (\c -> normalise c)
 
-        AST.Record es -> AST.Record <$> mapM (mapM normalise) es
-        AST.Tuple es  -> AST.Tuple <$> mapM normalise es
-        AST.List es   -> AST.List <$> mapM normalise es
+        AST.Record es -> AST.Record <$> mapM (mapM (\e -> normalise e)) es
+        AST.Tuple es  -> AST.Tuple <$> mapM (\e -> normalise e) es
+        AST.List es   -> AST.List <$> mapM (\e -> normalise e) es
 
-        AST.Block stmts -> AST.Block <$> mapM normalise stmts
+        AST.Block stmts -> AST.Block <$> mapM (\stmt -> normalise stmt) stmts
         e           -> return e
 
 
@@ -82,12 +83,12 @@ instance Normalisation Type where
 
     normalise = \case
         T.Var tvar                      -> T.Var <$> normalise tvar
-        T.Tuple elems                   -> T.Tuple <$> mapM normalise elems
-        T.Record pairs                  -> T.Record <$> mapM (mapM normalise) pairs
-        T.Union elems                   -> T.Union <$> mapM normalise elems
+        T.Tuple elems                   -> T.Tuple <$> mapM (\e -> normalise e) elems
+        T.Record pairs                  -> T.Record <$> mapM (mapM (\p -> normalise p)) pairs
+        T.Union elems                   -> T.Union <$> mapM (\e -> normalise e) elems
         T.Arrow arg out                 -> T.Arrow <$> normalise arg <*> normalise out
         T.Applied con arg               -> T.Applied <$> normalise con <*> normalise arg
-        T.Closure params tyExpr scope   -> T.Closure <$> mapM normalise params <*> pure tyExpr <*> pure scope
+        T.Closure params tyExpr scope   -> T.Closure <$> mapM (\p -> normalise p) params <*> pure tyExpr <*> pure scope
         t                               -> return t
 
 instance Normalisation (PolymorphicVar Type) where

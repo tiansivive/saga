@@ -1,6 +1,8 @@
 {-# LANGUAGE DataKinds    #-}
 {-# LANGUAGE TypeFamilies #-}
 
+
+
 module Saga.Language.Typechecker.Inference.Type.Pattern where
 import           Saga.Language.Core.Expr                         (Expr,
                                                                   Pattern (..))
@@ -33,7 +35,7 @@ import           Saga.Language.Typechecker.Qualification         (Given (..),
                                                                   Qualified (..))
 import           Saga.Language.Typechecker.Solver.Constraints    (Constraint (Equality))
 
-import           Effectful                                       (Eff)
+import           Effectful                                       (Eff, (:>))
 import qualified Effectful                                       as Eff
 import qualified Effectful.Error.Static                          as Eff
 import           Effectful.Reader.Static                         (Reader)
@@ -57,7 +59,8 @@ type instance VarType Pattern I.TypeVar        = Var.PolymorphicVar Type
 type instance VarType Pattern I.Instantiation  = Var.PolymorphicVar Type
 
 
-type PatternInference = InferEff '[Eff.Writer TypeVars] CST.Constraint
+type PatternInferenceEff es = (InferEff es CST.Constraint, Eff.Writer TypeVars :> es)
+type PatternInference a = forall es. (PatternInferenceEff es) => Eff es a
 type TypeVars = [(String, PolymorphicVar Type)]
 
 
@@ -72,10 +75,10 @@ infer (Id id) = do
     return $ T.Var uvar
 
 infer (Lit l) = return $ T.Singleton l
-infer (PatTuple pats rest) = T.Tuple <$> mapM infer pats
+infer (PatTuple pats rest) = T.Tuple <$> mapM (\p -> infer p) pats
 
 infer (PatList pats rest) = do
-    tys <- mapM infer pats
+    tys <- mapM (\p -> infer p) pats
     tvar <- fresh U
     let result = T.Applied Lib.listConstructor $ choice (T.Var tvar) tys
 
@@ -117,7 +120,7 @@ infer (PatData tag pats) = do
     let cons = tags ||> filter (\T.Constructor { name } -> name == tag)
     case cons of
         [T.Constructor { name, constructor, package, target }] -> do
-            tys <- mapM infer pats
+            tys <- mapM (\p -> infer p) pats
 
             bs :| cs :=> target' <- inst $ definition target
 
@@ -125,7 +128,7 @@ infer (PatData tag pats) = do
             Forall [] (bs' :| cs' :=> package'    ) <- package     `instantiateWith` unificationVars
             Forall [] (bs' :| cs' :=> constructor') <- constructor `instantiateWith` unificationVars
 
-            forM_ (cs <> cs') (Eff.inject . propagate)
+            forM_ (cs <> cs') (\cs -> propagate cs)
 
             e1 <- fresh E
             Eff.tell $ Equality e1 (CST.Mono $ T.Tuple tys) (CST.Mono package')
@@ -150,7 +153,7 @@ infer (PatData tag pats) = do
 
 
 fresh :: I.Tag a -> PatternInference (VarType Expr a)
-fresh = Eff.inject . Shared.fresh
+fresh tag = Shared.fresh tag
 
 emit :: (String, PolymorphicVar Type) -> PatternInference ()
 emit pair = Eff.tell [pair]
@@ -161,8 +164,8 @@ emit pair = Eff.tell [pair]
 
 
 
-run ::PatternInference a -> Shared.TypeInference (a, TypeVars)
-run = Eff.runWriter . Eff.inject
+-- run ::PatternInference a -> Shared.TypeInference (a, TypeVars)
+-- run = Eff.runWriter . Eff.inject
 
 
     --  Eff.inject $ Eff.runWriter pi

@@ -18,6 +18,7 @@ import           Control.Applicative                           ((<|>))
 import qualified Data.List                                     as List
 import           Data.Maybe                                    (isNothing)
 import           Debug.Pretty.Simple                           (pTraceM)
+import           Effectful                                     (Eff, (:>))
 import qualified Effectful.Error.Static                        as Eff
 import qualified Effectful.Reader.Static                       as Eff
 import           Prelude                                       hiding (lookup)
@@ -32,7 +33,8 @@ import           Saga.Language.Typechecker.Type                (Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
 
-type Zonking = TypeCheck '[Eff.Reader Context]
+type ZonkingEff es = (TypeCheck es, Eff.Reader Context :> es)
+type Zonking a = forall es. ZonkingEff es => Eff es a
 
 data Context = Context { solution:: Solution, residuals :: [Constraint] } deriving Show
 type ScopedVar = String

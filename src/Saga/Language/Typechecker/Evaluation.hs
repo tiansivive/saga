@@ -58,11 +58,12 @@ import           Saga.Utils.Operators                          ((|>))
 
 
 
-type EvaluationM = TypeCheck '[]
-
+type EvaluationEff es = TypeCheck es
+type EvaluationM a = forall es. (EvaluationEff es) => Eff es a
 
 class Evaluate a b | a -> b where
-    evaluate ::  a -> EvaluationM b
+    -- | NOTE leaving as Eff because this fixes the issue where type inference breaks when using `mapM evaluate`
+    evaluate :: EvaluationEff es =>  a -> Eff es b
 
 instance Evaluate TypeExpr (Polymorphic Type) where
     evaluate (TE.Identifier id)  = lookup id
@@ -84,7 +85,7 @@ instance Evaluate TypeExpr (Polymorphic Type) where
             binds = fmap Map.fromList $ forM locals $ \(id, ty) -> evaluate ty >>= \case
                     Forall [] qt@(given :=> t) -> do
                         -- | QUESTION: What happens with these constraints?
-                        (k, cs) <-  Eff.runWriter @[KInf.UnificationConstraint] . Eff.evalState @I.State I.initialState . Eff.inject $ kind t
+                        (k, cs) <-  Eff.runWriter @[KInf.UnificationConstraint] . Eff.evalState @I.State I.initialState $ kind t
                         return (T.Local id k, qt)
                     poly         -> Eff.throwError $ UnexpectedLocalPolymorphicType poly
 

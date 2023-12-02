@@ -12,5 +12,7 @@ instance Solve Implies where
     simplify = simplify'
 
 
+solve' :: p -> SolverM (Status, Constraint)
 solve' _ = return (Solved, Empty)
+simplify' :: p -> SolverM Constraint
 simplify' _ = return Empty

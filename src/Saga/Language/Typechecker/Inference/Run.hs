@@ -8,7 +8,8 @@ import           Saga.Language.Typechecker.Inference.Inference (Inference (..))
 import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import qualified Saga.Language.Typechecker.Solver.Constraints  as C
 
+import           Effectful                                     (Eff)
 import           Saga.Language.Typechecker.Inference.Type.Expr
 
-run :: Expr -> TypeCheck es ((Expr, I.State), C.Constraint)
-run = Eff.runWriter @C.Constraint . Eff.runState I.initialState . Eff.inject . infer
+run :: TypeCheck es => Expr -> Eff es ((Expr, I.State), C.Constraint)
+run e = Eff.runWriter @C.Constraint . Eff.runState I.initialState $ infer e

@@ -1,4 +1,5 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds      #-}
+{-# LANGUAGE MonoLocalBinds #-}
 
 
 module Saga.Language.Typechecker.Solver.Unification where
@@ -48,6 +49,7 @@ import           Saga.Language.Typechecker.Type                (Scheme (..),
                                                                 Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
 
+import           Effectful                                     (Eff, (:>))
 import qualified Effectful                                     as Eff
 import           Effectful.Error.Static                        (catchError,
                                                                 throwError)
@@ -60,7 +62,8 @@ import qualified Saga.Language.Typechecker.Qualification       as Q
 import           Saga.Language.Typechecker.Solver.Cycles       (Cycle)
 
 
-type UnificationM t  = TypeCheck '[Eff.Writer [Cycle t]]
+type UnificationEff es t = (TypeCheck es, Eff.Writer [Cycle t] :> es)
+type UnificationM t a = forall es. UnificationEff es t => Eff es a
 
 
 class Substitutable t => Unification t where
@@ -70,7 +73,7 @@ class Substitutable t => Unification t where
 
 
 
-type TypeUnification = UnificationM Type
+type TypeUnification a = UnificationM Type a
 instance Unification Type where
     unify :: Type -> Type -> TypeUnification (Subst Type)
     unify (T.Var v) t                                               = bind v t
@@ -79,7 +82,7 @@ instance Unification Type where
     unify (T.Data con K.Type) (T.Data con' K.Type) | con == con'    = return nullSubst
 
     unify (T.Tuple as) (T.Tuple bs) = do
-          ss <- zipWithM unify as bs
+          ss <- zipWithM (\t t' -> unify t t') as bs
           return $ foldl compose nullSubst ss
     unify (il `T.Arrow` ol) (ir `T.Arrow` or) = do
         sub <- unify il ir
@@ -118,7 +121,7 @@ instance Unification Type where
         ((k, k'), cs) <- run kinds
 
         -- | QUESTION: Should we intercept the error here to add extra context? eg. throwError $ KindMismatch k k'
-        (subst, cycles) <- Eff.runWriter @[Cycle Kind] $ Eff.inject $ unify k k'
+        (subst, cycles) <- Eff.runWriter @[Cycle Kind] $ unify k k'
         unless (null cycles) (Eff.throwError $ CircularKind k k')
 
         case (t, t') of
@@ -130,7 +133,7 @@ instance Unification Type where
             unify t1 t2'
 
         where
-
+          kinds :: KindInference (Kind, Kind)
           kinds = do
             k  <- kind t
             k' <- kind t'
@@ -163,7 +166,7 @@ instance Unification Type where
             ak <- classifier a
 
            -- | QUESTION: Should we intercept the error here to add extra context? eg. throwError $ KindMismatch k k'
-            (subst, cycles) <- Eff.runWriter @[Cycle Kind] $ Eff.inject $ unify ak tk
+            (subst, cycles) <- Eff.runWriter @[Cycle Kind] $ unify ak tk
             unless (null cycles) (Eff.throwError $ CircularKind ak tk)
 
             return . Map.singleton a $ case t of
@@ -193,7 +196,7 @@ sub `isSubtype` parent = throwError $ SubtypeFailure sub parent
 
 
 
-type KindUnification = UnificationM Kind
+type KindUnification a = UnificationM Kind a
 instance Unification Kind where
     unify :: Kind -> Kind -> KindUnification (Subst Kind)
     unify K.Type K.Type = return Map.empty
@@ -224,4 +227,4 @@ instance Unification Kind where
 
 
 run :: KindInference a -> TypeUnification (a, [KI.UnificationConstraint])
-run = Eff.evalState initialState . Eff.runWriter @[KI.UnificationConstraint] . Eff.inject
+run ki = Eff.evalState initialState . Eff.runWriter @[KI.UnificationConstraint] $ ki

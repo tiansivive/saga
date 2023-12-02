@@ -1,4 +1,7 @@
+
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 
 module Saga.Language.Typechecker.Inference.Kind where
 
@@ -49,8 +52,8 @@ type instance VarType TypeExpr I.Instantiation  = Var.PolymorphicVar Kind
 
 
 
+type KindInference a = InferM [UnificationConstraint] a
 data UnificationConstraint = Empty | Unify Kind Kind
-type KindInference = InferM [UnificationConstraint]
 type instance I.EmittedConstraint Kind = [UnificationConstraint]
 
 -- | Inferring Kinds of Types
@@ -70,9 +73,10 @@ infer' te = case te of
 
     s@(TE.Singleton lit) -> return $ TE.KindedType s K.Type
 
-    TE.Union list -> TE.KindedType <$> (TE.Union <$> mapM infer' list) <*> pure K.Type
-    TE.Tuple tup -> TE.KindedType <$> (TE.Tuple <$> mapM infer' tup) <*> pure K.Type
-    TE.Record pairs -> TE.KindedType <$> (TE.Record <$> mapM (mapM infer') pairs) <*> pure K.Type
+    -- | NOTE: Type Inference is getting confused if we apply infer' directly. Wrapping it in a lambda clears the error
+    TE.Union list ->TE.KindedType <$> (TE.Union <$> mapM (\t -> infer' t) list) <*> pure K.Type
+    TE.Tuple tup -> TE.KindedType <$> (TE.Tuple <$> mapM (\t -> infer' t) tup) <*> pure K.Type
+    TE.Record pairs -> TE.KindedType <$> (TE.Record <$> mapM (mapM (\t -> infer' t)) pairs) <*> pure K.Type
 
     TE.Arrow in' out' -> do
       kindedIn <- infer' in'
@@ -130,7 +134,7 @@ lookup' x = do
 
 
 
-fresh' :: Tag a -> InferM w (VarType TypeExpr a)
+fresh' :: Tag a ->  KindInference (VarType TypeExpr a)
 fresh' t = do
   Eff.modify $ \s -> s {vars = vars s + 1}
   s <- Eff.get

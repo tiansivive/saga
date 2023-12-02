@@ -24,7 +24,7 @@ import           Saga.Language.Typechecker.Solver.Substitution (Subst,
                                                                 compose)
 
 import           Debug.Pretty.Simple                           (pTraceM)
-import           Effectful                                     (Eff)
+import           Effectful                                     (Eff, (:>))
 import qualified Effectful                                     as Eff
 import           GHC.Stack.Types                               (CallStack)
 import qualified Saga.Language.Typechecker.Monad               as TC
@@ -34,8 +34,8 @@ import           Saga.Language.Typechecker.Type                (Type)
 
 
 -- | FIXME: #23 @tiansivive Effects: Use member constraints
-type SolverEff es = TypeCheck (Eff.State Solution : Eff.State [Cycle Type] : es)
-type SolverM = SolverEff '[Eff.IOE]
+type SolverEff es = (TypeCheck es, Eff.State Solution :> es, Eff.State [Cycle Type] :> es)
+type SolverM a = forall es.  (SolverEff es) => Eff es a
 
 data Solution = Solution { count :: Int, evidence :: Subst Evidence, tvars :: Subst Type, witnessed :: Witnessed }
   deriving (Show)

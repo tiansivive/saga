@@ -21,7 +21,7 @@ import           Saga.Language.Typechecker.Variables
 
 
 
-type TypeInference = InferM CST.Constraint
+type TypeInference a = InferM CST.Constraint a
 
 type instance I.EmittedConstraint Type = CST.Constraint
 

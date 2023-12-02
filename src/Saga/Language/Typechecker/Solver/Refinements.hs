@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds    #-}
-{-# LANGUAGE LambdaCase   #-}
 {-# LANGUAGE TypeFamilies #-}
+
 module Saga.Language.Typechecker.Solver.Refinements where
 import           Control.Monad                                 (forM)
 import qualified Data.Map                                      as Map
@@ -38,7 +38,6 @@ data Refinement = Refine Scope Item Liquid
 instance Entails Refinement where
     -- | FIXME: Implement refinement entailment
     -- | SOLUTION: Generate implication constraints
-    entails r = return
 
 
 
@@ -58,6 +57,7 @@ solve' r@(Refine scope it liquid) = do
         _ -> Eff.throwError $ UnsatisfiableRefinement $ Refined scope it liquid
 
 
+simplify' :: Refinement -> SolverM Constraint
 simplify' (Refine scope it liquid) = do
     let subst = scope ||> Map.mapWithKey convert
     return $ Refined scope it (apply subst liquid)
