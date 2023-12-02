@@ -136,9 +136,9 @@ fresh' t = do
   s <- Eff.get
   let count = show ([1 ..] !! vars s)
   return $ case t of
-    E -> Var.Evidence $ "e" ++ count
-    U -> Var.Unification ("v" ++ count) (Level $ level s) K.Kind
-    T -> Var.Type ("p" ++ count) K.Kind
+    E -> CST.Evidence $ "e" ++ count
+    U -> K.Unification ("v" ++ count) (Level $ level s) K.Kind
+
 
 
 instance Instantiate Kind  where
@@ -164,7 +164,6 @@ instance HasKind Type where
       k'             -> Eff.throwError $ UnexpectedKind k' "Tried to apply a type to a non Arrow Kind"
 
   kind (T.Closure ps tyExpr closure) = do
-    kvar <- fresh' T
     TE.KindedType _ k <- infer tyExpr
     foldrM mkArrow k ps
     where
@@ -176,8 +175,8 @@ instance HasKind Type where
 
 
 instance HasKind (PolymorphicVar Type) where
-    kind (Var.Type _ k)      = return k
-    kind (Var.Kind _ k)      = return k
-    kind (Skolem _ k)        = return k
-    kind (Unification _ _ k) = return k
-    kind i                   = Eff.throwError $ UnexpectedVariable i
+    kind (T.Poly _ k)          = return k
+
+    kind (T.Skolem _ k)        = return k
+    kind (T.Unification _ _ k) = return k
+    kind i                     = Eff.throwError $ UnexpectedVariable i

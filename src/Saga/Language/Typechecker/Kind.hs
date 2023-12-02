@@ -6,7 +6,9 @@ import qualified Data.Set                                      as Set
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import           Saga.Language.Typechecker.Qualification       (Qualified (..))
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
-import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
+import qualified Saga.Language.Typechecker.Variables           as Var
+import           Saga.Language.Typechecker.Variables           (Classifiable,
+                                                                PolymorphicVar)
 
 
 data Kind
@@ -18,6 +20,14 @@ data Kind
   | Constraint Kind
   | Data String Kind
     deriving (Show, Eq, Ord)
+
+data instance PolymorphicVar Kind where
+  Poly          :: Classifiable Kind => String -> Var.Classifier Kind -> PolymorphicVar Kind
+  Unification   :: Classifiable Kind => String -> Var.Level -> Var.Classifier Kind -> PolymorphicVar Kind
+
+deriving instance Show (PolymorphicVar Kind)
+deriving instance Ord (PolymorphicVar Kind)
+deriving instance Eq (PolymorphicVar Kind)
 
 instance Substitutable Kind where
     type Target Kind = Kind

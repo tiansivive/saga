@@ -108,7 +108,7 @@ infer' e = case e of
 
 
         elaborate expr (ty `Q.Implements` protocol) = do
-          evidence@(Var.Evidence prtclImpl) <- Shared.fresh E
+          evidence@(CST.Evidence prtclImpl) <- Shared.fresh E
           Eff.tell $ CST.Impl evidence (CST.Mono ty) protocol
           return $ FnApp expr [Identifier prtclImpl]
         elaborate expr (Q.Refinement binds liquid ty) = do
@@ -117,10 +117,10 @@ infer' e = case e of
 
 
         locals :: Type -> [PolymorphicVar Type]
-        locals t = [ v | v@(Var.Local {}) <- Set.toList $ ftv t ]
+        locals t = [ v | v@(T.Local {}) <- Set.toList $ ftv t ]
 
         collect :: (Eff.Reader Bindings :> es, Eff.Writer [Q.Constraint Type] :> es, Eff.State (Subst Type) :> es) => PolymorphicVar Type -> Eff es ()
-        collect v@(Var.Local {}) = do
+        collect v@(T.Local {}) = do
           bs <- Eff.ask
 
           case Map.lookup v bs of

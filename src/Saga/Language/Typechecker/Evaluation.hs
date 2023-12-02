@@ -73,7 +73,7 @@ instance Evaluate TypeExpr (Polymorphic Type) where
         Forall tvars' (bs' :| cs' :=> qOut) <- evaluate t2
         return $ Forall (tvars <> tvars') (bs <> bs' :| cs <> cs' :=> qIn `T.Arrow` qOut)
     -- | TODO: need to probably run kind inference first
-    evaluate (TE.Tagged tag tyExp) = evaluate tyExp <&> \(Forall tvars (given :=> qt)) -> Forall tvars (given :=> T.Data tag (K.Var $ Var.Type tag K.Kind) `T.Applied` qt)
+    evaluate (TE.Tagged tag tyExp) = evaluate tyExp <&> \(Forall tvars (given :=> qt)) -> Forall tvars (given :=> T.Data tag (K.Var $ K.Poly  tag K.Kind) `T.Applied` qt)
     evaluate (TE.Clause tyExpr bindings)      = do
         Forall tvars (bs :| cs :=> t) <- evaluate tyExpr
 
@@ -86,12 +86,12 @@ instance Evaluate TypeExpr (Polymorphic Type) where
                     Forall [] qt@(given :=> t) -> do
                         -- | QUESTION: What happens with these constraints?
                         (k, cs) <-  Eff.runWriter @[KInf.UnificationConstraint] . Eff.evalState @I.State I.initialState . Eff.inject $ kind t
-                        return (Var.Local @Type id k, qt)
+                        return (T.Local id k, qt)
                     poly         -> Eff.throwError $ UnexpectedLocalPolymorphicType poly
 
             constraints = do
                 TE.Constraint (TE.Identifier id `Q.Implements` protocol) <- bindings
-                return $ T.Var (Var.Type id $ K.Var (Var.Type id K.Kind)) `Q.Implements` protocol
+                return $ T.Var (T.Poly  id $ K.Var (K.Poly id K.Kind)) `Q.Implements` protocol
 
     evaluate (TE.Implementation prtcl tyExpr) = do
         Saga {protocols} <- Eff.ask
@@ -127,7 +127,7 @@ instance Evaluate TypeExpr (Polymorphic Type) where
             -- | TODO: #21 @tiansivive :Kinds:TypeEvaluation we probably need some kind check here
             t@(T.Applied {}) -> application t args (tvars, bs, cs)
             T.Closure params closure env -> apply closure params args
-            T.Var (Var.Type t _) -> do
+            T.Var (T.Poly  t _) -> do
                 Forall tvars' (bs' :| cs' :=> qt') <- lookup t
                 case qt' of
                     -- | TODO: #21 @tiansivive :Kinds:TypeEvaluation we probably need some kind check here
@@ -151,7 +151,7 @@ instance Evaluate TypeExpr (Polymorphic Type) where
                 Saga { types, dataTypes, kinds, tags } <- Eff.ask
                 return $ Forall tvars $ Map.empty :| [] :=> T.Closure tvars tyExpr (T.Scope types kinds tags)
 
-            apply tyExpr (p@(Var.Type id k) :params) (a :args) = do
+            apply tyExpr (p@(T.Poly  id k) :params) (a :args) = do
                 let scoped = Eff.local (\e -> e{ types = Map.insert id (Forall [p] (Map.empty :| [] :=> T.Var p)) (types e) })
                 scoped $ apply tyExpr params args
             apply _ [] (a: args) = Eff.throwError $ TooManyArguments fnExpr argExprs
@@ -165,7 +165,7 @@ instance Evaluate TypeExpr (Polymorphic Type) where
         -- We're currently discarding the kind of the evaluated polymorphic type and merely forwarding the kinds of the type variables
         where
             go [] _ = []
-            go ((Var.Type id k):tvars') (K.Arrow kIn kOut) = Var.Type id kIn : go tvars' kOut
+            go ((T.Poly  id k):tvars') (K.Arrow kIn kOut) = T.Poly  id kIn : go tvars' kOut
 
     evaluate (TE.Match t cases)  = error "Evaluation of Match type expressions not implemented yet"
 
@@ -198,7 +198,7 @@ lookup id = do
     maybe (Eff.throwError $ UndefinedIdentifier id) return value
 
 
-collect :: Ord t => [T.Polymorphic t] -> (Map.Map (PolymorphicVar t) (Qualified t), [Q.Constraint t], [PolymorphicVar t], [t])
+collect :: (Ord t, Ord (PolymorphicVar t)) => [T.Polymorphic t] -> (Map.Map (PolymorphicVar t) (Qualified t), [Q.Constraint t], [PolymorphicVar t], [t])
 collect = foldr (\(Forall tvars (bs' :| cs' :=> qt)) (bs, cs, tvars', ts) -> (bs' <> bs, cs' <> cs, tvars <> tvars', qt : ts)) (Map.empty,[],[],[])
 
 
@@ -208,5 +208,5 @@ closure body params = do
     return $ Forall tvars $ Map.empty :| [] :=> T.Closure tvars body (T.Scope types kinds tags)
 
     where
-        tvars = fmap (\v -> Var.Type v (K.Var $ Var.Kind v K.Kind)) params
+        tvars = fmap (\v -> T.Poly  v (K.Var $ K.Poly v K.Kind)) params
 

@@ -79,7 +79,8 @@ data Skolem = Skolem
 inform' :: Info -> InferEff es w ()
 inform' = Eff.tell
 
-instantiateWith :: (Show t, Instantiate t, w ~ EmittedConstraint t, Eff.Error SagaError :> es) => Polymorphic t -> [t] -> Eff es (Polymorphic t)
+type Instantiable t es = (Eff.Error SagaError :> es, Instantiate t, Show t, Show (PolymorphicVar t))
+instantiateWith :: Instantiable t es => Polymorphic t -> [t] -> Eff es (Polymorphic t)
 instantiateWith polymorphic ts = instantiate' polymorphic ts
   where
     instantiate' ty []                 = return ty

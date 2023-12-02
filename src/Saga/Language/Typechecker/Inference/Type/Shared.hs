@@ -40,9 +40,9 @@ fresh t = do
   s <- Eff.get
   let count = show ([1 ..] !! vars s)
   return $ case t of
-    E -> Var.Evidence $ "e" ++ count
-    U -> Var.Unification ("v" ++ count) (Level $ level s) K.Type
-    T -> Var.Type ("p" ++ count) K.Type
+    E -> CST.Evidence $ "e" ++ count
+    U -> T.Unification ("v" ++ count) (Level $ level s) K.Type
+    T -> T.Poly ("p" ++ count) K.Type
 
 
 propagate :: T.Constraint -> TypeInference ()

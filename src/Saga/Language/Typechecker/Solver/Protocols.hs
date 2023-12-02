@@ -98,10 +98,10 @@ instance Entails ImplConstraint where
 
 
 solve' :: ImplConstraint -> SolverM (Status, Constraint)
-solve' (Impl e@(Var.Evidence ev) t@(C.Mono ty) prtcl) =
+solve' (Impl e@(C.Evidence ev) t@(C.Mono ty) prtcl) =
     case ty of
-        T.Var (Var.Unification {}) -> return (Deferred, C.Impl e t prtcl)
-        T.Var (Var.Local id k)     -> crash $ NotYetImplemented "Solving ImplConstraint for locally scoped type Vars"
+        T.Var (T.Unification {}) -> return (Deferred, C.Impl e t prtcl)
+        T.Var (T.Local id k)     -> crash $ NotYetImplemented "Solving ImplConstraint for locally scoped type Vars"
         T.Var v                    -> crash $ Unexpected v "Unification Var"
 
         ty                         -> do

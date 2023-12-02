@@ -96,10 +96,10 @@ instance Normalisation (PolymorphicVar Type) where
     normalise tvar = do
         mapping <- Eff.ask
         replaced <- sequence $ lookup tvar mapping <&> \id -> case tvar of
-                (Var.Type _ k) -> return $ Var.Type id k
-                (Var.Unification _ lvl k) -> return $ Var.Type id k
+                (T.Poly _ k)            -> return $ T.Poly id k
+                (T.Unification _ lvl k) -> return $ T.Poly id k
 
-                v -> Eff.throwError $ UnexpectedVariable v
+                v                       -> Eff.throwError $ UnexpectedVariable v
 
         return $ fromMaybe tvar replaced
 

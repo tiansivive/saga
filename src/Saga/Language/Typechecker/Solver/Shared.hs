@@ -21,6 +21,7 @@ import           Saga.Language.Typechecker.Variables           (Level (..),
 import qualified Saga.Language.Typechecker.Inference.Inference as I
 import           Saga.Language.Typechecker.Inference.Inference (Tag (..))
 import qualified Saga.Language.Typechecker.Kind                as K
+import qualified Saga.Language.Typechecker.Type                as T
 
 
 
@@ -45,8 +46,8 @@ fresh t = do
     index <- Eff.gets count
     let count = show ([1 ..] !! index)
     return $ case t of
-        E -> Var.Evidence $ "cst_ev_" ++ count
-        U -> Var.Unification ("cst_uvar_" ++ count) (Level 0) K.Type -- Level 0 = top level
+        E -> C.Evidence $ "cst_ev_" ++ count
+        U -> T.Unification ("cst_uvar_" ++ count) (Level 0) K.Type -- Level 0 = top level
 
 type instance VarType Type I.Evidence       = Var.PolymorphicVar Evidence
 type instance VarType Type I.Unification    = Var.PolymorphicVar Type

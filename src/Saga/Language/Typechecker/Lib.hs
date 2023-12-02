@@ -142,7 +142,7 @@ semigroupProtocol =
         var = "t"
         tvar = TE.Identifier var
         polyvar = "a"
-        polyvar' = Var.Type polyvar K.Type
+        polyvar' = T.Poly polyvar K.Type
 
 
 eqID, numID, isStringID, functorID, semigroupID :: P.Name
@@ -169,9 +169,9 @@ builtInFns =
     ]
     where
       var = "a"
-      tvar = Var.Type var K.Type
+      tvar = T.Poly var K.Type
 
-      nonZeroNum = Var.Local "NonZero" K.Type
+      nonZeroNum = T.Local "NonZero" K.Type
       clause = Map.fromList [(nonZeroNum, Q.none :=> T.Var tvar)]
       liquidBindings = Map.fromList [("x", T.Var nonZeroNum)]
       refinement = L.Negation $ L.Equality (L.Number 0) (L.Var "x")
@@ -189,9 +189,9 @@ mapImplType = Forall [tf, ta, tb] $ Map.empty :| [T.Var tf `Q.Implements` "Funct
     f = "f"
     a = "a"
     b = "b"
-    tf = Var.Type f (K.Arrow K.Type K.Type)
-    ta = Var.Type a K.Type
-    tb = Var.Type b K.Type
+    tf = T.Poly f (K.Arrow K.Type K.Type)
+    ta = T.Poly a K.Type
+    tb = T.Poly b K.Type
     fn = T.Var ta `T.Arrow` T.Var tb
     fa = T.Applied (T.Var tf) (T.Var ta)
     fb = T.Applied (T.Var tf) (T.Var tb)
