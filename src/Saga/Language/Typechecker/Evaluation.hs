@@ -52,15 +52,14 @@ import           Saga.Language.Typechecker.Inference.Kind      (kind)
 import           Saga.Language.Typechecker.Solver.Substitution (ftv)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables           (Classifier,
-                                                                PolymorphicVar,
-                                                                Restricted)
+                                                                PolymorphicVar)
 import           Saga.Utils.Operators                          ((|>))
 
 
 
 
 type EvaluationM = TypeCheck '[]
-type instance Restricted Type = ()
+
 
 class Evaluate a b | a -> b where
     evaluate ::  a -> EvaluationM b

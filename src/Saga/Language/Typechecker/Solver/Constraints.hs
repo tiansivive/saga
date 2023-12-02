@@ -27,6 +27,7 @@ import qualified Saga.Language.Typechecker.Variables           as V hiding
 
 
 
+
 data Constraint where
     Empty       :: Constraint
     Conjunction :: Constraint -> Constraint -> Constraint
@@ -53,13 +54,14 @@ data Evidence
     = Protocol Implementation
     | Coercion Mechanism
     deriving (Show, Eq, Ord)
-type instance Restricted Evidence = ()
+
 
 data instance PolymorphicVar Evidence where
     Evidence :: String -> PolymorphicVar Evidence
 deriving instance Show (PolymorphicVar Evidence)
 deriving instance Eq (PolymorphicVar Evidence)
 deriving instance Ord (PolymorphicVar Evidence)
+
 
 data Mechanism = Nominal | Structural deriving (Show, Eq, Ord)
 type Witnessed = Map.Map (PolymorphicVar Evidence) (PolymorphicVar Evidence)

@@ -23,4 +23,4 @@ type family VarType e a   :: GHC.Type
 -- | SOLUTION Data family
 -- | QUESTION How to properly separate instances without generating duplicate names or cyclic dependencies
 
-type family Restricted a  :: GHC.Constraint
+

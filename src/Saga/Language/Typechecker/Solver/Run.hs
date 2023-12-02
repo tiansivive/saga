@@ -52,7 +52,7 @@ import           Saga.Language.Typechecker.Zonking.Zonking       (Context (..),
 
 run :: Constraint -> TypeCheck es Context
 run constraint = do
-    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.runState [] . Eff.inject $ process (flatten constraint) []
+    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.runState [] . _Effinject $ process (flatten constraint) []
     types <- foldM collapse (tvars solution) cycles
 
     return Context { solution = Solution { tvars = types, evidence = evidence solution, witnessed = witnessed solution, count = 0 }, residuals }
