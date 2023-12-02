@@ -300,4 +300,4 @@ lookup' x = do
 
 
 
-run = Eff.runPureEff . Eff.runWriter . Eff.runState initialState . Eff.runFail . Eff.runError . Eff.runWriter . Eff.runReader defaultEnv . infer @Expr
+run = Eff.runWriter . Eff.runState initialState . Eff.runFail . Eff.runError . Eff.runWriter . Eff.runReader defaultEnv . infer @Expr
