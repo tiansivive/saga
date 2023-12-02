@@ -71,7 +71,7 @@ zonk ast = do
                 AST.Identifier x -> do
                     if x `elem` evidenceParameters residuals then
                         return $ AST.Identifier x
-                    else lookup E (Var.Evidence x) >>= \case
+                    else lookup E (C.Evidence x) >>= \case
                             Just (C.Protocol (P.Implementation (P.Name id, ty, expr))) -> return $ AST.Identifier id
                             Just ev -> Eff.throwError $ UnexpectedEvidence ev "Expected Protocol Implementation"
                             -- TODO: This is a legit case, but E.Identifier should represent what it's holding: a true identifier, an evidence var, some other var, etc
@@ -127,4 +127,4 @@ zonk ast = do
 
 
 evidenceParameters ::  [Constraint] -> [String]
-evidenceParameters cs = [id | C.Impl (Var.Evidence id) _ _ <- cs]
+evidenceParameters cs = [id | C.Impl (C.Evidence id) _ _ <- cs]

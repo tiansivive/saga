@@ -1,5 +1,6 @@
-{-# LANGUAGE GADTs        #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GADTs                #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Saga.Language.Typechecker.Type where
 import           Data.Typeable                                 (Typeable)
@@ -32,6 +33,22 @@ data Type where
     Void        :: Type
     Any         :: Type
 
+
+deriving instance Show Type
+deriving instance Eq Type
+deriving instance Ord Type
+
+data instance PolymorphicVar Type where
+  Poly              :: Classifiable Type => String -> Classifier Type -> PolymorphicVar Type
+  Skolem            :: Classifiable Type => String -> Classifier Type -> PolymorphicVar Type
+  Unification       :: Classifiable Type => String -> Level -> Classifier Type -> PolymorphicVar Type
+  Instantiation     :: Classifiable Type => String -> PolymorphicVar Type
+  Local             :: Classifiable Type => String -> Classifier Type -> PolymorphicVar Type
+
+deriving instance Show (PolymorphicVar Type)
+deriving instance Ord (PolymorphicVar Type)
+deriving instance Eq (PolymorphicVar Type)
+
 data Scope = Scope
   { types :: Map.Map String (Polymorphic Type)
   , kinds :: Map.Map String (Polymorphic Kind)
@@ -39,7 +56,11 @@ data Scope = Scope
   } deriving (Show, Eq, Ord)
 
 
-data Scheme t = Forall [PolymorphicVar t] (Qualified t) deriving (Show, Eq, Ord)
+data Scheme t = Forall [PolymorphicVar t] (Qualified t)
+
+deriving instance (Show t, Show (PolymorphicVar t)) => Show (Scheme t)
+deriving instance (Eq t, Eq (PolymorphicVar t)) => Eq (Scheme t)
+deriving instance (Ord t, Ord (PolymorphicVar t)) => Ord (Scheme t)
 type Polymorphic = Scheme
 
 data DataType = DataType { tycon :: Tycon, definition :: Polymorphic Type } deriving (Show, Eq, Ord)
@@ -50,10 +71,6 @@ data Tag = Constructor
   , package     :: Polymorphic Type
   , target      :: DataType
   } deriving (Show, Eq, Ord)
-
-deriving instance Show Type
-deriving instance Eq Type
-deriving instance Ord Type
 
 
 instance Substitutable Type where

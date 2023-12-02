@@ -19,11 +19,13 @@ import qualified Data.Map                                      as Map
 import qualified Data.Set                                      as Set
 import           Saga.Language.Core.Expr                       (Expr)
 import qualified Saga.Language.Typechecker.Qualification       as Q
-import qualified Saga.Language.Typechecker.Refinement.Liquid   as Liquid
+
+import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid)
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import qualified Saga.Language.Typechecker.Type                as T
 import qualified Saga.Language.Typechecker.Variables           as V hiding
                                                                     (Unification)
+
 
 
 
@@ -33,7 +35,7 @@ data Constraint where
     Equality    :: PolymorphicVar Evidence -> Item -> Item -> Constraint
     Impl        :: PolymorphicVar Evidence -> Item -> ProtocolID -> Constraint
     OneOf       :: Item -> Item -> Constraint
-    Refined     :: Scope -> Item -> Liquid.Liquid -> Constraint
+    Refined     :: Scope -> Item -> Liquid -> Constraint
     Resource    :: Item -> Multiplicity -> Constraint
     Consumed    :: Item -> Constraint
     Pure        :: Item -> Constraint
@@ -53,7 +55,14 @@ data Evidence
     = Protocol Implementation
     | Coercion Mechanism
     deriving (Show, Eq, Ord)
-type instance Restricted Evidence = ()
+
+
+data instance PolymorphicVar Evidence where
+    Evidence :: String -> PolymorphicVar Evidence
+deriving instance Show (PolymorphicVar Evidence)
+deriving instance Eq (PolymorphicVar Evidence)
+deriving instance Ord (PolymorphicVar Evidence)
+
 
 data Mechanism = Nominal | Structural deriving (Show, Eq, Ord)
 type Witnessed = Map.Map (PolymorphicVar Evidence) (PolymorphicVar Evidence)
@@ -63,7 +72,7 @@ newtype Assumption
     = Assume Constraint
     deriving (Show, Eq)
 
-type Scope = Map.Map String Item
+type Scope = Map.Map (PolymorphicVar Liquid) Item
 
 
 

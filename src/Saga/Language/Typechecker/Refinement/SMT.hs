@@ -25,14 +25,16 @@ import qualified Effectful.Reader.Static                     as Eff
 import           Prelude                                     hiding (GT, LT)
 import           Saga.Language.Core.Literals                 (Literal (..))
 import           Saga.Language.Typechecker.Monad             (TypeCheck)
+import qualified Saga.Language.Typechecker.Refinement.Liquid as L
 import           Saga.Language.Typechecker.Refinement.Liquid (Liquid (..),
-                                                              Op (..))
+                                                              Op (..),
+                                                              PolymorphicVar)
 import qualified Saga.Language.Typechecker.Type              as T
 import           Saga.Language.Typechecker.Type              (Type)
 import           Text.Pretty.Simple                          (pPrint)
 
 
-data State = St { nums :: Map String SInteger, bools :: Map String SBool }
+data State = St { nums :: Map (PolymorphicVar Liquid) SInteger, bools :: Map (PolymorphicVar Liquid) SBool }
 empty :: State
 empty = St { nums = mempty, bools = mempty }
 
@@ -41,12 +43,12 @@ type Sym = StateT State Symbolic
 
 
 translate :: Liquid -> Sym SBool
-translate (Var x)                   = do
+translate (Var x@(L.Poly v))                   = do
     bs <- gets bools
     case Map.lookup x bs of
         Just x' -> return x'
         Nothing -> do
-            x' <- lift $ SBV.free x
+            x' <- lift $ SBV.free v
             modify $ \s -> s{ bools = Map.insert x x' bs}
             return x'
 translate (Boolean b) = return $ literal b
@@ -80,12 +82,12 @@ translate (Equality left right)     = case (left, right) of
         arithmeticEq = (.==) <$> arithmetic left <*> arithmetic right
 
 arithmetic :: Liquid -> Sym SInteger
-arithmetic (Var x)    = do
+arithmetic (Var x@(L.Poly v))    = do
     ns <- gets nums
     case Map.lookup x ns of
         Just x' -> return x'
         Nothing -> do
-            x' <- lift $ SBV.free x
+            x' <- lift $ SBV.free v
             modify $ \s -> s{ nums = Map.insert x x' ns}
             return x'
 arithmetic (Number n) = return . literal $ toInteger n
@@ -98,6 +100,11 @@ arithmetic (Arithmetic op left right) = do
         SUB -> l - r
         MUL -> l * r
         DIV -> l `sDiv` r
+
+
+-- transform :: Type -> Liquid
+-- transform (T.Var {}) ->
+
 
 prepare :: Liquid -> Symbolic SBool
 prepare expr = evalStateT (translate expr) empty

@@ -143,12 +143,12 @@ instance Unification Type where
             Eff.inject $ scoped $ E.evaluate tyExpr
 
             where
-                params' = foldr (\p@(Var.Type id _) -> Map.insert id $ Forall [] (Q.none :=> T.Var p)) Map.empty params
+                params' = foldr (\p@(T.Poly id _) -> Map.insert id $ Forall [] (Q.none :=> T.Var p)) Map.empty params
                 extended env = env{ types = params' `Map.union` T.types captured `Map.union` types env }
 
 
     bind a t
-        | Var.Local id k <- a = crash $ NotYetImplemented "Unifying and Binding locally scoped type vars"
+        | T.Local id k <- a = crash $ NotYetImplemented "Unifying and Binding locally scoped type vars"
         | t == T.Var a = return nullSubst
         | occursCheck a t = case t of
             T.Union tys | T.Var a `elem` tys    -> do
@@ -171,6 +171,8 @@ instance Unification Type where
                 T.Singleton (LString _) -> Lib.string
                 T.Singleton (LBool _)   -> Lib.bool
                 _                       -> t
+
+
 
     occursCheck a t = a `Set.member` set
         where set = ftv t

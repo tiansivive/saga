@@ -17,6 +17,7 @@ import           Saga.Language.Typechecker.Errors              (SagaError)
 import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import           Saga.Language.Typechecker.Solver.Constraints  (Constraint,
                                                                 Evidence,
+                                                                PolymorphicVar,
                                                                 Witnessed)
 import           Saga.Language.Typechecker.Solver.Substitution (Subst,
                                                                 Substitutable,
@@ -29,8 +30,8 @@ import           GHC.Stack.Types                               (CallStack)
 import qualified Saga.Language.Typechecker.Monad               as TC
 import           Saga.Language.Typechecker.Solver.Cycles       (Cycle)
 import           Saga.Language.Typechecker.Type                (Type)
-import qualified Saga.Language.Typechecker.Variables           as Var
-import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
+
+
 
 -- | FIXME: #23 @tiansivive Effects: Use member constraints
 type SolverEff es = TypeCheck (Eff.State Solution : Eff.State [Cycle Type] : es)
