@@ -1,7 +1,8 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE TypeFamilies          #-}
 
 module Saga.Language.Typechecker.Zonking.Normalisation where
 import           Saga.Language.Core.Expr                         (Expr)
@@ -38,7 +39,7 @@ type NormalizedEff es t = (TypeCheck es,  Eff.Reader [(PolymorphicVar t, String)
 type Normalized t a = forall es. NormalizedEff es t => Eff es a
 class Normalisation a where
     type Of a
-    normalise :: a -> Normalized (Of a) a
+    normalise :: NormalizedEff es (Of a) => a -> Eff es a
 
 instance Normalisation Expr where
     type Of Expr = Type
@@ -47,14 +48,14 @@ instance Normalisation Expr where
         AST.Typed e ty -> AST.Typed <$> normalise e <*> normalise ty
 
         AST.Lambda ps body -> AST.Lambda ps <$> normalise body
-        AST.FnApp fn args  -> AST.FnApp <$> normalise fn <*> forM args (\a -> normalise a)
-        AST.Match cond cases -> AST.Match <$> normalise cond <*> forM cases (\c -> normalise c)
+        AST.FnApp fn args  -> AST.FnApp <$> normalise fn <*> forM args normalise
+        AST.Match cond cases -> AST.Match <$> normalise cond <*> forM cases normalise
 
-        AST.Record es -> AST.Record <$> mapM (mapM (\e -> normalise e)) es
-        AST.Tuple es  -> AST.Tuple <$> mapM (\e -> normalise e) es
-        AST.List es   -> AST.List <$> mapM (\e -> normalise e) es
+        AST.Record es -> AST.Record <$> mapM (mapM normalise) es
+        AST.Tuple es  -> AST.Tuple <$> mapM normalise es
+        AST.List es   -> AST.List <$> mapM normalise es
 
-        AST.Block stmts -> AST.Block <$> mapM (\stmt -> normalise stmt) stmts
+        AST.Block stmts -> AST.Block <$> mapM normalise stmts
         e           -> return e
 
 
@@ -83,12 +84,12 @@ instance Normalisation Type where
 
     normalise = \case
         T.Var tvar                      -> T.Var <$> normalise tvar
-        T.Tuple elems                   -> T.Tuple <$> mapM (\e -> normalise e) elems
-        T.Record pairs                  -> T.Record <$> mapM (mapM (\p -> normalise p)) pairs
-        T.Union elems                   -> T.Union <$> mapM (\e -> normalise e) elems
+        T.Tuple elems                   -> T.Tuple <$> mapM normalise elems
+        T.Record pairs                  -> T.Record <$> mapM (mapM normalise) pairs
+        T.Union elems                   -> T.Union <$> mapM normalise elems
         T.Arrow arg out                 -> T.Arrow <$> normalise arg <*> normalise out
         T.Applied con arg               -> T.Applied <$> normalise con <*> normalise arg
-        T.Closure params tyExpr scope   -> T.Closure <$> mapM (\p -> normalise p) params <*> pure tyExpr <*> pure scope
+        T.Closure params tyExpr scope   -> T.Closure <$> mapM normalise params <*> pure tyExpr <*> pure scope
         t                               -> return t
 
 instance Normalisation (PolymorphicVar Type) where
