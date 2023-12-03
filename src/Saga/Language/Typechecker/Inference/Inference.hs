@@ -39,7 +39,7 @@ import           Saga.Language.Typechecker.Variables     (Classifier,
 
 
 type InferEff es w = (TypeCheck es, Eff.State State :> es, Eff.Writer w :> es, Monoid w)
-type InferM w a = forall es. (InferEff es w) => Eff es a
+
 
 data State = IST
   { vars  :: Int
@@ -50,9 +50,9 @@ class
   ( Instantiate (Classifier e)
   , Generalize (Classifier e)
   ) => Inference e where
-    infer       :: (t ~ Classifier e, w ~ EmittedConstraint t)  => e -> InferM w e
-    lookup      :: (t ~ Classifier e, w ~ EmittedConstraint t)  => String -> InferM w (Qualified t)
-    fresh       :: (t ~ Classifier e, w ~ EmittedConstraint t)  => Tag a -> InferM w (VarType e a)
+    infer       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => e -> Eff es e
+    lookup      :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => String -> Eff es (Qualified t)
+    fresh       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => Tag a -> Eff es (VarType e a)
 
     --qualify     :: (t ~ Classifier e, w ~ Constraint t)              => w -> Polymorphic t -> Polymorphic t
 

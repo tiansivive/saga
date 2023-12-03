@@ -35,15 +35,15 @@ import           Saga.Language.Typechecker.Type                (Type)
 
 -- | FIXME: #23 @tiansivive Effects: Use member constraints
 type SolverEff es = (TypeCheck es, Eff.State Solution :> es, Eff.State [Cycle Type] :> es)
-type SolverM a = forall es.  (SolverEff es) => Eff es a
+
 
 data Solution = Solution { count :: Int, evidence :: Subst Evidence, tvars :: Subst Type, witnessed :: Witnessed }
   deriving (Show)
 data Status = Solved | Deferred | Impossible deriving Show
 
 class Solve c where
-    solve       :: c -> SolverM (Status, Constraint)
-    simplify    :: c -> SolverM Constraint
+    solve       :: SolverEff es => c -> Eff es (Status, Constraint)
+    simplify    :: SolverEff es => c -> Eff es Constraint
 
     irreducible :: c -> Bool
     irreducible = const True
@@ -54,7 +54,7 @@ initialSolution = Solution { count = 0, evidence = Map.empty, tvars = Map.empty,
 
 
 
-update :: Tag a -> Subst (Of a) -> SolverM ()
+update :: SolverEff es => Tag a -> Subst (Of a) -> Eff es ()
 update E sub = Eff.modify $ \s -> s{ evidence = sub `Map.union` evidence s }
 update T sub = Eff.modify $ \s -> s{ tvars = sub `compose` tvars s }
 

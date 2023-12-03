@@ -87,7 +87,7 @@ instance (Generalize Type, Instantiate Type) => Inference Expr where
 
 type Bindings = Map (PolymorphicVar Type) (Qualified Type)
 
-infer' :: Expr -> Shared.TypeInference Expr
+infer' :: Shared.TypeInference es => Expr -> Eff es Expr
 infer' e = case e of
     e@(Literal literal) -> return $ Typed e (T.Singleton literal)
     Identifier x -> do
@@ -148,7 +148,7 @@ infer' e = case e of
         return $ Typed (Tuple elems') (T.Tuple $ fmap extract elems')
 
     Record pairs -> do
-        pairs' <- forM pairs $ mapM (\p -> infer p)
+        pairs' <- forM pairs $ mapM infer
         return $ Typed (Record pairs') (T.Record $ fmap extract <$> pairs')
 
     List elems -> do
@@ -285,7 +285,7 @@ infer' e = case e of
       extract (Typed _ ty) = ty
 
 
-lookup' :: Instantiate Type => String -> Shared.TypeInference (Qualified Type)
+lookup' :: Shared.TypeInference es => String -> Eff es (Qualified Type)
 lookup' x = do
   Saga { types } <- Eff.ask
 

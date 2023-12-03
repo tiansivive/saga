@@ -24,8 +24,7 @@ import           Control.Monad.Trans.Reader                    (ReaderT (runRead
 import           Control.Monad.Trans.Writer                    (WriterT,
                                                                 runWriterT)
 import qualified Saga.Language.Typechecker.Evaluation          as E
-import           Saga.Language.Typechecker.Inference.Inference (InferM,
-                                                                State (..),
+import           Saga.Language.Typechecker.Inference.Inference (State (..),
                                                                 inform',
                                                                 initialState)
 import           Saga.Language.Typechecker.Inference.Kind      (HasKind (..),
@@ -67,22 +66,22 @@ type UnificationM t a = forall es. UnificationEff es t => Eff es a
 
 
 class Substitutable t => Unification t where
-    unify       :: t -> t -> UnificationM t (Subst t)
-    bind        :: PolymorphicVar t -> t -> UnificationM t (Subst t)
+    unify       :: UnificationEff es t => t -> t -> Eff es (Subst t)
+    bind        :: UnificationEff es t => PolymorphicVar t -> t -> Eff es (Subst t)
     occursCheck :: PolymorphicVar t -> t -> Bool
 
 
 
-type TypeUnification a = UnificationM Type a
+type TypeUnification es = UnificationEff es Type
 instance Unification Type where
-    unify :: Type -> Type -> TypeUnification (Subst Type)
+    unify :: TypeUnification es => Type -> Type -> Eff es (Subst Type)
     unify (T.Var v) t                                               = bind v t
     unify t (T.Var v)                                               = bind v t
     unify (T.Singleton a) (T.Singleton b) | a == b                  = return nullSubst
     unify (T.Data con K.Type) (T.Data con' K.Type) | con == con'    = return nullSubst
 
     unify (T.Tuple as) (T.Tuple bs) = do
-          ss <- zipWithM (\t t' -> unify t t') as bs
+          ss <- zipWithM unify as bs
           return $ foldl compose nullSubst ss
     unify (il `T.Arrow` ol) (ir `T.Arrow` or) = do
         sub <- unify il ir
@@ -133,7 +132,7 @@ instance Unification Type where
             unify t1 t2'
 
         where
-          kinds :: KindInference (Kind, Kind)
+          kinds :: KindInference es => Eff es (Kind, Kind)
           kinds = do
             k  <- kind t
             k' <- kind t'
@@ -180,7 +179,7 @@ instance Unification Type where
     occursCheck a t = a `Set.member` set
         where set = ftv t
 
-isSubtype :: Type -> Type -> TypeUnification (Subst Type)
+isSubtype :: TypeUnification es => Type -> Type -> Eff es (Subst Type)
 T.Singleton (LInt _) `isSubtype` int | int == Lib.int       = return nullSubst
 T.Singleton (LString _) `isSubtype` str | str == Lib.string = return nullSubst
 T.Singleton (LBool _) `isSubtype` bool | bool == Lib.bool   = return nullSubst
@@ -196,9 +195,9 @@ sub `isSubtype` parent = throwError $ SubtypeFailure sub parent
 
 
 
-type KindUnification a = UnificationM Kind a
+type KindUnification es = UnificationEff es Kind
 instance Unification Kind where
-    unify :: Kind -> Kind -> KindUnification (Subst Kind)
+    unify ::  KindUnification es => Kind -> Kind -> Eff es (Subst Kind)
     unify K.Type K.Type = return Map.empty
     unify K.Kind K.Kind = return Map.empty
 
@@ -226,5 +225,6 @@ instance Unification Kind where
 
 
 
-run :: KindInference a -> TypeUnification (a, [KI.UnificationConstraint])
-run ki = Eff.evalState initialState . Eff.runWriter @[KI.UnificationConstraint] $ ki
+
+run :: Eff (Eff.Writer [KI.UnificationConstraint] : Eff.State State : es) a -> Eff es (a, [KI.UnificationConstraint])
+run ki = Eff.evalState initialState $ Eff.runWriter @[KI.UnificationConstraint] ki

@@ -8,6 +8,7 @@ import           Data.SBV                                      (SatResult (..),
                                                                 runSMT, sat)
 import qualified Data.SBV                                      as SBV
 import qualified Data.Set                                      as Set
+import           Effectful                                     (Eff)
 import qualified Effectful                                     as Eff
 import qualified Effectful.Error.Static                        as Eff
 import           Saga.Language.Core.Literals                   (Literal (LBool, LInt))
@@ -21,7 +22,6 @@ import           Saga.Language.Typechecker.Solver.Constraints  (Constraint (Refi
 import           Saga.Language.Typechecker.Solver.Entailment   (Entails (..))
 import           Saga.Language.Typechecker.Solver.Monad        (Solve (..),
                                                                 SolverEff,
-                                                                SolverM,
                                                                 Status (..))
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import qualified Saga.Language.Typechecker.Type                as T
@@ -37,7 +37,7 @@ data Refinement = Refine Scope Item Liquid
 
 instance Entails Refinement where
     -- | FIXME: Implement refinement entailment
-    -- | SOLUTION: Generate implication constraints
+    -- | SOLUTION: Use Z3 implication operator
 
 
 
@@ -47,8 +47,8 @@ instance Solve Refinement where
     simplify = simplify'
 
 
-
-solve' :: Refinement -> SolverM (Status, Constraint)
+-- | TODO: #30 Generate proofs/witnesses by leveraging the evidence system. This is how to identify that a certain type has been refined/narrowed
+solve' :: SolverEff es => Refinement -> Eff es (Status, Constraint)
 solve' r@(Refine scope it liquid) = do
     res <- Eff.liftIO $ SBV.sat (prepare liquid)
     case res of
@@ -57,7 +57,7 @@ solve' r@(Refine scope it liquid) = do
         _ -> Eff.throwError $ UnsatisfiableRefinement $ Refined scope it liquid
 
 
-simplify' :: Refinement -> SolverM Constraint
+simplify' :: SolverEff es => Refinement -> Eff es  Constraint
 simplify' (Refine scope it liquid) = do
     let subst = scope ||> Map.mapWithKey convert
     return $ Refined scope it (apply subst liquid)

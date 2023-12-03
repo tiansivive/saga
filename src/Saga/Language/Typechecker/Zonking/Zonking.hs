@@ -7,7 +7,6 @@ import           Saga.Language.Core.Expr                       (Expr (..))
 import           Saga.Language.Typechecker.Solver.Monad        (Ev, Of,
                                                                 Solution (..),
                                                                 SolverEff,
-                                                                SolverM,
                                                                 Tag (..), Ty)
 
 import qualified Data.Map                                      as Map

@@ -59,7 +59,7 @@ run constraint = do
     return Context { solution = Solution { tvars = types, evidence = evidence solution, witnessed = witnessed solution, count = 0 }, residuals }
 
     where
-        process :: [C.Constraint] -> [(Status, C.Constraint)] -> SolverM [C.Constraint]
+        process :: SolverEff es => [C.Constraint] -> [(Status, C.Constraint)] -> Eff es [C.Constraint]
         --process cs done | pTrace ("\n----------------------\nPROCESSING:\n" ++ show cs ++ show done) False = undefined
         process [] done = let next = fmap snd done in
             if all deferred done then
@@ -77,7 +77,7 @@ run constraint = do
         deferred _             = False
 
 
-step :: [C.Constraint] -> SolverM [C.Constraint]
+step :: SolverEff es => [C.Constraint] -> Eff es [C.Constraint]
 step cs = do
     Solution { tvars } <- Eff.get
     simplified <- forM cs $ \c -> simplify c
@@ -93,7 +93,7 @@ flatten (Conjunction left right) = flatten left ++ flatten right
 flatten c                        = pure c
 
 
-entailment ::  [Constraint] -> SolverM [Constraint]
+entailment :: SolverEff es =>  [Constraint] -> Eff es [Constraint]
 entailment cs = List.nub <$> loop cs cs
     where
         loop [] done        = return done

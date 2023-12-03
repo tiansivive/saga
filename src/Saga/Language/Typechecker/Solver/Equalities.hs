@@ -28,6 +28,7 @@ import qualified Data.Map                                               as Map
 import           Data.Maybe                                             (isJust)
 import           Debug.Pretty.Simple                                    (pTrace,
                                                                          pTraceM)
+import           Effectful                                              (Eff)
 import           Saga.Language.Typechecker.Errors                       (Exception (NotYetImplemented),
                                                                          crash)
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
@@ -45,7 +46,7 @@ instance Solve Eq where
     simplify = simplify'
 
 
-solve' :: Eq -> SolverM (Status, C.Constraint)
+solve' :: SolverEff es => Eq -> Eff es (Status, C.Constraint)
 --solve' eq | pTrace ("\nSOLVING EQ:\n" ++ show eq) False = undefined
 solve' (Eq _ it it') = case (it, it') of
     (Mono ty, Mono ty')        -> ty `equals` ty'
@@ -65,7 +66,7 @@ solve' (Eq _ it it') = case (it, it') of
             return (Solved, C.Conjunction constraint result)
 
         unify' ty ty' = do
-            (sub, cycles) <- Eff.runWriter @[Cycle Type] $ Eff.inject $ unify ty ty'
+            (sub, cycles) <- Eff.runWriter @[Cycle Type] $ unify ty ty'
             Eff.modify $ mappend cycles
             update T sub
 

@@ -13,6 +13,7 @@ import           Saga.Language.Typechecker.Type                (Type)
 
 import qualified Effectful.State.Static.Local                  as Eff
 
+import           Effectful                                     (Eff)
 import qualified Effectful.Writer.Static.Local                 as Eff
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import qualified Saga.Language.Typechecker.Type                as T
@@ -21,7 +22,7 @@ import           Saga.Language.Typechecker.Variables
 
 
 
-type TypeInference a = InferM CST.Constraint a
+type TypeInference es = InferEff es CST.Constraint
 
 type instance I.EmittedConstraint Type = CST.Constraint
 
@@ -34,7 +35,7 @@ type instance VarType Expr I.Instantiation  = Var.PolymorphicVar Type
 
 
 
-fresh :: Tag a -> TypeInference (VarType Expr a)
+fresh :: TypeInference es => Tag a -> Eff es (VarType Expr a)
 fresh t = do
   Eff.modify $ \s -> s {vars = vars s + 1}
   s <- Eff.get
@@ -45,7 +46,7 @@ fresh t = do
     T -> T.Poly ("p" ++ count) K.Type
 
 
-propagate :: T.Constraint -> TypeInference ()
+propagate :: TypeInference es => T.Constraint -> Eff es ()
 propagate (ty `Q.Implements` prtcl) = fresh E >>= \e -> Eff.tell $ CST.Impl e (CST.Mono ty) prtcl
 propagate (Q.Resource mul ty) = Eff.tell $ CST.Resource (CST.Mono ty) mul
 propagate (Q.Pure ty) = Eff.tell $ CST.Pure (CST.Mono ty)

@@ -21,5 +21,6 @@ import           Saga.Language.Typechecker.Lib         (defaultEnv)
 
 type TypeCheck es = (IOE :> es, Reader CompilerState :> es, Writer Info :> es,  Error SagaError :> es, Fail :> es)
 
+
 run :: (TypeCheck es, Monoid w) => Eff es a -> Eff es (Either String (Either (Eff.CallStack, e) (a, w)))
 run = Eff.runFail . Eff.runError . Eff.runWriter . Eff.runReader defaultEnv . Eff.inject

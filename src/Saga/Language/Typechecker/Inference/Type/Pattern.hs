@@ -60,12 +60,12 @@ type instance VarType Pattern I.Instantiation  = Var.PolymorphicVar Type
 
 
 type PatternInferenceEff es = (InferEff es CST.Constraint, Eff.Writer TypeVars :> es)
-type PatternInference a = forall es. (PatternInferenceEff es) => Eff es a
+
 type TypeVars = [(String, PolymorphicVar Type)]
 
 
 
-infer :: Instantiate Type => Pattern -> PatternInference Type
+infer :: (PatternInferenceEff es, Instantiate Type) => Pattern -> Eff es Type
 
 infer Wildcard = T.Var <$> fresh U
 
@@ -75,10 +75,10 @@ infer (Id id) = do
     return $ T.Var uvar
 
 infer (Lit l) = return $ T.Singleton l
-infer (PatTuple pats rest) = T.Tuple <$> mapM (\p -> infer p) pats
+infer (PatTuple pats rest) = T.Tuple <$> mapM infer pats
 
 infer (PatList pats rest) = do
-    tys <- mapM (\p -> infer p) pats
+    tys <- mapM infer pats
     tvar <- fresh U
     let result = T.Applied Lib.listConstructor $ choice (T.Var tvar) tys
 
@@ -120,7 +120,7 @@ infer (PatData tag pats) = do
     let cons = tags ||> filter (\T.Constructor { name } -> name == tag)
     case cons of
         [T.Constructor { name, constructor, package, target }] -> do
-            tys <- mapM (\p -> infer p) pats
+            tys <- mapM infer pats
 
             bs :| cs :=> target' <- inst $ definition target
 
@@ -128,7 +128,7 @@ infer (PatData tag pats) = do
             Forall [] (bs' :| cs' :=> package'    ) <- package     `instantiateWith` unificationVars
             Forall [] (bs' :| cs' :=> constructor') <- constructor `instantiateWith` unificationVars
 
-            forM_ (cs <> cs') (\cs -> propagate cs)
+            forM_ (cs <> cs') propagate
 
             e1 <- fresh E
             Eff.tell $ Equality e1 (CST.Mono $ T.Tuple tys) (CST.Mono package')
@@ -152,10 +152,10 @@ infer (PatData tag pats) = do
             inst $ instantiate ty (T.Var uvar)
 
 
-fresh :: I.Tag a -> PatternInference (VarType Expr a)
-fresh tag = Shared.fresh tag
+fresh ::  PatternInferenceEff es =>I.Tag a -> Eff es (VarType Expr a)
+fresh = Shared.fresh
 
-emit :: (String, PolymorphicVar Type) -> PatternInference ()
+emit :: PatternInferenceEff es => (String, PolymorphicVar Type) -> Eff es ()
 emit pair = Eff.tell [pair]
 
 --run :: PatternInference a -> m (a, TypeVars)

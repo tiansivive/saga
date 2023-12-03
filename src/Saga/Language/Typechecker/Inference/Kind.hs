@@ -12,7 +12,7 @@ import qualified Data.Map                                      as Map
 import           Saga.Language.Typechecker.Environment
 import qualified Saga.Language.Typechecker.Inference.Inference as I
 import           Saga.Language.Typechecker.Inference.Inference (Generalize (..),
-                                                                InferM,
+                                                                InferEff,
                                                                 Inference (..),
                                                                 Instantiate (..),
                                                                 State (..),
@@ -28,6 +28,7 @@ import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.State.Static.Local                  as Eff
 import qualified Effectful.Writer.Static.Local                 as Eff
 
+import           Effectful                                     (Eff)
 import           Saga.Language.Typechecker.Errors              (SagaError (..))
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import           Saga.Language.Typechecker.Qualification       (Qualified (..))
@@ -52,7 +53,7 @@ type instance VarType TypeExpr I.Instantiation  = Var.PolymorphicVar Kind
 
 
 
-type KindInference a = InferM [UnificationConstraint] a
+type KindInference es = InferEff es [UnificationConstraint]
 data UnificationConstraint = Empty | Unify Kind Kind
 type instance I.EmittedConstraint Kind = [UnificationConstraint]
 
@@ -65,7 +66,7 @@ instance Inference TypeExpr where
 
 
 
-infer' :: TypeExpr -> KindInference TypeExpr
+infer' :: KindInference es => TypeExpr -> Eff es TypeExpr
 infer' te = case te of
     TE.Identifier id -> do
       _ :=> k <- lookup' id
@@ -121,7 +122,7 @@ infer' te = case te of
 
 
 
-lookup' :: String -> KindInference (Qualified Kind)
+lookup' :: KindInference es => String -> Eff es (Qualified Kind)
 lookup' x = do
   Saga { kinds } <- Eff.ask
   case Map.lookup x kinds of
@@ -134,7 +135,7 @@ lookup' x = do
 
 
 
-fresh' :: Tag a ->  KindInference (VarType TypeExpr a)
+fresh' :: KindInference es =>  Tag a ->  Eff es (VarType TypeExpr a)
 fresh' t = do
   Eff.modify $ \s -> s {vars = vars s + 1}
   s <- Eff.get
@@ -156,7 +157,7 @@ instance Generalize Kind where
     generalize k = return $ Forall (Set.toList $ ftv k) (Q.none :=> k)
 
 class HasKind t where
-  kind :: t -> KindInference Kind
+  kind :: KindInference es => t -> Eff es Kind
 
 instance HasKind Type where
   kind (T.Data _ k) = return k
