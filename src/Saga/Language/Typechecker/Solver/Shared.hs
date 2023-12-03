@@ -9,7 +9,7 @@ import           Saga.Language.Typechecker.Solver.Constraints  (Constraint (..),
                                                                 Evidence,
                                                                 Item (..))
 import           Saga.Language.Typechecker.Solver.Monad        (Solution (..),
-                                                                SolverM)
+                                                                SolverEff)
 
 import qualified Effectful.State.Static.Local                  as Eff
 import           Saga.Language.Typechecker.Type                (Type)
@@ -18,6 +18,7 @@ import           Saga.Language.Typechecker.Variables           (Level (..),
                                                                 PolymorphicVar,
                                                                 VarType)
 
+import           Effectful                                     (Eff)
 import qualified Saga.Language.Typechecker.Inference.Inference as I
 import           Saga.Language.Typechecker.Inference.Inference (Tag (..))
 import qualified Saga.Language.Typechecker.Kind                as K
@@ -28,7 +29,7 @@ import qualified Saga.Language.Typechecker.Type                as T
 type family Discriminate a
 
 
-from :: Q.Constraint Type -> SolverM Constraint
+from :: SolverEff es => Q.Constraint Type -> Eff es Constraint
 from (Q.Pure t)          = return $ C.Pure $ Mono t
 from (Q.Resource m t)    = return $ C.Resource (Mono t) m
 from (Q.Refinement bs re t) = return $ C.Refined (fmap Mono bs) (Mono t) re
@@ -40,7 +41,7 @@ from (Q.Equality t t')   = do
     return $ C.Equality eqEv (Mono t) (Mono t')
 
 
-fresh :: Tag a -> SolverM (VarType Type a)
+fresh :: SolverEff es => Tag a -> Eff es (VarType Type a)
 fresh t = do
     Eff.modify $ \s -> s {count = count s + 1}
     index <- Eff.gets count

@@ -12,6 +12,7 @@ import           Data.Functor                                  ((<&>))
 import qualified Data.Map                                      as Map
 import           Data.Maybe                                    (mapMaybe)
 import qualified Data.Set                                      as Set
+import           Effectful                                     (Eff)
 import qualified Effectful.Error.Static                        as Eff
 import           Saga.Language.Typechecker.Errors              (Exception (NotYetImplemented),
                                                                 SagaError (..),
@@ -24,9 +25,9 @@ import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (.
 import           Saga.Utils.Operators                          ((||>))
 
 
-type Qualifier = TypeCheck '[Eff.Error SagaError]
+type QualifierEff es = TypeCheck es
 
-qualify :: AST.Expr -> [Solver.Constraint] -> Qualifier (Polymorphic Type)
+qualify :: QualifierEff es => AST.Expr -> [Solver.Constraint] -> Eff es (Polymorphic Type)
 qualify expr residuals = case expr of
 
     AST.Lambda evidence (AST.Typed e ty)    -> return $ Forall (Set.toList $ ftv ty) (Map.empty :| constraints :=> ty)

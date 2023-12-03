@@ -87,7 +87,7 @@ instance (Generalize Type, Instantiate Type) => Inference Expr where
 
 type Bindings = Map (PolymorphicVar Type) (Qualified Type)
 
-infer' :: Expr -> Shared.TypeInference Expr
+infer' :: Shared.TypeInference es => Expr -> Eff es Expr
 infer' e = case e of
     e@(Literal literal) -> return $ Typed e (T.Singleton literal)
     Identifier x -> do
@@ -144,16 +144,16 @@ infer' e = case e of
         return e
 
     Tuple elems -> do
-        elems' <- mapM infer elems
+        elems' <- forM elems $ \e -> infer e
         return $ Typed (Tuple elems') (T.Tuple $ fmap extract elems')
 
     Record pairs -> do
-        pairs' <- mapM (mapM infer) pairs
+        pairs' <- forM pairs $ mapM infer
         return $ Typed (Record pairs') (T.Record $ fmap extract <$> pairs')
 
     List elems -> do
       uvar <- Shared.fresh U
-      elems' <- mapM infer elems
+      elems' <-forM elems $ \e -> infer e
       let tys = fmap extract elems'
 
       forM_ tys $ \t -> do
@@ -229,7 +229,7 @@ infer' e = case e of
         where
 
           inferCase scrutineeType (Case pat expr)  = do
-            (patTy, tyvars) <- Pat.run $ Pat.infer pat
+            (patTy, tyvars) <- Eff.runWriter $ Pat.infer pat
             let (pairs, tvars) = unzip $ tyvars ||> fmap (\(id, tvar) -> ((id, Forall [tvar] (Q.none :=> T.Var tvar)), tvar))
             let scoped = Eff.local $ \env -> env { types = Map.fromList pairs <> types env }
             scoped $ do
@@ -285,7 +285,7 @@ infer' e = case e of
       extract (Typed _ ty) = ty
 
 
-lookup' :: Instantiate Type => String -> Shared.TypeInference (Qualified Type)
+lookup' :: Shared.TypeInference es => String -> Eff es (Qualified Type)
 lookup' x = do
   Saga { types } <- Eff.ask
 
@@ -300,4 +300,4 @@ lookup' x = do
 
 
 
-run = Eff.runWriter . Eff.runState initialState . Eff.runFail . Eff.runError . Eff.runWriter . Eff.runReader defaultEnv . infer @Expr
+-- run e = Eff.runWriter . Eff.runState initialState . Eff.runFail . Eff.runError . Eff.runWriter . Eff.runReader defaultEnv . infer @Expr $ e

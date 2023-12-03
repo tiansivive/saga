@@ -1,7 +1,9 @@
+{-# LANGUAGE MonoLocalBinds #-}
 module Saga.Language.Typechecker.Inference.Type.Generalization where
 
 import           Data.List                                       (nub)
 import qualified Data.Map                                        as Map
+import           Effectful                                       (Eff)
 import qualified Effectful.Writer.Static.Local                   as Eff
 import           Saga.Language.Core.Literals
 import           Saga.Language.Typechecker.Inference.Inference
@@ -50,7 +52,7 @@ instance Generalize Type where
     _ -> return $ Forall [] (Q.none :=> ty)
 
     where
-      generalize' ::  ProtocolID -> Shared.TypeInference (T.Polymorphic Type)
+      generalize' :: Shared.TypeInference es => ProtocolID -> Eff es (T.Polymorphic Type)
       generalize' protocol = do
         tvar <- Shared.fresh U
         e <- Shared.fresh E

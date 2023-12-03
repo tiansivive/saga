@@ -24,7 +24,7 @@ import           Saga.Language.Typechecker.Solver.Substitution (Subst,
                                                                 compose)
 
 import           Debug.Pretty.Simple                           (pTraceM)
-import           Effectful                                     (Eff)
+import           Effectful                                     (Eff, (:>))
 import qualified Effectful                                     as Eff
 import           GHC.Stack.Types                               (CallStack)
 import qualified Saga.Language.Typechecker.Monad               as TC
@@ -34,16 +34,16 @@ import           Saga.Language.Typechecker.Type                (Type)
 
 
 -- | FIXME: #23 @tiansivive Effects: Use member constraints
-type SolverEff es = TypeCheck (Eff.State Solution : Eff.State [Cycle Type] : es)
-type SolverM = SolverEff '[Eff.IOE]
+type SolverEff es = (TypeCheck es, Eff.State Solution :> es, Eff.State [Cycle Type] :> es)
+
 
 data Solution = Solution { count :: Int, evidence :: Subst Evidence, tvars :: Subst Type, witnessed :: Witnessed }
   deriving (Show)
 data Status = Solved | Deferred | Impossible deriving Show
 
 class Solve c where
-    solve       :: c -> SolverM (Status, Constraint)
-    simplify    :: c -> SolverM Constraint
+    solve       :: SolverEff es => c -> Eff es (Status, Constraint)
+    simplify    :: SolverEff es => c -> Eff es Constraint
 
     irreducible :: c -> Bool
     irreducible = const True
@@ -54,7 +54,7 @@ initialSolution = Solution { count = 0, evidence = Map.empty, tvars = Map.empty,
 
 
 
-update :: Tag a -> Subst (Of a) -> SolverM ()
+update :: SolverEff es => Tag a -> Subst (Of a) -> Eff es ()
 update E sub = Eff.modify $ \s -> s{ evidence = sub `Map.union` evidence s }
 update T sub = Eff.modify $ \s -> s{ tvars = sub `compose` tvars s }
 

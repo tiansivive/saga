@@ -34,7 +34,7 @@ import qualified Saga.Language.Typechecker.Evaluation                   as Eval
 import qualified Saga.Language.Typechecker.Qualification                as Q
 import           Saga.Language.Typechecker.Solver.Monad                 (Solution (..),
                                                                          Solve (..),
-                                                                         SolverM,
+                                                                         SolverEff,
                                                                          Status (..),
                                                                          Tag (..),
                                                                          update)
@@ -56,6 +56,7 @@ import qualified Effectful.State.Static.Local                           as Eff
 import           Saga.Utils.Operators                                   ((|>),
                                                                          (||>))
 
+import           Effectful                                              (Eff)
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
 import           Saga.Language.Typechecker.Solver.Entailment            (Entails (..))
 
@@ -97,7 +98,7 @@ instance Entails ImplConstraint where
 
 
 
-solve' :: ImplConstraint -> SolverM (Status, Constraint)
+solve' :: SolverEff es => ImplConstraint -> Eff es (Status, Constraint)
 solve' (Impl e@(C.Evidence ev) t@(C.Mono ty) prtcl) =
     case ty of
         T.Var (T.Unification {}) -> return (Deferred, C.Impl e t prtcl)
@@ -122,7 +123,7 @@ solve' (Impl e@(C.Evidence ev) t@(C.Mono ty) prtcl) =
 solve' (Impl e item prtcl)                           = crash $ NotYetImplemented $ "Solving ImplConstraint for " ++ show item
 
 
-simplify' :: ImplConstraint -> SolverM Constraint
+simplify' :: SolverEff es => ImplConstraint -> Eff es Constraint
 simplify' impl@(Impl ev t prtcl) = do
     Solution { evidence, tvars } <- Eff.get
     process evidence tvars
@@ -135,7 +136,7 @@ simplify' impl@(Impl ev t prtcl) = do
             | otherwise                         = flatten impl
 
 
-flatten :: ImplConstraint -> SolverM Constraint
+flatten :: SolverEff es => ImplConstraint -> Eff es Constraint
 flatten (Impl ev item prtcl) = do
     env <- Eff.ask
     Protocol { spec } <- env ||> protocols
@@ -158,7 +159,7 @@ flatten (Impl ev item prtcl) = do
             _ -> crash $ NotYetImplemented $ "Flattening ImplConstraint for " ++ show item
 
 
-propagate :: [Q.Constraint Type] -> SolverM C.Constraint
+propagate :: SolverEff es => [Q.Constraint Type] -> Eff es C.Constraint
 propagate = foldM (\acc c -> C.Conjunction acc <$> Shared.from c) C.Empty
 
 

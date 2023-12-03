@@ -42,6 +42,7 @@ import           Saga.Language.Typechecker.Monad                 (TypeCheck)
 import qualified Saga.Language.Typechecker.Shared                as Shared
 import           Saga.Language.Typechecker.Solver.Entailment     (Entails (..))
 
+import           Effectful                                       (Eff)
 import qualified Saga.Language.Typechecker.Solver.Implications   as Imp
 import qualified Saga.Language.Typechecker.Solver.Refinements    as R
 import           Saga.Language.Typechecker.Variables             (PolymorphicVar)
@@ -50,15 +51,15 @@ import           Saga.Language.Typechecker.Zonking.Qualification (qualify)
 import           Saga.Language.Typechecker.Zonking.Zonking       (Context (..),
                                                                   zonk)
 
-run :: Constraint -> TypeCheck es Context
+run :: TypeCheck es => Constraint -> Eff es Context
 run constraint = do
-    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.runState [] . _Effinject $ process (flatten constraint) []
+    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.runState []  $ process (flatten constraint) []
     types <- foldM collapse (tvars solution) cycles
 
     return Context { solution = Solution { tvars = types, evidence = evidence solution, witnessed = witnessed solution, count = 0 }, residuals }
 
     where
-        process :: [C.Constraint] -> [(Status, C.Constraint)] -> SolverM [C.Constraint]
+        process :: SolverEff es => [C.Constraint] -> [(Status, C.Constraint)] -> Eff es [C.Constraint]
         --process cs done | pTrace ("\n----------------------\nPROCESSING:\n" ++ show cs ++ show done) False = undefined
         process [] done = let next = fmap snd done in
             if all deferred done then
@@ -76,10 +77,10 @@ run constraint = do
         deferred _             = False
 
 
-step :: [C.Constraint] -> SolverM [C.Constraint]
+step :: SolverEff es => [C.Constraint] -> Eff es [C.Constraint]
 step cs = do
     Solution { tvars } <- Eff.get
-    simplified <- forM cs simplify
+    simplified <- forM cs $ \c -> simplify c
     entailment $ simplified ||> apply tvars >>= flatten |> List.filter unsolved
 
     where
@@ -92,7 +93,7 @@ flatten (Conjunction left right) = flatten left ++ flatten right
 flatten c                        = pure c
 
 
-entailment ::  [Constraint] -> SolverM [Constraint]
+entailment :: SolverEff es =>  [Constraint] -> Eff es [Constraint]
 entailment cs = List.nub <$> loop cs cs
     where
         loop [] done        = return done
@@ -103,9 +104,9 @@ entailment cs = List.nub <$> loop cs cs
 
 instance Entails Constraint where
 
-    entails (C.Impl ev it p)            = entails $ P.Impl ev it p
-    entails (C.Refined scope it liquid) = entails $ R.Refine scope it liquid
-    entails _                           = return
+    entails (C.Impl ev it p)            cs = entails (P.Impl ev it p) cs
+    entails (C.Refined scope it liquid) cs = entails (R.Refine scope it liquid) cs
+    entails _                           cs = return cs
 
 instance Solve C.Constraint where
     solve (C.Equality ev it it')                    = solve $ E.Eq ev it it'

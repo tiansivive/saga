@@ -1,10 +1,11 @@
 
 
 
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 
 
 module Saga.Language.Typechecker.Inference.Inference where
@@ -37,8 +38,8 @@ import           Saga.Language.Typechecker.Variables     (Classifier,
 
 
 
-type InferEff es w = TypeCheck (Eff.State State ': Eff.Writer w ': es)
-type InferM w = InferEff '[] w
+type InferEff es w = (TypeCheck es, Eff.State State :> es, Eff.Writer w :> es, Monoid w)
+
 
 data State = IST
   { vars  :: Int
@@ -49,16 +50,16 @@ class
   ( Instantiate (Classifier e)
   , Generalize (Classifier e)
   ) => Inference e where
-    infer       :: (t ~ Classifier e, w ~ EmittedConstraint t)  => e -> InferM w e
-    lookup      :: (t ~ Classifier e, w ~ EmittedConstraint t)  => String -> InferM w (Qualified t)
-    fresh       :: (t ~ Classifier e, w ~ EmittedConstraint t)  => Tag a -> InferM w (VarType e a)
+    infer       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => e -> Eff es e
+    lookup      :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => String -> Eff es (Qualified t)
+    fresh       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => Tag a -> Eff es (VarType e a)
 
     --qualify     :: (t ~ Classifier e, w ~ Constraint t)              => w -> Polymorphic t -> Polymorphic t
 
 class Instantiate t where
     instantiate :: Polymorphic t -> t -> Polymorphic t
 class Generalize t where
-    generalize :: w ~ EmittedConstraint t => t -> InferM w (Polymorphic t)
+    generalize :: (w ~ EmittedConstraint t, InferEff es w) => t -> Eff es (Polymorphic t)
 
 type family EmittedConstraint t :: *
 
@@ -76,7 +77,7 @@ data TypeVar = TypeVar
 data Skolem = Skolem
 
 
-inform' :: Info -> InferEff es w ()
+inform' :: InferEff es w => Info -> Eff es ()
 inform' = Eff.tell
 
 type Instantiable t es = (Eff.Error SagaError :> es, Instantiate t, Show t, Show (PolymorphicVar t))
@@ -94,5 +95,5 @@ initialState :: State
 initialState = IST 0 0
 
 
-run :: Monoid w => InferEff es w a -> Eff es ((Either String (Either (Eff.CallStack, SagaError) (a, Info)), State), w)
-run = Eff.runWriter . Eff.runState initialState . TC.run
+run :: (InferEff es w) => Eff es a -> Eff es (Either String (Either (Eff.CallStack, e) (((a, State), w), Info)))
+run = TC.run . Eff.runWriter . Eff.runState initialState . Eff.inject

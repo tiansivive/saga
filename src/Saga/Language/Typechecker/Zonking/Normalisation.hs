@@ -1,7 +1,8 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE TypeFamilies          #-}
 
 module Saga.Language.Typechecker.Zonking.Normalisation where
 import           Saga.Language.Core.Expr                         (Expr)
@@ -12,7 +13,7 @@ import qualified Data.Map                                        as Map
 import           Data.Maybe                                      (fromMaybe)
 import           Data.Set                                        (Set)
 import qualified Data.Set                                        as Set
-import           Effectful                                       (Eff)
+import           Effectful                                       (Eff, (:>))
 import qualified Effectful.Reader.Static                         as Eff
 
 import qualified Saga.Language.Core.Expr                         as AST
@@ -26,6 +27,7 @@ import           Saga.Language.Typechecker.Variables             (PolymorphicVar
 import           Saga.Language.Typechecker.Zonking.Substitutions
 
 
+import           Control.Monad                                   (forM)
 import           Data.Functor                                    ((<&>))
 import qualified Effectful.Error.Static                          as Eff
 import           Saga.Language.Typechecker.Environment
@@ -33,11 +35,11 @@ import           Saga.Language.Typechecker.Errors                (SagaError (Une
 import qualified Saga.Language.Typechecker.Solver.Constraints    as Solver
 import           Saga.Language.Typechecker.TypeExpr              (TypeExpr)
 
-type Normalized t = TypeCheck '[Eff.Reader [(PolymorphicVar t, String)]]
-
+type NormalizedEff es t = (TypeCheck es,  Eff.Reader [(PolymorphicVar t, String)] :> es)
+type Normalized t a = forall es. NormalizedEff es t => Eff es a
 class Normalisation a where
     type Of a
-    normalise :: a -> Normalized (Of a) a
+    normalise :: NormalizedEff es (Of a) => a -> Eff es a
 
 instance Normalisation Expr where
     type Of Expr = Type
@@ -46,8 +48,8 @@ instance Normalisation Expr where
         AST.Typed e ty -> AST.Typed <$> normalise e <*> normalise ty
 
         AST.Lambda ps body -> AST.Lambda ps <$> normalise body
-        AST.FnApp fn args  -> AST.FnApp <$> normalise fn <*> mapM normalise args
-        AST.Match cond cases -> AST.Match <$> normalise cond <*> mapM normalise cases
+        AST.FnApp fn args  -> AST.FnApp <$> normalise fn <*> forM args normalise
+        AST.Match cond cases -> AST.Match <$> normalise cond <*> forM cases normalise
 
         AST.Record es -> AST.Record <$> mapM (mapM normalise) es
         AST.Tuple es  -> AST.Tuple <$> mapM normalise es
