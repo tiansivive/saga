@@ -27,6 +27,7 @@ import qualified Effectful.Fail                          as Eff
 import qualified Effectful.Reader.Static                 as Eff
 import qualified Effectful.State.Static.Local            as Eff
 import qualified Effectful.Writer.Static.Local           as Eff
+import           Saga.Language.Core.Expr                 (AST)
 import qualified Saga.Language.Typechecker.Monad         as TC
 import           Saga.Language.Typechecker.Monad         (TypeCheck)
 import           Saga.Language.Typechecker.Qualification (Qualified)
@@ -35,6 +36,7 @@ import           Saga.Language.Typechecker.Type          (Polymorphic,
 import           Saga.Language.Typechecker.Variables     (Classifier,
                                                           PolymorphicVar,
                                                           VarType)
+import           Saga.Utils.TypeLevel                    (type (§))
 
 
 
@@ -50,11 +52,16 @@ class
   ( Instantiate (Classifier e)
   , Generalize (Classifier e)
   ) => Inference e where
-    infer       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => e -> Eff es e
-    lookup      :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => String -> Eff es (Qualified t)
-    fresh       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => Tag a -> Eff es (VarType e a)
+    -- | SUGGESTION Add an associated type for defining the effects, allowing for different eff lists for difference inference instances
+    infer       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => AST e -> Eff es § (Annotated t e)
+    lookup      :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => String -> Eff es § Qualified t
+    fresh       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => Tag a -> Eff es § VarType e a
 
     --qualify     :: (t ~ Classifier e, w ~ Constraint t)              => w -> Polymorphic t -> Polymorphic t
+data instance AST (Annotated t a) where
+  Annotated :: a -> AST (Annotated t a)
+
+data family Annotated t a
 
 class Instantiate t where
     instantiate :: Polymorphic t -> t -> Polymorphic t

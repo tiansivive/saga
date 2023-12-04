@@ -20,6 +20,8 @@ import           Saga.Language.Typechecker.Solver.Substitution (Subst,
                                                                 Substitutable (..))
 
 
+
+
 data Type where
     Singleton   :: Literal -> Type
     Tuple       :: [Type] -> Type

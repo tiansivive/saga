@@ -6,7 +6,8 @@
 
 module Saga.Language.Typechecker.Inference.Type.Expr where
 
-import           Saga.Language.Core.Expr                                 (Case (..),
+import           Saga.Language.Core.Expr                                 (AST (..),
+                                                                          Case (..),
                                                                           Declaration (..),
                                                                           Expr (..),
                                                                           Statement (..))
@@ -18,6 +19,7 @@ import           Saga.Language.Typechecker.Kind                          (Kind)
 import qualified Saga.Language.Typechecker.Type                          as T
 import           Saga.Language.Typechecker.Type                          (Scheme (Forall),
                                                                           Type)
+
 
 import           Control.Monad.RWS
 import qualified Data.Map                                                as Map
@@ -79,6 +81,7 @@ import qualified Effectful.Fail                                          as Eff
 import qualified Effectful.State.Static.Local                            as Eff
 import           Saga.Language.Typechecker.Inference.Type.Generalization
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
+import           Saga.Utils.TypeLevel                                    (type (§))
 
 instance (Generalize Type, Instantiate Type) => Inference Expr where
     infer = infer'
@@ -87,16 +90,21 @@ instance (Generalize Type, Instantiate Type) => Inference Expr where
 
 type Bindings = Map (PolymorphicVar Type) (Qualified Type)
 
-infer' :: Shared.TypeInference es => Expr -> Eff es Expr
-infer' e = case e of
-    e@(Literal literal) -> return $ Typed e (T.Singleton literal)
+
+data instance Annotated Type Expr where
+  Typed :: (AST Expr) -> Type -> Annotated Type Expr
+
+
+infer' :: Shared.TypeInference es => AST Expr -> Eff es § Annotated Type Expr
+infer' (Expression e) = case e of
+    e@(Literal literal) -> return $ Typed (Expression e) (T.Singleton literal)
     Identifier x -> do
       (cs, _ :=> ty) <- contextualize x
       case cs of
-        [] -> return $ Typed e ty
+        [] -> return $ Typed (Expression e) ty
         _  -> do
           e' <- foldM elaborate (Identifier x) cs
-          return $ Typed e' ty
+          return $ Typed (Expression e') ty
 
       where
 
@@ -132,20 +140,20 @@ infer' e = case e of
               forM_ (locals t) collect
 
 
-    Typed expr ty -> do
-        Typed expr' inferred <- infer expr
-        evidence <- Shared.fresh E
-          -- | Inferred type is generalized as much as possible and unification expects the LHS to be the subtype
-        case expr' of
-          -- | When expression is a literal, it doesn't get generalized to preserve the literal type
-          Literal _ -> Eff.tell $ CST.Equality evidence (CST.Mono inferred) (CST.Mono ty)
-          -- | In any other case, we want to unify by instantiating the inferred type to the src type
-          _         -> Eff.tell $ CST.Equality evidence (CST.Mono ty) (CST.Mono inferred)
-        return e
+    -- Typed expr ty -> do
+    --     Typed expr' inferred <- infer expr
+    --     evidence <- Shared.fresh E
+    --       -- | Inferred type is generalized as much as possible and unification expects the LHS to be the subtype
+    --     case expr' of
+    --       -- | When expression is a literal, it doesn't get generalized to preserve the literal type
+    --       Literal _ -> Eff.tell $ CST.Equality evidence (CST.Mono inferred) (CST.Mono ty)
+    --       -- | In any other case, we want to unify by instantiating the inferred type to the src type
+    --       _         -> Eff.tell $ CST.Equality evidence (CST.Mono ty) (CST.Mono inferred)
+    --     return e
 
     Tuple elems -> do
         elems' <- forM elems $ \e -> infer e
-        return $ Typed (Tuple elems') (T.Tuple $ fmap extract elems')
+        return $ Typed (Expression $ Tuple elems') (T.Tuple $ fmap extract elems')
 
     Record pairs -> do
         pairs' <- forM pairs $ mapM infer
@@ -160,7 +168,7 @@ infer' e = case e of
         ev <- Shared.fresh E
         Eff.tell $ Equality ev (CST.Unification uvar) (CST.Mono t)
 
-      return $ Typed (List elems') (T.Applied listConstructor $ T.Var uvar)
+      return $ Typed (Expression $ List elems') (T.Applied listConstructor $ T.Var uvar)
 
     Lambda ps@(param : rest) body -> do
 
