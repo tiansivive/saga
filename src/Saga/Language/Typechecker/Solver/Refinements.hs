@@ -5,7 +5,8 @@ module Saga.Language.Typechecker.Solver.Refinements where
 import           Control.Monad                                 (forM)
 import qualified Data.Map                                      as Map
 import           Data.SBV                                      (SatResult (..),
-                                                                runSMT, sat)
+                                                                runSMT, sNot,
+                                                                sat, (.=>))
 import qualified Data.SBV                                      as SBV
 import qualified Data.Set                                      as Set
 import           Effectful                                     (Eff)
@@ -16,7 +17,7 @@ import           Saga.Language.Typechecker.Errors              (SagaError (..))
 import qualified Saga.Language.Typechecker.Refinement.Liquid   as L
 import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid)
 import           Saga.Language.Typechecker.Refinement.SMT      (prepare)
-import           Saga.Language.Typechecker.Solver.Constraints  (Constraint (Refined),
+import           Saga.Language.Typechecker.Solver.Constraints  (Constraint (Empty, Refined),
                                                                 Item (..),
                                                                 Scope)
 import           Saga.Language.Typechecker.Solver.Entailment   (Entails (..))
@@ -39,6 +40,23 @@ instance Entails Refinement where
     -- | FIXME: Implement refinement entailment
     -- | SOLUTION: Use Z3 implication operator
 
+    entails (Refine scope it liquid) cs = do
+        results <- mapM implied rest
+        if any (\(SatResult (SBV.Unsatisfiable {})) -> True) results then
+            return $ filter ()
+        else return cs
+        where
+            rest = [ prepare liq | Refined _ _ liq <- cs ]
+            implied other = Eff.liftIO . SBV.sat $ do
+
+                current <- prepare liquid
+                assumption <- other
+                -- -- Add an implication constraint
+                return $ assumption .=> sNot current
+
+
+
+
 
 
 instance Solve Refinement where
@@ -52,8 +70,10 @@ solve' :: SolverEff es => Refinement -> Eff es (Status, Constraint)
 solve' r@(Refine scope it liquid) = do
     res <- Eff.liftIO $ SBV.sat (prepare liquid)
     case res of
-        SatResult (SBV.Satisfiable _ model) -> do
-            return (Deferred, Refined scope it liquid)
+        SatResult (SBV.Satisfiable _ model) -> return $
+            if null $ ftv liquid then
+                (Solved, Empty)
+            else (Deferred, Refined scope it liquid)
         _ -> Eff.throwError $ UnsatisfiableRefinement $ Refined scope it liquid
 
 
@@ -69,8 +89,6 @@ simplify' (Refine scope it liquid) = do
 
 
 instance Substitutable Liquid where
-
-    -- | FIXME: I think the bindings have a mapping from vars to Item, so here we have to check if it's a singleton Type and translate to SMT
     type Target Liquid = Liquid
 
     apply s l@(L.Var v)           = Map.findWithDefault l v s
