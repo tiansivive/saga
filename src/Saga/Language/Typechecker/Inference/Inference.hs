@@ -94,6 +94,3 @@ instantiateWith polymorphic ts = instantiate' polymorphic ts
 initialState :: State
 initialState = IST 0 0
 
-
-run :: (InferEff es w) => Eff es a -> Eff es (Either String (Either (Eff.CallStack, e) (((a, State), w), Info)))
-run = TC.run . Eff.runWriter . Eff.runState initialState . Eff.inject

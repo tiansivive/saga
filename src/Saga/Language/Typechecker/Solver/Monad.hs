@@ -69,3 +69,7 @@ type family Of a where
     Of Ty = Type
 
 
+
+
+run :: Eff (Eff.State [Cycle Type] : Eff.State Solution : es) a -> Eff es ((a, [Cycle Type]), Solution)
+run =  Eff.runState initialSolution . Eff.runState []

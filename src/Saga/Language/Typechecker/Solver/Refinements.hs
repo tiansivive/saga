@@ -2,13 +2,16 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Saga.Language.Typechecker.Solver.Refinements where
-import           Control.Monad                                 (forM)
+import           Control.Monad                                 (foldM, forM)
+import           Control.Monad.State                           (StateT (runStateT),
+                                                                evalStateT)
 import qualified Data.Map                                      as Map
 import           Data.SBV                                      (SatResult (..),
                                                                 runSMT, sNot,
                                                                 sat, (.=>))
 import qualified Data.SBV                                      as SBV
 import qualified Data.Set                                      as Set
+import           Debug.Pretty.Simple                           (pTraceM)
 import           Effectful                                     (Eff)
 import qualified Effectful                                     as Eff
 import qualified Effectful.Error.Static                        as Eff
@@ -16,7 +19,9 @@ import           Saga.Language.Core.Literals                   (Literal (LBool, 
 import           Saga.Language.Typechecker.Errors              (SagaError (..))
 import qualified Saga.Language.Typechecker.Refinement.Liquid   as L
 import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid)
-import           Saga.Language.Typechecker.Refinement.SMT      (prepare)
+import           Saga.Language.Typechecker.Refinement.SMT      (empty, prepare,
+                                                                translate)
+import qualified Saga.Language.Typechecker.Solver.Constraints  as C
 import           Saga.Language.Typechecker.Solver.Constraints  (Constraint (Empty, Refined),
                                                                 Item (..),
                                                                 Scope)
@@ -32,7 +37,8 @@ import qualified Saga.Utils.TypeLevel                          as PolymorphicVar
 
 
 
-data Refinement = Refine Scope Item Liquid
+
+data Refinement = Refine Scope Item Liquid deriving (Show)
 
 
 
@@ -40,21 +46,48 @@ instance Entails Refinement where
     -- | FIXME: Implement refinement entailment
     -- | SOLUTION: Use Z3 implication operator
 
-    entails (Refine scope it liquid) cs = do
-        results <- mapM implied rest
-        if any (\(SatResult (SBV.Unsatisfiable {})) -> True) results then
-            return $ filter ()
-        else return cs
+    entails :: SolverEff es => Refinement -> [Constraint] -> Eff es [Constraint]
+    entails ref@(Refine scope it liquid) cs = do
+
+        results <-   _rest
+        pTraceM $ "Implications for: " ++ show ref
+        pTraceM $ show results
+        let implications = [ r | r@(SatResult (SBV.Unsatisfiable {})) <- results ]
+        if null implications then
+            return cs
+        else return $ [ r | r@(C.Refined scope' it' liquid') <- cs
+                         , it /= it'
+                         , scope /= scope'
+                         , liquid /= liquid'
+                         ]
+
         where
-            rest = [ prepare liq | Refined _ _ liq <- cs ]
-            implied other = Eff.liftIO . SBV.sat $ do
+            cs' = [ liq | C.Refined _ _ liq <- cs ]
 
-                current <- prepare liquid
-                assumption <- other
-                -- -- Add an implication constraint
-                return $ assumption .=> sNot current
+            bar = fmap translate cs'
+            -- baz sym env =
+
+            process (env, ls) [liq] = do
+                l <- evalStateT (translate liq) env
+                return $ reverse (l:ls)
+
+            process (env, ls) (l:rest) = do
+                let foo = runStateT (translate l) env
+                (l', env') <- runStateT (translate l) env
+                process (env', l':ls) rest
+
+            rest = process (empty, []) cs'
+            implied = do
+                assumptions <- process (empty, []) cs'
+                forM assumptions $ \assump -> do
+                    current <- prepare liquid
+
+                    -- -- Add an implication constraint
+                    return $ assump .=> sNot current
 
 
+gt10 = C.Refined Map.empty (C.Mono T.Void) (L.Comparison L.GT (L.Var $ L.Poly "x") (L.Number 10))
+gt1 = C.Refined Map.empty (C.Mono T.Void) (L.Comparison L.GT (L.Var $ L.Poly "x") (L.Number 1))
 
 
 

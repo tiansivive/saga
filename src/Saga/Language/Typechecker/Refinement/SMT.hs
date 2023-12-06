@@ -107,6 +107,7 @@ arithmetic (Arithmetic op left right) = do
 
 
 prepare :: Liquid -> Symbolic SBool
+-- | TODO: allow passing in an environment so we can prepare multiple liquids under the same var env
 prepare expr = evalStateT (translate expr) empty
 
 test :: Liquid -> IO ()

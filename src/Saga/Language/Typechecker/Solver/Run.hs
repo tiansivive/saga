@@ -37,7 +37,7 @@ import           Debug.Pretty.Simple                             (pTrace,
 import           Debug.Trace                                     (trace)
 import qualified Effectful.Error.Static                          as Eff
 import           Saga.Language.Typechecker.Inference.Type.Expr
-import qualified Saga.Language.Typechecker.Monad                 as Eff
+import qualified Saga.Language.Typechecker.Monad                 as TC
 import           Saga.Language.Typechecker.Monad                 (TypeCheck)
 import qualified Saga.Language.Typechecker.Shared                as Shared
 import           Saga.Language.Typechecker.Solver.Entailment     (Entails (..))
@@ -96,6 +96,7 @@ flatten c                        = pure c
 entailment :: SolverEff es =>  [Constraint] -> Eff es [Constraint]
 entailment cs = List.nub <$> loop cs cs
     where
+
         loop [] done        = return done
         loop (c:cs') done   = do
             done' <- entails c done

@@ -1,4 +1,5 @@
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DataKinds          #-}
+{-# LANGUAGE ExplicitNamespaces #-}
 module Saga.Language.Typechecker.Run where
 import           Saga.Language.Core.Expr                                 (Expr)
 import           Saga.Language.Typechecker.Inference.Inference           (Inference (infer))
@@ -25,10 +26,11 @@ import qualified Saga.Language.Typechecker.Solver.Run                    as Solv
 import           Saga.Language.Typechecker.Type                          (Polymorphic,
                                                                           Type)
 import qualified Saga.Language.Typechecker.Zonking.Run                   as Zonking
+import           Saga.Utils.TypeLevel                                    (type (§))
 
 
 
-typecheck :: TypeCheck es => Expr -> Eff es(Expr, Polymorphic Type)
+typecheck :: TypeCheck es => Expr -> Eff es (Expr, Polymorphic Type)
 typecheck (expr :: Expr) = do
     ((ast, st), constraint) <- Inf.run expr
     context <- Eff.inject $ Solver.run constraint
@@ -38,5 +40,5 @@ typecheck (expr :: Expr) = do
 
 
 
-run :: Eff '[Eff.Reader CompilerState, Eff.Writer Info, Eff.Error SagaError, Eff.Fail, Eff.IOE] a -> IO (Either String (Either (Eff.CallStack, SagaError) (a, Info)))
+run :: Eff '[Eff.Reader CompilerState, Eff.Writer Info, Eff.Error SagaError, Eff.Fail, Eff.IOE] a -> IO § Either String (Either (Eff.CallStack, SagaError) (a, Info))
 run e = Eff.runEff . Eff.runFail . Eff.runError . Eff.runWriter $ Eff.runReader defaultEnv e
