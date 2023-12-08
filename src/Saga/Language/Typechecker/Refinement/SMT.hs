@@ -35,6 +35,7 @@ import           Text.Pretty.Simple                          (pPrint)
 
 
 data State = St { nums :: Map (PolymorphicVar Liquid) SInteger, bools :: Map (PolymorphicVar Liquid) SBool }
+    deriving (Show)
 empty :: State
 empty = St { nums = mempty, bools = mempty }
 
