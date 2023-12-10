@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 module Saga.Language.Typechecker.Run where
+import qualified Saga.Language.Core.Expr                                 as E
 import           Saga.Language.Core.Expr                                 (Expr)
 import           Saga.Language.Typechecker.Inference.Inference           (Inference (infer))
 import           Saga.Language.Typechecker.Inference.Type.Expr
@@ -14,6 +15,7 @@ import qualified Effectful.Fail                                          as Eff
 import qualified Effectful.Reader.Static                                 as Eff
 import qualified Effectful.State.Static.Local                            as Eff
 import qualified Effectful.Writer.Static.Local                           as Eff
+import           Saga.Language.Core.Literals                             (Literal (..))
 import           Saga.Language.Typechecker.Environment                   (CompilerState,
                                                                           Info)
 import           Saga.Language.Typechecker.Errors                        (SagaError)
@@ -42,3 +44,17 @@ typecheck (expr :: Expr) = do
 
 run :: Eff '[Eff.Reader CompilerState, Eff.Writer Info, Eff.Error SagaError, Eff.Fail, Eff.IOE] a -> IO § Either String (Either (Eff.CallStack, SagaError) (a, Info))
 run e = Eff.runEff . Eff.runFail . Eff.runError . Eff.runWriter $ Eff.runReader defaultEnv e
+
+
+int = E.Literal . LInt
+
+str = E.Literal . LString
+
+
+gt x y = E.FnApp (E.Identifier ">") [x, y]
+gte x y = E.FnApp (E.Identifier ">=") [x, y]
+lt x y = E.FnApp (E.Identifier "<") [x, y]
+lte x y = E.FnApp (E.Identifier "<=") [x, y]
+
+
+
