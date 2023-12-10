@@ -31,7 +31,9 @@ import           Control.Monad                                   (forM)
 import           Data.Functor                                    ((<&>))
 import qualified Effectful.Error.Static                          as Eff
 import           Saga.Language.Typechecker.Environment
-import           Saga.Language.Typechecker.Errors                (SagaError (UnexpectedVariable))
+import           Saga.Language.Typechecker.Errors                (Exception (NotYetImplemented),
+                                                                  SagaError (UnexpectedVariable),
+                                                                  crash)
 import qualified Saga.Language.Typechecker.Solver.Constraints    as Solver
 import           Saga.Language.Typechecker.TypeExpr              (TypeExpr)
 
@@ -114,4 +116,16 @@ instance Normalisation Solver.Constraint where
         Solver.Impl ev (Solver.Mono ty) pid -> do
             ty' <- normalise ty
             return $ Solver.Impl ev (Solver.Mono ty') pid
+        Solver.Refined scope (Solver.Mono ty) liquid -> do
+            ty' <- normalise ty
+            scope' <- mapM normalise scope
+            return $ Solver.Refined scope' (Solver.Mono ty') liquid
+
         c -> return c
+
+
+instance Normalisation Solver.Item where
+    type Of Solver.Item = Type
+
+    normalise (Solver.Mono ty) = Solver.Mono <$> normalise ty
+    normalise it = crash . NotYetImplemented $ "Normalisation for item: " ++ show it

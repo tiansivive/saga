@@ -36,9 +36,12 @@ qualify expr residuals = case expr of
     where
         constraints = residuals ||> mapMaybe (\case
                 Solver.Empty -> Nothing
-                Solver.Impl ev (Solver.Mono ty) pid -> Just $ ty `Q.Implements` pid
+                Solver.Impl ev it pid -> Just $ fromItem it `Q.Implements` pid
+                Solver.Refined scope it liquid -> Just $ Q.Refinement (fmap fromItem scope) liquid (fromItem it)
                 constraint -> crash . NotYetImplemented $ "Constraint qualification for: " ++ show constraint
                 )
 
+        fromItem (Solver.Mono ty) = ty
+        fromItem it =  crash . NotYetImplemented $ "Constraint qualification: fromItem " ++ show it
 
 

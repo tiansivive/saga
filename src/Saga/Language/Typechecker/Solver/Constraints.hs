@@ -89,7 +89,7 @@ instance Substitutable Constraint where
     apply sub (Conjunction c c')   = Conjunction (apply sub c) (apply sub c')
     apply sub (Equality ev it it') = Equality ev (apply sub it) (apply sub it')
     apply sub (Impl ev it prtcl)   = Impl ev (apply sub it) prtcl
-    apply sub (Refined scope it liquid)   = Refined scope (apply sub it) liquid
+    apply sub (Refined scope it liquid)   = Refined (apply sub scope) (apply sub it) liquid
     apply sub c                    = c
 
     ftv (Conjunction c c')        = ftv c <> ftv c'
