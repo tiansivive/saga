@@ -48,6 +48,7 @@ import           Saga.Language.Typechecker.Type                (Scheme (..),
                                                                 Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
 
+import           Debug.Pretty.Simple                           (pTrace)
 import           Effectful                                     (Eff, (:>))
 import qualified Effectful                                     as Eff
 import           Effectful.Error.Static                        (catchError,
@@ -75,6 +76,7 @@ class Substitutable t => Unification t where
 type TypeUnification es = UnificationEff es Type
 instance Unification Type where
     unify :: TypeUnification es => Type -> Type -> Eff es (Subst Type)
+--    unify t t' | pTrace ("\nUnifying:\n\t" ++ show t ++ "\n\t" ++ show t') False = undefined
     unify (T.Var v) t                                               = bind v t
     unify t (T.Var v)                                               = bind v t
     unify (T.Singleton a) (T.Singleton b) | a == b                  = return nullSubst
@@ -94,6 +96,7 @@ instance Unification Type where
 
     unify sub@(T.Record as)   parent@(T.Record bs) = sub `isSubtype` parent
     unify lit@(T.Singleton _) prim@(T.Data _ K.Type) = lit `isSubtype` prim
+    unify prim@(T.Data _ K.Type) lit@(T.Singleton _) = lit `isSubtype` prim
 
     unify u1@(T.Union tys1) u2@(T.Union tys2)  = do
         subs <- forM tys1 $ \t1 -> forM tys2 (unifier t1) <&> catMaybes

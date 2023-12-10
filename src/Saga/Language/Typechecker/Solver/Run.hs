@@ -53,8 +53,11 @@ import           Saga.Language.Typechecker.Zonking.Zonking       (Context (..),
 
 run :: TypeCheck es => Constraint -> Eff es Context
 run constraint = do
+    pTraceM "Constraints:"
+    pTraceM $ show (flatten constraint)
     ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.runState []  $ process (flatten constraint) []
     types <- foldM collapse (tvars solution) cycles
+
 
     return Context { solution = Solution { tvars = types, evidence = evidence solution, witnessed = witnessed solution, count = 0 }, residuals }
 
@@ -113,6 +116,7 @@ instance Solve C.Constraint where
     solve (C.Equality ev it it')                    = solve $ E.Eq ev it it'
     solve (C.Impl ev it p)                          = solve $ P.Impl ev it p
     solve (C.Implication vars assumps constraint)   = solve $ Imp.Implies vars assumps constraint
+    solve (C.Refined scope it liquid)               = solve $ R.Refine scope it liquid
     solve c                                         = return (Deferred, c)
 
     simplify (C.Equality ev it it')                      = simplify $ E.Eq ev it it'

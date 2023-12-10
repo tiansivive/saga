@@ -8,6 +8,7 @@ import           Saga.Language.Typechecker.Inference.Type.Expr
 import           Saga.Language.Typechecker.Inference.Type.Generalization
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
 
+import           Debug.Pretty.Simple                                     (pTraceM)
 import           Effectful                                               (Eff)
 import qualified Effectful                                               as Eff
 import qualified Effectful.Error.Static                                  as Eff
@@ -35,6 +36,8 @@ import           Saga.Utils.TypeLevel                                    (type (
 typecheck :: TypeCheck es => Expr -> Eff es (Expr, Polymorphic Type)
 typecheck (expr :: Expr) = do
     ((ast, st), constraint) <- Inf.run expr
+    pTraceM $ "AST:\n" ++ show ast
+    pTraceM $ "State:\n" ++ show st
     context <- Eff.inject $ Solver.run constraint
     (ast', ty) <- Zonking.run ast context
 

@@ -199,6 +199,7 @@ infer' e = case e of
         -- | TODO: How can we notify the constraint solver that there's a new unification variable
         -- | which stands for the result of this function application
         Eff.tell $ CST.Equality evidence (CST.Mono fnTy) (CST.Poly inferred)
+        Eff.tell $ CST.Equality evidence (CST.Mono fnTy) (CST.Mono $ argTy `T.Arrow` out)
 
         return $ Typed (FnApp fn' [arg']) out
     FnApp fn (a : as) -> infer' curried

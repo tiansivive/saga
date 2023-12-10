@@ -52,6 +52,7 @@ data Refinement = Refine Scope Item Liquid deriving (Show)
 instance Entails Refinement where
     entails :: SolverEff es => Refinement -> [Constraint] -> Eff es [Constraint]
     entails ref@(Refine scope it liquid) cs = do
+
         implications <- Eff.liftIO $ forM refinements mkImplication
         let entailments = [ i | i@(SatResult (SBV.Unsatisfiable {})) <- implications ]
         if null entailments then
@@ -82,6 +83,8 @@ instance Solve Refinement where
 -- | QUESTION: #30 Generate proofs/witnesses by leveraging the evidence system. This is how to identify that a certain type has been refined/narrowed
 solve' :: SolverEff es => Refinement -> Eff es (Status, Constraint)
 solve' r@(Refine scope it liquid) = do
+    pTraceM "\n\n---------------------------------------\nSolving Refinement:"
+    pTraceM $ show r
     res <- Eff.liftIO . SBV.sat $ evalStateT (translate liquid) empty
     case res of
         SatResult (SBV.Satisfiable _ model) -> return $
