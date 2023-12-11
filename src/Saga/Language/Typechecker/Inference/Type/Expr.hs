@@ -91,45 +91,54 @@ infer' :: Shared.TypeInference es => Expr -> Eff es Expr
 infer' e = case e of
     e@(Literal literal) -> return $ Typed e (T.Singleton literal)
     Identifier x -> do
-      (cs, _ :=> ty) <- contextualize x
+      ty@(_ :=> t) <- lookup' x
+      (skolems, assumptions, cs) <- contextualize ty
+
       case cs of
-        [] -> return $ Typed e ty
+        [] -> return $ Typed e t
         _  -> do
-          e' <- foldM elaborate (Identifier x) cs
-          return $ Typed e' ty
+          (e', cs') <- foldM elaborate (Identifier x, []) cs
+          Eff.tell $ CST.Implication skolems assumptions (foldl CST.Conjunction CST.Empty cs')
+          return $ Typed e' t
 
       where
 
-        contextualize x = do
-          ty@(bs :| cs :=> t) <- lookup' x
-          ((_, sub), cs') <-  Eff.runWriter @[Q.Constraint Type] . Eff.runState @(Subst Type) nullSubst  . Eff.runReader bs $ forM_ (locals t) collect
+        contextualize ty@(bs :| cs :=> t) = do
+          pTraceM "\nContextualizing:"
+          pTraceM $ show ty
+          (cs', sub) <- Eff.runState @(Subst Type) nullSubst . Eff.runReader bs $ concat <$> forM (locals t) collect
+          l <- Eff.gets level
+          assumptions <- fmap CST.Assume <$> forM (Map.toList sub) (\(local, t) -> do
+            ev <- Shared.fresh E
+            return $ CST.Equality ev (CST.Mono $ T.Var local) (CST.Mono t))
 
-          return (apply sub (cs <> cs'), apply sub ty)
+          return (locals t, assumptions, cs <> cs')
 
 
-        elaborate expr (ty `Q.Implements` protocol) = do
+        elaborate (expr, cs) (ty `Q.Implements` protocol) = do
           evidence@(CST.Evidence prtclImpl) <- Shared.fresh E
-          Eff.tell $ CST.Impl evidence (CST.Mono ty) protocol
-          return $ FnApp expr [Identifier prtclImpl]
-        elaborate expr (Q.Refinement binds liquid ty) = do
-          Eff.tell $ CST.Refined (fmap CST.Mono binds) (CST.Mono ty) liquid
-          return expr
+          let constraint = CST.Impl evidence (CST.Mono ty) protocol
+          let expr' = FnApp expr [Identifier prtclImpl]
+          return (expr', constraint : cs)
+        elaborate (expr, cs) (Q.Refinement binds liquid ty) = do
+          let constraint = CST.Refined (fmap CST.Mono binds) (CST.Mono ty) liquid
+          return (expr, constraint : cs)
 
 
         locals :: Type -> [PolymorphicVar Type]
         locals t = [ v | v@(T.Local {}) <- Set.toList $ ftv t ]
 
-        collect :: (Eff.Reader Bindings :> es, Eff.Writer [Q.Constraint Type] :> es, Eff.State (Subst Type) :> es) => PolymorphicVar Type -> Eff es ()
+        collect :: (Eff.Reader Bindings :> es, Eff.State (Subst Type) :> es) => PolymorphicVar Type -> Eff es [Q.Constraint Type]
         collect v@(T.Local {}) = do
           bs <- Eff.ask
 
           case Map.lookup v bs of
             Just (bs' :| cs :=> t) | null $ locals t -> do
-              Eff.tell cs
               Eff.modify $ \sub -> mkSubst (v, t) `compose` sub
+              return cs
             Just (bs' :| cs :=> t) -> do
-              Eff.tell cs
-              forM_ (locals t) collect
+              cs' <- concat <$> forM (locals t) collect
+              return $ cs <> cs'
 
 
     Typed expr ty -> do
@@ -189,17 +198,28 @@ infer' e = case e of
         return $ Typed (FnApp dot args) fieldType
     FnApp (Identifier ".") args -> Eff.throwError $ Fail $ "Unrecognised expressions for property access:\n\t" ++ show args
 
-    FnApp fn [arg] -> do
+    fapp'@(FnApp fn [arg]) -> do
+        pTraceM "\n----------------------------------"
+        pTraceM "Inferring FnApp"
+        pTraceM $ show fapp'
         out <- T.Var <$> Shared.fresh U
-        fn'@(Typed _ fnTy)   <- infer' fn
-        arg'@(Typed _ argTy) <- infer' arg
 
-        inferred <- generalize $ argTy `T.Arrow` out
-        evidence <- Shared.fresh E
+        fn'@(Typed _ fnTy)   <- infer' fn
+        pTraceM "Inferred fn:"
+        pTraceM $ show fn'
+
+        arg'@(Typed _ argTy) <- infer' arg
+        pTraceM "Inferred arg:"
+        pTraceM $ show arg'
+
+
+        --inferred <- generalize $ argTy `T.Arrow` out
         -- | TODO: How can we notify the constraint solver that there's a new unification variable
         -- | which stands for the result of this function application
-        Eff.tell $ CST.Equality evidence (CST.Mono fnTy) (CST.Poly inferred)
-        Eff.tell $ CST.Equality evidence (CST.Mono fnTy) (CST.Mono $ argTy `T.Arrow` out)
+        --Eff.tell $ CST.Equality evidence (CST.Mono fnTy) (CST.Poly inferred)
+
+        evidence <- Shared.fresh E
+        Eff.tell $ CST.Equality evidence (CST.Mono $ argTy `T.Arrow` out) (CST.Mono fnTy)
 
         return $ Typed (FnApp fn' [arg']) out
     FnApp fn (a : as) -> infer' curried

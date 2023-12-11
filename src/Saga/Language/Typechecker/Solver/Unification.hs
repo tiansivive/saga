@@ -96,7 +96,7 @@ instance Unification Type where
 
     unify sub@(T.Record as)   parent@(T.Record bs) = sub `isSubtype` parent
     unify lit@(T.Singleton _) prim@(T.Data _ K.Type) = lit `isSubtype` prim
-    unify prim@(T.Data _ K.Type) lit@(T.Singleton _) = lit `isSubtype` prim
+    -- unify prim@(T.Data _ K.Type) lit@(T.Singleton _) = lit `isSubtype` prim
 
     unify u1@(T.Union tys1) u2@(T.Union tys2)  = do
         subs <- forM tys1 $ \t1 -> forM tys2 (unifier t1) <&> catMaybes
