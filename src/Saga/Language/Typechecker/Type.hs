@@ -41,7 +41,7 @@ deriving instance Ord Type
 data instance PolymorphicVar Type where
   Poly              :: Classifiable Type => String -> Classifier Type -> PolymorphicVar Type
   Skolem            :: Classifiable Type => String -> Classifier Type -> PolymorphicVar Type
-  Unification       :: Classifiable Type => String -> Level -> Classifier Type -> PolymorphicVar Type
+  Unification       :: Classifiable Type => String -> Classifier Type -> PolymorphicVar Type
   Instantiation     :: Classifiable Type => String -> PolymorphicVar Type
   Local             :: Classifiable Type => String -> Classifier Type -> PolymorphicVar Type
 

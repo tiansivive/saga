@@ -42,7 +42,7 @@ fresh t = do
   let count = show ([1 ..] !! vars s)
   return $ case t of
     E -> CST.Evidence $ "e" ++ count
-    U -> T.Unification ("v" ++ count) (Level $ level s) K.Type
+    U -> T.Unification ("v" ++ count) K.Type
     T -> T.Poly ("p" ++ count) K.Type
 
 

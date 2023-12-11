@@ -45,11 +45,12 @@ deriving instance Show Constraint
 deriving instance Eq Constraint
 
 data Item
-    = Skolem String Kind
-    | Unification (PolymorphicVar Type)
+    = Variable Level (PolymorphicVar Type)
     | Mono Type
     | Poly (Polymorphic Type)
     deriving (Show, Eq)
+newtype Level = Level Int deriving (Show, Eq, Ord)
+
 
 data Evidence
     = Protocol Implementation
@@ -100,12 +101,12 @@ instance Substitutable Constraint where
 
 instance Substitutable Item where
     type Target Item = Type
-    apply sub v@(Unification uvar) = maybe v Mono $ Map.lookup uvar sub
-    apply sub v@(Mono ty)          = Mono $ apply sub ty
-    apply _ it                     = it
+    apply sub v@(Variable _ uvar) = maybe v Mono $ Map.lookup uvar sub
+    apply sub v@(Mono ty)         = Mono $ apply sub ty
+    apply _ it                    = it
 
-    ftv (Unification uvar) = Set.singleton uvar
-    ftv _                  = Set.empty
+    ftv (Variable _ uvar) = Set.singleton uvar
+    ftv _                 = Set.empty
 
 
 

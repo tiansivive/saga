@@ -142,7 +142,7 @@ fresh' t = do
   let count = show ([1 ..] !! vars s)
   return $ case t of
     E -> CST.Evidence $ "e" ++ count
-    U -> K.Unification ("v" ++ count) (Level $ level s) K.Kind
+    U -> K.Unification ("v" ++ count) K.Kind
 
 
 
@@ -180,8 +180,8 @@ instance HasKind Type where
 
 
 instance HasKind (PolymorphicVar Type) where
-    kind (T.Poly _ k)          = return k
+    kind (T.Poly _ k)        = return k
 
-    kind (T.Skolem _ k)        = return k
-    kind (T.Unification _ _ k) = return k
-    kind i                     = Eff.throwError $ UnexpectedVariable i
+    kind (T.Skolem _ k)      = return k
+    kind (T.Unification _ k) = return k
+    kind i                   = Eff.throwError $ UnexpectedVariable i

@@ -29,8 +29,7 @@ import           Control.Monad.Except
 import           Prelude                                                 hiding
                                                                          (lookup)
 import           Saga.Language.Typechecker.Errors
-import           Saga.Language.Typechecker.Variables                     (Level (..),
-                                                                          PolymorphicVar,
+import           Saga.Language.Typechecker.Variables                     (PolymorphicVar,
                                                                           VarType)
 
 import           Control.Applicative                                     ((<|>))
@@ -110,7 +109,7 @@ infer' e = case e of
           l <- Eff.gets level
           assumptions <- fmap CST.Assume <$> forM (Map.toList sub) (\(local, t) -> do
             ev <- Shared.fresh E
-            return $ CST.Equality ev (CST.Mono $ T.Var local) (CST.Mono t))
+            return $ CST.Equality ev (CST.Variable (CST.Level l) local) (CST.Mono t))
 
           return (locals t, assumptions, cs <> cs')
 
@@ -161,13 +160,14 @@ infer' e = case e of
         return $ Typed (Record pairs') (T.Record $ fmap extract <$> pairs')
 
     List elems -> do
+      l <- Eff.gets level
       uvar <- Shared.fresh U
       elems' <-forM elems $ \e -> infer e
       let tys = fmap extract elems'
 
       forM_ tys $ \t -> do
         ev <- Shared.fresh E
-        Eff.tell $ Equality ev (CST.Unification uvar) (CST.Mono t)
+        Eff.tell $ Equality ev (CST.Variable (CST.Level l) uvar) (CST.Mono t)
 
       return $ Typed (List elems') (T.Applied listConstructor $ T.Var uvar)
 
@@ -293,13 +293,14 @@ infer' e = case e of
                 (Typed expr' _) <- infer expr
                 walk (Declaration (Let id (Just typeExp) k expr') : processed) rest
             Declaration (Let id Nothing k expr) -> do
+              l <- Eff.gets level
               uvar <- Shared.fresh U
               let qt = Forall [] (Q.none :=> T.Var uvar)
               let scoped = Eff.local (\e -> e{ types = Map.insert id qt $ types e })
               scoped $ do
                 (Typed expr' ty) <- infer expr
                 ev <- Shared.fresh E
-                Eff.tell $ CST.Equality ev (CST.Unification uvar) (CST.Mono ty)
+                Eff.tell $ CST.Equality ev (CST.Variable (CST.Level l) uvar) (CST.Mono ty)
                 walk processed rest
             d -> walk (d:processed) rest
     where

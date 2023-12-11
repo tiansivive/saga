@@ -40,6 +40,7 @@ import qualified Effectful                                       as Eff
 import qualified Effectful.Error.Static                          as Eff
 import           Effectful.Reader.Static                         (Reader)
 import qualified Effectful.Reader.Static                         as Eff
+import qualified Effectful.State.Static.Local                    as Eff
 import qualified Effectful.Writer.Static.Local                   as Eff
 import qualified Saga.Language.Core.Expr                         as E
 import qualified Saga.Language.Typechecker.Type                  as T
@@ -85,10 +86,11 @@ infer (PatList pats rest) = do
     case rest of
       Nothing -> return result
       Just id -> do
+        l <- Eff.gets level
         uvarList <- fresh U
         emit ( id, uvarList)
         ev <- fresh E
-        Eff.tell $ Equality ev (CST.Mono result) (CST.Unification uvarList)
+        Eff.tell $ Equality ev (CST.Mono result) (CST.Variable (CST.Level l) uvarList)
         return result
 
     where
