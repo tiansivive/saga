@@ -46,8 +46,7 @@ deriving instance Eq Constraint
 
 data Item
     = Variable Level (Variable Type)
-    | Skolem String Kind
-    | Unification (Variable Type)
+    | Skolem (Variable Type)
     | Mono Type
     | Poly (Polymorphic Type)
     deriving (Show, Eq)
