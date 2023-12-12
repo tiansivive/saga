@@ -21,7 +21,8 @@ import           Saga.Language.Typechecker.Environment                   (Compil
                                                                           Info)
 import           Saga.Language.Typechecker.Errors                        (SagaError)
 import qualified Saga.Language.Typechecker.Inference.Inference           as I
-import qualified Saga.Language.Typechecker.Inference.Run                 as Inf
+import qualified Saga.Language.Typechecker.Inference.Type.Shared         as TI
+
 import           Saga.Language.Typechecker.Lib                           (defaultEnv)
 import           Saga.Language.Typechecker.Monad                         (TypeCheck)
 import qualified Saga.Language.Typechecker.Solver.Constraints            as CST
@@ -34,8 +35,8 @@ import           Saga.Utils.TypeLevel                                    (type (
 
 
 typecheck :: TypeCheck es => Expr -> Eff es (Expr, Polymorphic Type)
-typecheck (expr :: Expr) = do
-    ((ast, st), constraint) <- Inf.run expr
+typecheck expr  = do
+    ((ast, st), constraint) <-Eff.runWriter @CST.Constraint . Eff.runState TI.initialState $ infer expr
     pTraceM $ "AST:\n" ++ show ast
     pTraceM $ "State:\n" ++ show st
     context <- Eff.inject $ Solver.run constraint

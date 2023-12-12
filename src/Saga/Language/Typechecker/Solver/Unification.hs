@@ -24,9 +24,8 @@ import           Control.Monad.Trans.Reader                    (ReaderT (runRead
 import           Control.Monad.Trans.Writer                    (WriterT,
                                                                 runWriterT)
 import qualified Saga.Language.Typechecker.Evaluation          as E
-import           Saga.Language.Typechecker.Inference.Inference (State (..),
-                                                                inform',
-                                                                initialState)
+
+
 import           Saga.Language.Typechecker.Inference.Kind      (HasKind (..),
                                                                 KindInference)
 import           Saga.Language.Typechecker.Kind                (Kind)
@@ -43,7 +42,6 @@ import qualified Data.List                                     as List
 import qualified Saga.Language.Typechecker.Lib                 as Lib
 import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import           Saga.Language.Typechecker.Qualification       (Qualified ((:=>)))
-import           Saga.Language.Typechecker.Shared              (classifier)
 import           Saga.Language.Typechecker.Type                (Scheme (..),
                                                                 Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
@@ -120,7 +118,7 @@ instance Unification Type where
 
     unify t t' = do
         -- | QUESTION: Should we propagate constraints here?
-        ((k, k'), cs) <- run kinds
+        ((k, k'), cs) <- KI.run kinds
 
         -- | QUESTION: Should we intercept the error here to add extra context? eg. throwError $ KindMismatch k k'
         (subst, cycles) <- Eff.runWriter @[Cycle Kind] $ unify k k'
@@ -164,8 +162,8 @@ instance Unification Type where
 
         | otherwise = do
             -- | QUESTION: Should we propagate constraints here?
-            (tk, cs) <-  run $ kind t
-            ak <- classifier a
+            (tk, cs) <- KI.run $ kind t
+            let ak = T.classifier a
 
            -- | QUESTION: Should we intercept the error here to add extra context? eg. throwError $ KindMismatch k k'
             (subst, cycles) <- Eff.runWriter @[Cycle Kind] $ unify ak tk
@@ -229,5 +227,3 @@ instance Unification Kind where
 
 
 
-run :: Eff (Eff.Writer [KI.UnificationConstraint] : Eff.State State : es) a -> Eff es (a, [KI.UnificationConstraint])
-run ki = Eff.evalState initialState $ Eff.runWriter @[KI.UnificationConstraint] ki

@@ -1,12 +1,11 @@
 
 module Saga.Language.Typechecker.Solver.Run where
-import           Control.Arrow                                   (ArrowChoice (left))
+
 import           Control.Monad                                   (foldM, forM)
 import qualified Effectful                                       as Eff
 import qualified Effectful.State.Static.Local                    as Eff
 import qualified Effectful.Writer.Static.Local                   as Eff
 import           Saga.Language.Core.Expr                         (Expr)
-import           Saga.Language.Typechecker.Inference.Inference   (initialState)
 import           Saga.Language.Typechecker.Inference.Type.Shared (TypeInference)
 import qualified Saga.Language.Typechecker.Solver.Constraints    as C
 import           Saga.Language.Typechecker.Solver.Constraints    (Constraint (Conjunction))
@@ -55,11 +54,11 @@ run :: TypeCheck es => Constraint -> Eff es Context
 run constraint = do
     pTraceM "Constraints:"
     pTraceM $ show (flatten constraint)
-    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.runState []  $ process (flatten constraint) []
+    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState []  $ process (flatten constraint) []
     types <- foldM collapse (tvars solution) cycles
 
 
-    return Context { solution = Solution { tvars = types, evidence = evidence solution, witnessed = witnessed solution, count = 0 }, residuals }
+    return Context { solution = Solution { tvars = types, evidence = evidence solution, witnessed = witnessed solution }, residuals }
 
     where
         process :: SolverEff es => [C.Constraint] -> [(Status, C.Constraint)] -> Eff es [C.Constraint]

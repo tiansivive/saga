@@ -23,7 +23,7 @@ data Kind
 
 data instance Variable Kind where
   Poly          :: Classifiable Kind => String -> Var.Classifier Kind -> Variable Kind
-  Unification   :: Classifiable Kind => String -> Var.Classifier Kind -> Variable Kind
+
 
 deriving instance Show (Variable Kind)
 deriving instance Ord (Variable Kind)

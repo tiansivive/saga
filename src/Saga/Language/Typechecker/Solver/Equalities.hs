@@ -50,8 +50,8 @@ solve' :: SolverEff es => Eq -> Eff es (Status, C.Constraint)
 --solve' eq | pTrace ("\nSOLVING EQ:\n" ++ show eq) False = undefined
 solve' (Eq _ it it') = case (it, it') of
     (Mono ty, Mono ty')        -> ty `equals` ty'
-    (Mono ty, Variable _ var) -> ty `equals` T.Var var
-    (Variable _ var, Mono ty) -> ty `equals` T.Var var
+    (Mono ty, Variable _ (C.Unification tvar)) -> ty `equals` T.Var tvar
+    (Variable _ (C.Unification tvar), Mono ty) -> ty `equals` T.Var tvar
     (Mono ty, Poly ty')        -> instAndUnify ty' ty
     (Poly ty', Mono ty)        -> instAndUnify ty' ty
     eq -> crash $ NotYetImplemented $ "Solving equality: " ++ show eq
@@ -77,8 +77,10 @@ solve' (Eq _ it it') = case (it, it') of
 
         generate constraint tys [] = return (constraint, reverse tys)
         generate constraint tys (tvar:tvars) = do
-            ty <- T.Var <$> Shared.fresh Inf.U
-            ev <- Shared.fresh Inf.E
+            ty <- T.Var <$> Shared.fresh Shared.T
+            ev <-   Shared.fresh Shared.E
+            -- | Potential HACK:
+            -- | QUESTION: Why wrap the fresh tvar in a Mono? Can we use the tvar directly in a Variable?
             let eq = C.Equality ev (Mono $ T.Var tvar) (Mono ty)
             generate (C.Conjunction constraint eq) (ty : tys) tvars
 

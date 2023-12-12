@@ -5,49 +5,68 @@ module Saga.Language.Typechecker.Inference.Type.Shared where
 
 import           Saga.Language.Core.Expr                       (Expr)
 import qualified Saga.Language.Typechecker.Inference.Inference as I hiding
-                                                                    (fresh)
-import           Saga.Language.Typechecker.Inference.Inference hiding (fresh)
+                                                                    (State,
+                                                                     fresh)
+import           Saga.Language.Typechecker.Inference.Inference hiding (State,
+                                                                fresh)
 import qualified Saga.Language.Typechecker.Kind                as K
 import qualified Saga.Language.Typechecker.Solver.Constraints  as CST
 import           Saga.Language.Typechecker.Type                (Type)
 
 import qualified Effectful.State.Static.Local                  as Eff
 
-import           Effectful                                     (Eff)
+import           Effectful                                     (Eff, (:>))
 import qualified Effectful.Writer.Static.Local                 as Eff
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import qualified Saga.Language.Typechecker.Type                as T
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables
+import           Saga.Utils.Operators                          ((|>))
+import           Saga.Utils.TypeLevel                          (type (§))
 
 
 
-type TypeInference es = InferEff es CST.Constraint
-
+type TypeInference es = InferEff es State CST.Constraint
 type instance I.EmittedConstraint Type = CST.Constraint
 
-type instance VarType Expr I.Evidence       = Var.Variable CST.Evidence
-type instance VarType Expr I.Unification    = Var.Variable Type
-type instance VarType Expr I.Skolem         = Var.Variable Type
-type instance VarType Expr I.TypeVar        = Var.Variable Type
-type instance VarType Expr I.Instantiation  = Var.Variable Type
+data State = IST
+  { tvars :: Int
+  , evars :: Int
+  , level :: Int
+  } deriving (Show)
+
+
+initialState :: State
+initialState = IST 0 0 0
+
+
+fresh :: (Eff.State State :> es) => Eff es § Variable Type
+fresh = do
+  i <- Eff.gets $ tvars |> (+1)
+  Eff.modify $ \s -> s { tvars = i }
+  let count = show ([1 ..] !! i)
+  return $ T.Poly ("t" ++ count) K.Type
+
+mkEvidence :: (Eff.State State :> es) => Eff es § Variable CST.Evidence
+mkEvidence = do
+  i <- Eff.gets $ evars |> (+1)
+  Eff.modify $ \s -> s { evars = i }
+  let count = show ([1 ..] !! i)
+  return $ CST.Evidence ("ev_" ++ count)
 
 
 
 
-fresh :: TypeInference es => Tag a -> Eff es (VarType Expr a)
-fresh t = do
-  Eff.modify $ \s -> s {vars = vars s + 1}
-  s <- Eff.get
-  let count = show ([1 ..] !! vars s)
-  return $ case t of
-    E -> CST.Evidence $ "e" ++ count
-    U -> T.Unification ("v" ++ count) K.Type
-    T -> T.Poly ("p" ++ count) K.Type
+toItem :: (Eff.State State :> es) => (Variable Type -> Variable CST.Item) -> Type -> Eff es CST.Item
+toItem constructor (T.Var tvar) = do
+  l <- Eff.gets level
+  return $ CST.Variable (CST.Level l) (constructor tvar)
+
+toItem _ t = return $ CST.Mono t
 
 
 propagate :: TypeInference es => T.Constraint -> Eff es ()
-propagate (ty `Q.Implements` prtcl) = fresh E >>= \e -> Eff.tell $ CST.Impl e (CST.Mono ty) prtcl
+propagate (ty `Q.Implements` prtcl) = mkEvidence >>= \e -> Eff.tell $ CST.Impl e (CST.Mono ty) prtcl
 propagate (Q.Resource mul ty) = Eff.tell $ CST.Resource (CST.Mono ty) mul
 propagate (Q.Pure ty) = Eff.tell $ CST.Pure (CST.Mono ty)
 propagate (Q.Refinement bs expr ty) = Eff.tell $ CST.Refined (fmap CST.Mono bs) (CST.Mono ty) expr

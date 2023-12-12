@@ -6,7 +6,7 @@ import           Saga.Language.Typechecker.Protocols          (ProtocolID)
 import           Saga.Language.Typechecker.Refinement.Liquid  (Liquid, Op)
 import           Saga.Language.Typechecker.Solver.Constraints (Constraint,
                                                                Evidence, Item)
-import           Saga.Language.Typechecker.Type               (Polymorphic, Tag,
+import           Saga.Language.Typechecker.Type               (Polymorphic,
                                                                Type)
 import           Saga.Language.Typechecker.TypeExpr           (TypeExpr)
 import           Saga.Language.Typechecker.Variables          (Variable)
@@ -23,8 +23,6 @@ data SagaError where
   UnexpectedInstantiationVariable     :: (Show a, Show (Variable a)) =>  Variable a -> SagaError
   UnexpectedVariable                  :: (Show a, Show (Variable a)) =>  Variable a -> SagaError
 
-  TagNotConstructor       :: String -> SagaError
-  MultipleTagConstructors :: [Tag] -> SagaError
 
   UntypedInferredExpr :: Expr -> SagaError
 

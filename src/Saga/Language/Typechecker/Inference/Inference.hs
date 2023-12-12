@@ -35,49 +35,29 @@ import           Saga.Language.Typechecker.Type          (Polymorphic,
 import           Saga.Language.Typechecker.Variables     (Classifier, VarType,
                                                           Variable)
 
-
-
-type InferEff es w = (TypeCheck es, Eff.State State :> es, Eff.Writer w :> es, Monoid w)
-
-
-data State = IST
-  { vars  :: Int
-  , level :: Int
-  } deriving (Show)
-
 class
   ( Instantiate (Classifier e)
   , Generalize (Classifier e)
   ) => Inference e where
-    infer       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => e -> Eff es e
-    lookup      :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => String -> Eff es (Qualified t)
-    fresh       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => Tag a -> Eff es (VarType e a)
+    -- ENHANCEMENT: Define the needed effects as an associated type
+    type family State e :: *
+    infer       :: (s ~ State e, t ~ Classifier e, w ~ EmittedConstraint t, InferEff es s w)  => e -> Eff es e
+    lookup      :: (s ~ State e, t ~ Classifier e, w ~ EmittedConstraint t, InferEff es s w)  => String -> Eff es (Qualified t)
+    fresh       :: (s ~ State e, t ~ Classifier e, w ~ EmittedConstraint t, InferEff es s w)  => Eff es (Variable t)
 
     --qualify     :: (t ~ Classifier e, w ~ Constraint t)              => w -> Polymorphic t -> Polymorphic t
-
 class Instantiate t where
     instantiate :: Polymorphic t -> t -> Polymorphic t
 class Generalize t where
-    generalize :: (w ~ EmittedConstraint t, InferEff es w) => t -> Eff es (Polymorphic t)
+    -- ENHANCEMENT: Define the needed effects as an associated type
+    type family St t :: *
+    generalize :: (Eff.State (St t) :> es)  => t -> Eff es (Polymorphic t)
 
 type family EmittedConstraint t :: *
 
-data Tag a where
-  E   :: Tag Evidence
-  Sk  :: Tag Skolem
-  U   :: Tag Unification
-  T   :: Tag TypeVar
-  I   :: Tag Instantiation
 
-data Evidence = Evidence
-data Unification = Unification
-data Instantiation = Instantiation
-data TypeVar = TypeVar
-data Skolem = Skolem
+type InferEff es s w = (TypeCheck es, Eff.State s :> es, Eff.Writer w :> es, Monoid w)
 
-
-inform' :: InferEff es w => Info -> Eff es ()
-inform' = Eff.tell
 
 type Instantiable t es = (Eff.Error SagaError :> es, Instantiate t, Show t, Show (Variable t))
 instantiateWith :: Instantiable t es => Polymorphic t -> [t] -> Eff es (Polymorphic t)
@@ -88,8 +68,4 @@ instantiateWith polymorphic ts = instantiate' polymorphic ts
     instantiate' ty (t:ts) = do
       let ty' = instantiate ty t
       instantiate' ty' ts
-
-
-initialState :: State
-initialState = IST 0 0
 

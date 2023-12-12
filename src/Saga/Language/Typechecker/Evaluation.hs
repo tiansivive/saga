@@ -46,9 +46,10 @@ import           Saga.Language.Typechecker.Qualification       (Given (..),
 import qualified Effectful                                     as Eff
 import qualified Effectful.State.Static.Local                  as Eff
 import qualified Saga.Language.Typechecker.Inference.Inference as I
-import qualified Saga.Language.Typechecker.Inference.Kind      as KInf
+import qualified Saga.Language.Typechecker.Inference.Kind      as KI
 
 import           Saga.Language.Typechecker.Inference.Kind      (kind)
+
 import           Saga.Language.Typechecker.Solver.Substitution (ftv)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables           (Classifier,
@@ -84,7 +85,7 @@ instance Evaluate TypeExpr (Polymorphic Type) where
             binds = fmap Map.fromList $ forM locals $ \(id, ty) -> evaluate ty >>= \case
                     Forall [] qt@(given :=> t) -> do
                         -- | QUESTION: What happens with these constraints?
-                        (k, cs) <-  Eff.runWriter @[KInf.UnificationConstraint] . Eff.evalState @I.State I.initialState $ kind t
+                        (k, cs) <-  Eff.runWriter @[KI.UnificationConstraint] . Eff.evalState @KI.Counts KI.initialState $ kind t
                         return (T.Local id k, qt)
                     poly         -> Eff.throwError $ UnexpectedLocalPolymorphicType poly
 

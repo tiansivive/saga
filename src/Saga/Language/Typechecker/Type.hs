@@ -41,23 +41,25 @@ deriving instance Ord Type
 data instance Variable Type where
   Poly              :: Classifiable Type => String -> Classifier Type -> Variable Type
   Existential       :: Classifiable Type => String -> Classifier Type -> Variable Type
-  Unification       :: Classifiable Type => String -> Classifier Type -> Variable Type
-  Instantiation     :: Classifiable Type => String -> Variable Type
   Local             :: Classifiable Type => String -> Classifier Type -> Variable Type
 
 deriving instance Show (Variable Type)
 deriving instance Ord (Variable Type)
 deriving instance Eq (Variable Type)
 
+classifier :: Variable Type -> Classifier Type
+classifier (Poly _ c)        = c
+classifier (Existential _ c) = c
+classifier (Local _ c)       = c
+
 data Scope = Scope
   { types :: Map.Map String (Polymorphic Type)
   , kinds :: Map.Map String (Polymorphic Kind)
-  , tags  :: [Tag]
+, tags    :: [Tag]
   } deriving (Show, Eq, Ord)
 
 
 data Scheme t = Forall [Variable t] (Qualified t)
-
 deriving instance (Show t, Show (Variable t)) => Show (Scheme t)
 deriving instance (Eq t, Eq (Variable t)) => Eq (Scheme t)
 deriving instance (Ord t, Ord (Variable t)) => Ord (Scheme t)

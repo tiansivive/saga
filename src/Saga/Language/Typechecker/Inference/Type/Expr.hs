@@ -78,8 +78,10 @@ import qualified Effectful.Fail                                          as Eff
 import qualified Effectful.State.Static.Local                            as Eff
 import           Saga.Language.Typechecker.Inference.Type.Generalization
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
+import           Saga.Language.Typechecker.Inference.Type.Shared         (State (..))
 
-instance (Generalize Type, Instantiate Type) => Inference Expr where
+instance Inference Expr where
+    type State Expr = Shared.State
     infer = infer'
     lookup = lookup'
     fresh = Shared.fresh
@@ -108,14 +110,14 @@ infer' e = case e of
           (cs', sub) <- Eff.runState @(Subst Type) nullSubst . Eff.runReader bs $ concat <$> forM (locals t) collect
           l <- Eff.gets level
           assumptions <- fmap CST.Assume <$> forM (Map.toList sub) (\(local, t) -> do
-            ev <- Shared.fresh E
-            return $ CST.Equality ev (CST.Variable (CST.Level l) local) (CST.Mono t))
+            ev <- Shared.mkEvidence
+            return $ CST.Equality ev (CST.Variable (CST.Level l) (CST.Scoped local)) (CST.Mono t))
 
           return (locals t, assumptions, cs <> cs')
 
 
         elaborate (expr, cs) (ty `Q.Implements` protocol) = do
-          evidence@(CST.Evidence prtclImpl) <- Shared.fresh E
+          evidence@(CST.Evidence prtclImpl) <- Shared.mkEvidence
           let constraint = CST.Impl evidence (CST.Mono ty) protocol
           let expr' = FnApp expr [Identifier prtclImpl]
           return (expr', constraint : cs)
@@ -142,7 +144,7 @@ infer' e = case e of
 
     Typed expr ty -> do
         Typed expr' inferred <- infer expr
-        evidence <- Shared.fresh E
+        evidence <- Shared.mkEvidence
           -- | Inferred type is generalized as much as possible and unification expects the LHS to be the subtype
         case expr' of
           -- | When expression is a literal, it doesn't get generalized to preserve the literal type
@@ -161,19 +163,19 @@ infer' e = case e of
 
     List elems -> do
       l <- Eff.gets level
-      uvar <- Shared.fresh U
+      tvar <- Shared.fresh
       elems' <-forM elems $ \e -> infer e
       let tys = fmap extract elems'
 
       forM_ tys $ \t -> do
-        ev <- Shared.fresh E
-        Eff.tell $ Equality ev (CST.Variable (CST.Level l) uvar) (CST.Mono t)
+        ev <- Shared.mkEvidence
+        Eff.tell $ Equality ev (CST.Variable (CST.Level l) (CST.Unification tvar)) (CST.Mono t)
 
-      return $ Typed (List elems') (T.Applied listConstructor $ T.Var uvar)
+      return $ Typed (List elems') (T.Applied listConstructor $ T.Var tvar)
 
     Lambda ps@(param : rest) body -> do
 
-        tvar <- T.Var <$> Shared.fresh U
+        tvar <- T.Var <$> Shared.fresh
         let qt = Forall [] (Q.none :=> tvar)
         let scoped = Eff.local (\e -> e { types = Map.insert param qt $ types e })
         scoped $ do
@@ -188,11 +190,11 @@ infer' e = case e of
               _  -> Lambda rest body
 
     FnApp dot@(Identifier ".") args@[recordExpr, Identifier field] -> do
-        fieldType <- T.Var <$> Shared.fresh U
-        evidence <- Shared.fresh E
+        fieldType <- T.Var <$> Shared.fresh
+        evidence <- Shared.mkEvidence
         (Typed _ recordTy) <- infer' recordExpr
         -- | TODO: By adding row polymorphism, we'd use a different constraint type
-        -- | This would allow us to use a `CST.Unification` Item, leading to tracking all unification variables
+        -- | This would allow us to use a `Variable` Item, leading to tracking all variables
         -- | Right now, that is not really possible here
         Eff.tell $ CST.Equality evidence (CST.Mono recordTy) (CST.Mono $ T.Record [(field, fieldType)])
         return $ Typed (FnApp dot args) fieldType
@@ -202,7 +204,7 @@ infer' e = case e of
         pTraceM "\n----------------------------------"
         pTraceM "Inferring FnApp"
         pTraceM $ show fapp'
-        out <- T.Var <$> Shared.fresh U
+        out <- T.Var <$> Shared.fresh
 
         fn'@(Typed _ fnTy)   <- infer' fn
         pTraceM "Inferred fn:"
@@ -213,12 +215,12 @@ infer' e = case e of
         pTraceM $ show arg'
 
 
-        --inferred <- generalize $ argTy `T.Arrow` out
         -- | TODO: How can we notify the constraint solver that there's a new unification variable
         -- | which stands for the result of this function application
-        --Eff.tell $ CST.Equality evidence (CST.Mono fnTy) (CST.Poly inferred)
+        -- inferred <- generalize $ argTy `T.Arrow` out
+        -- Eff.tell $ CST.Equality evidence (CST.Mono fnTy) (CST.Poly inferred)
 
-        evidence <- Shared.fresh E
+        evidence <- Shared.mkEvidence
         Eff.tell $ CST.Equality evidence (CST.Mono $ argTy `T.Arrow` out) (CST.Mono fnTy)
 
         return $ Typed (FnApp fn' [arg']) out
@@ -237,11 +239,11 @@ infer' e = case e of
                   _ -> Just $ T.Union tys
 
         for_ ty' $ \t -> do
-          ev <- Shared.fresh E
+          ev <- Shared.mkEvidence
           Eff.tell $ CST.Equality ev (CST.Mono ty) (CST.Mono t)
 
         forM_ tvars $ \v -> do
-          ev <- Shared.fresh E
+          ev <- Shared.mkEvidence
           Eff.tell $ CST.Equality ev (CST.Mono v) (maybe (CST.Mono ty) CST.Mono ty')
 
         let out = T.Union $ fmap extractTy cases'
@@ -255,7 +257,7 @@ infer' e = case e of
             let scoped = Eff.local $ \env -> env { types = Map.fromList pairs <> types env }
             scoped $ do
               (inferred, constraint) <- Eff.listen @Constraint $ infer expr
-              ev <- Shared.fresh E
+              ev <- Shared.mkEvidence
               Eff.tell $ CST.Implication tvars [assume ev scrutineeType patTy] constraint
 
               return $ TypedCase pat patTy inferred
@@ -294,13 +296,13 @@ infer' e = case e of
                 walk (Declaration (Let id (Just typeExp) k expr') : processed) rest
             Declaration (Let id Nothing k expr) -> do
               l <- Eff.gets level
-              uvar <- Shared.fresh U
-              let qt = Forall [] (Q.none :=> T.Var uvar)
+              tvar <- Shared.fresh
+              let qt = Forall [] (Q.none :=> T.Var tvar)
               let scoped = Eff.local (\e -> e{ types = Map.insert id qt $ types e })
               scoped $ do
                 (Typed expr' ty) <- infer expr
-                ev <- Shared.fresh E
-                Eff.tell $ CST.Equality ev (CST.Variable (CST.Level l) uvar) (CST.Mono ty)
+                ev <- Shared.mkEvidence
+                Eff.tell $ CST.Equality ev (CST.Variable (CST.Level l) (CST.Unification tvar)) (CST.Mono ty)
                 walk processed rest
             d -> walk (d:processed) rest
     where
@@ -317,7 +319,7 @@ lookup' x = do
 
   where
     walk scheme@(Forall [] qt) = return qt
-    walk scheme@(Forall tvars _) = Shared.fresh U >>= walk . instantiate scheme . T.Var
+    walk scheme@(Forall tvars _) = Shared.fresh >>= walk . instantiate scheme . T.Var
 
 
 

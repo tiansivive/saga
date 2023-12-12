@@ -1,6 +1,6 @@
 
+{-# LANGUAGE DataKinds    #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 
 module Saga.Language.Typechecker.Inference.Kind where
@@ -14,9 +14,7 @@ import qualified Saga.Language.Typechecker.Inference.Inference as I
 import           Saga.Language.Typechecker.Inference.Inference (Generalize (..),
                                                                 InferEff,
                                                                 Inference (..),
-                                                                Instantiate (..),
-                                                                State (..),
-                                                                Tag (..))
+                                                                Instantiate (..))
 
 import qualified Saga.Language.Typechecker.Kind                as K
 import           Saga.Language.Typechecker.Kind
@@ -44,29 +42,26 @@ import qualified Saga.Language.Typechecker.TypeExpr            as TE
 import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables
-
-type instance VarType TypeExpr I.Evidence       = Var.Variable CST.Evidence
-type instance VarType TypeExpr I.Unification    = Var.Variable Kind
-type instance VarType TypeExpr I.Skolem         = Var.Variable Kind
-type instance VarType TypeExpr I.TypeVar        = Var.Variable Kind
-type instance VarType TypeExpr I.Instantiation  = Var.Variable Kind
+import           Saga.Utils.Operators                          ((|>))
 
 
 
-type KindInference es = InferEff es [UnificationConstraint]
-data UnificationConstraint = Empty | Unify Kind Kind
+type KindInference es = InferEff es Counts [UnificationConstraint]
+newtype Counts = Counts { kvars:: Int }
+
 type instance I.EmittedConstraint Kind = [UnificationConstraint]
+data UnificationConstraint = Empty | Unify Kind Kind
 
 -- | Inferring Kinds of Types
 instance Inference TypeExpr where
-
+    type State TypeExpr = Counts
     infer = infer'
     lookup = lookup'
     fresh = fresh'
 
 
 
-infer' :: KindInference es => TypeExpr -> Eff es TypeExpr
+infer' :: InferEff es Counts [UnificationConstraint] => TypeExpr -> Eff es TypeExpr
 infer' te = case te of
     TE.Identifier id -> do
       _ :=> k <- lookup' id
@@ -83,17 +78,17 @@ infer' te = case te of
       kindedOut <- infer' out'
       return $ TE.KindedType (kindedIn `TE.Arrow` kindedOut) K.Type
 
-    TE.Implementation p tyExpr -> infer tyExpr
+    TE.Implementation p tyExpr -> infer' tyExpr
     TE.Tagged tag tyExpr -> do
-        (TE.KindedType ty k) <- infer tyExpr
+        (TE.KindedType ty k) <- infer' tyExpr
         return $ TE.KindedType ty (K.Data tag k)
 
     TE.Lambda ps@(param : rest) body -> do
-        kVar <- fresh' U
+        kVar <- fresh'
         let qk = Forall [] (Q.none :=> K.Var kVar)
         let scoped = Eff.local (\e -> e { kinds = Map.insert param qk $ kinds e })
         scoped $ do
-            o@(TE.KindedType _ out') <- infer out
+            o@(TE.KindedType _ out') <- infer' out
             let k = K.Var kVar `K.Arrow` out'
             let tyExpr = TE.Lambda ps o
             return $ TE.KindedType tyExpr k
@@ -104,20 +99,18 @@ infer' te = case te of
 
 
     TE.Application fn [arg] -> do
-        out <- K.Var <$> fresh' U
+        out <- K.Var <$> fresh'
         fn'@(TE.KindedType _ fnK)   <- infer' fn
         arg'@(TE.KindedType _ argK) <- infer' arg
 
-        inferred <- generalize $ argK `K.Arrow` out
-        Eff.tell [Unify fnK out]
+        Eff.tell [Unify fnK (argK `K.Arrow` out)]
         return $ TE.KindedType (TE.Application fn' [arg']) out
-    TE.Application fn (a : as) -> infer curried
+    TE.Application fn (a : as) -> infer' curried
         where
           partial = TE.Application fn [a]
           curried = foldl (\f a -> TE.Application f [a]) partial as
 
     te' -> error $ "Kind Inference not yet implemented for: " ++ show te'
-
 
 
 
@@ -130,20 +123,23 @@ lookup' x = do
 
   where
     walk scheme@(Forall [] qk)   = return qk
-    walk scheme@(Forall tvars _) = fresh' U >>= walk . instantiate scheme . K.Var
+    walk scheme@(Forall tvars _) = fresh' >>= walk . instantiate scheme . K.Var
 
 
 
-fresh' :: KindInference es =>  Tag a ->  Eff es (VarType TypeExpr a)
-fresh' t = do
-  Eff.modify $ \s -> s {vars = vars s + 1}
-  s <- Eff.get
-  let count = show ([1 ..] !! vars s)
-  return $ case t of
-    E -> CST.Evidence $ "e" ++ count
-    U -> K.Unification ("v" ++ count) K.Kind
+fresh' :: KindInference es =>  Eff es (Variable Kind)
+fresh' = do
+  i <- Eff.gets $ kvars |> (+1)
+  Eff.modify $ \s -> s { kvars = i }
+  let count = show ([1 ..] !! i)
+  return $ K.Poly ("t" ++ count) K.Kind
 
 
+initialState :: Counts
+initialState = Counts 0
+
+run :: Eff (Eff.Writer [UnificationConstraint] : Eff.State Counts : es) a -> Eff es (a, [UnificationConstraint])
+run  = Eff.evalState initialState . Eff.runWriter
 
 instance Instantiate Kind  where
   instantiate qt@(Forall [] _) t = qt
@@ -153,6 +149,7 @@ instance Instantiate Kind  where
       qt' = apply sub qt
 
 instance Generalize Kind where
+    type St Kind = ()
     generalize k = return $ Forall (Set.toList $ ftv k) (Q.none :=> k)
 
 class HasKind t where
@@ -168,7 +165,7 @@ instance HasKind Type where
       k'             -> Eff.throwError $ UnexpectedKind k' "Tried to apply a type to a non Arrow Kind"
 
   kind (T.Closure ps tyExpr closure) = do
-    TE.KindedType _ k <- infer tyExpr
+    TE.KindedType _ k <- infer' tyExpr
     foldrM mkArrow k ps
     where
         mkArrow v k = do
@@ -181,6 +178,6 @@ instance HasKind Type where
 instance HasKind (Variable Type) where
     kind (T.Poly _ k)        = return k
     kind (T.Existential _ k) = return k
-    kind (T.Unification _ k) = return k
-    kind i                   = Eff.throwError $ UnexpectedVariable i
+    kind (T.Local _ k)       = return k
+
 
