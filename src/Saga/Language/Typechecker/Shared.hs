@@ -10,14 +10,11 @@ import           Saga.Language.Typechecker.Type      (Polymorphic, Tag, Type)
 import           Saga.Language.Typechecker.Variables
 
 
-
 classifier :: (Eff.Error SagaError :> es) => Variable Type -> Eff es (Classifier Type)
 classifier (T.Poly _ c)           = return c
-classifier (T.Skolem _ c)         = return c
-classifier (T.Unification _ c)  = return c
+classifier (T.Existential _ c)    = return c
+classifier (T.Unification _ c)    = return c
 classifier v@(T.Instantiation {}) = Eff.throwError $ UnexpectedInstantiationVariable v
-
-
 
 letters :: [String]
 letters = [1 ..] >>= flip replicateM ['α' .. 'ω']

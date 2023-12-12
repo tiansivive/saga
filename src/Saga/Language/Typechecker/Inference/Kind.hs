@@ -74,10 +74,9 @@ infer' te = case te of
 
     s@(TE.Singleton lit) -> return $ TE.KindedType s K.Type
 
-    -- | NOTE: Type Inference is getting confused if we apply infer' directly. Wrapping it in a lambda clears the error
-    TE.Union list ->TE.KindedType <$> (TE.Union <$> mapM (\t -> infer' t) list) <*> pure K.Type
-    TE.Tuple tup -> TE.KindedType <$> (TE.Tuple <$> mapM (\t -> infer' t) tup) <*> pure K.Type
-    TE.Record pairs -> TE.KindedType <$> (TE.Record <$> mapM (mapM (\t -> infer' t)) pairs) <*> pure K.Type
+    TE.Union list ->TE.KindedType <$> (TE.Union <$> mapM infer' list) <*> pure K.Type
+    TE.Tuple tup -> TE.KindedType <$> (TE.Tuple <$> mapM infer' tup) <*> pure K.Type
+    TE.Record pairs -> TE.KindedType <$> (TE.Record <$> mapM (mapM infer') pairs) <*> pure K.Type
 
     TE.Arrow in' out' -> do
       kindedIn <- infer' in'
@@ -181,6 +180,7 @@ instance HasKind Type where
 
 instance HasKind (Variable Type) where
     kind (T.Poly _ k)        = return k
-    kind (T.Skolem _ k)      = return k
+    kind (T.Existential _ k) = return k
     kind (T.Unification _ k) = return k
     kind i                   = Eff.throwError $ UnexpectedVariable i
+

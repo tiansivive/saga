@@ -40,7 +40,7 @@ deriving instance Ord Type
 
 data instance Variable Type where
   Poly              :: Classifiable Type => String -> Classifier Type -> Variable Type
-  Skolem            :: Classifiable Type => String -> Classifier Type -> Variable Type
+  Existential       :: Classifiable Type => String -> Classifier Type -> Variable Type
   Unification       :: Classifiable Type => String -> Classifier Type -> Variable Type
   Instantiation     :: Classifiable Type => String -> Variable Type
   Local             :: Classifiable Type => String -> Classifier Type -> Variable Type
