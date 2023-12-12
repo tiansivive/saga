@@ -33,7 +33,6 @@ import           Saga.Language.Typechecker.Type                (Type)
 
 
 
--- | FIXME: #23 @tiansivive Effects: Use member constraints
 type SolverEff es = (TypeCheck es, Eff.State Solution :> es, Eff.State [Cycle Type] :> es)
 
 

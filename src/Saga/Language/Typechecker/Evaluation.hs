@@ -62,7 +62,6 @@ type EvaluationEff es = TypeCheck es
 type EvaluationM a = forall es. (EvaluationEff es) => Eff es a
 
 class Evaluate a b | a -> b where
-    -- | NOTE leaving as Eff because this fixes the issue where type inference breaks when using `mapM evaluate`
     evaluate :: EvaluationEff es =>  a -> Eff es b
 
 instance Evaluate TypeExpr (Polymorphic Type) where
