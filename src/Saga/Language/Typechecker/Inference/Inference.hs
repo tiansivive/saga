@@ -48,6 +48,8 @@ class
     --qualify     :: (t ~ Classifier e, w ~ Constraint t)              => w -> Polymorphic t -> Polymorphic t
 class Instantiate t where
     instantiate :: Polymorphic t -> t -> Polymorphic t
+
+-- QUESTION: Is this the right place to define Generalization? It should now happen only after zonking, so there's no need for Inference to depend on it.
 class Generalize t where
     -- ENHANCEMENT: Define the needed effects as an associated type
     type family St t :: *
