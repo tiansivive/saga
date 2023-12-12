@@ -29,8 +29,8 @@ import           Control.Monad.Except
 import           Prelude                                                 hiding
                                                                          (lookup)
 import           Saga.Language.Typechecker.Errors
-import           Saga.Language.Typechecker.Variables                     (PolymorphicVar,
-                                                                          VarType)
+import           Saga.Language.Typechecker.Variables                     (VarType,
+                                                                          Variable)
 
 import           Control.Applicative                                     ((<|>))
 import           Data.List                                               hiding
@@ -84,7 +84,7 @@ instance (Generalize Type, Instantiate Type) => Inference Expr where
     lookup = lookup'
     fresh = Shared.fresh
 
-type Bindings = Map (PolymorphicVar Type) (Qualified Type)
+type Bindings = Map (Variable Type) (Qualified Type)
 
 infer' :: Shared.TypeInference es => Expr -> Eff es Expr
 infer' e = case e of
@@ -124,10 +124,10 @@ infer' e = case e of
           return (expr, constraint : cs)
 
 
-        locals :: Type -> [PolymorphicVar Type]
+        locals :: Type -> [Variable Type]
         locals t = [ v | v@(T.Local {}) <- Set.toList $ ftv t ]
 
-        collect :: (Eff.Reader Bindings :> es, Eff.State (Subst Type) :> es) => PolymorphicVar Type -> Eff es [Q.Constraint Type]
+        collect :: (Eff.Reader Bindings :> es, Eff.State (Subst Type) :> es) => Variable Type -> Eff es [Q.Constraint Type]
         collect v@(T.Local {}) = do
           bs <- Eff.ask
 

@@ -45,7 +45,7 @@ import           Saga.Language.Typechecker.Solver.Entailment     (Entails (..))
 import           Effectful                                       (Eff)
 import qualified Saga.Language.Typechecker.Solver.Implications   as Imp
 import qualified Saga.Language.Typechecker.Solver.Refinements    as R
-import           Saga.Language.Typechecker.Variables             (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables             (Variable)
 import           Saga.Language.Typechecker.Zonking.Normalisation (Normalisation (normalise))
 import           Saga.Language.Typechecker.Zonking.Qualification (qualify)
 import           Saga.Language.Typechecker.Zonking.Zonking       (Context (..),

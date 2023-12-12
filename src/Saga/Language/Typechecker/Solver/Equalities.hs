@@ -20,7 +20,7 @@ import           Saga.Language.Typechecker.Solver.Unification           (Unifica
 import qualified Saga.Language.Typechecker.Type                         as T
 import           Saga.Language.Typechecker.Type                         (Scheme (..),
                                                                          Type)
-import           Saga.Language.Typechecker.Variables                    (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables                    (Variable)
 
 
 import           Control.Monad                                          (foldM)
@@ -37,7 +37,7 @@ import qualified Saga.Language.Typechecker.Solver.Monad                 as Solve
 import           Saga.Language.Typechecker.Solver.Protocols             (propagate)
 
 
-data Eq = Eq (PolymorphicVar Evidence) Item Item
+data Eq = Eq (Variable Evidence) Item Item
     deriving Show
 
 

@@ -4,17 +4,17 @@ module Saga.Language.Typechecker.Solver.Substitution where
 import qualified Data.Map                            as Map
 import qualified Data.Set                            as Set
 
-import           Saga.Language.Typechecker.Variables (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables (Variable)
 
 
 
-type Subst t = Map.Map (PolymorphicVar t) t
+type Subst t = Map.Map (Variable t) t
 
 -- | Substitute t in data structure a
 class Substitutable a where
     type Target a
     apply :: (t ~ Target a) => Subst t -> a -> a
-    ftv   :: (t ~ Target a, Ord (PolymorphicVar t)) =>  a -> Set.Set (PolymorphicVar t)
+    ftv   :: (t ~ Target a, Ord (Variable t)) =>  a -> Set.Set (Variable t)
 
 instance {-# OVERLAPPABLE #-} (Functor f, Foldable f, Substitutable a) => Substitutable (f a) where
     type Target (f a) = Target a
@@ -24,7 +24,7 @@ instance {-# OVERLAPPABLE #-} (Functor f, Foldable f, Substitutable a) => Substi
 
 
 
-compose :: (Target t ~ t, Substitutable t, Ord (PolymorphicVar t)) => Subst t -> Subst t -> Subst t
+compose :: (Target t ~ t, Substitutable t, Ord (Variable t)) => Subst t -> Subst t -> Subst t
 s1 `compose` s2 = s `Map.union` s1
   where
     s = Map.map (apply s1) s2
@@ -32,5 +32,5 @@ s1 `compose` s2 = s `Map.union` s1
 nullSubst :: forall t. Subst t
 nullSubst = Map.empty
 
-mkSubst :: Ord (PolymorphicVar t) => (PolymorphicVar t, t) -> Subst t
+mkSubst :: Ord (Variable t) => (Variable t, t) -> Subst t
 mkSubst (v, t) = Map.insert v t Map.empty

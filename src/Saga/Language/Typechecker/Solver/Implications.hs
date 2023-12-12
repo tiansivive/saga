@@ -3,10 +3,10 @@ import           Effectful                                    (Eff)
 import           Saga.Language.Typechecker.Solver.Constraints
 import           Saga.Language.Typechecker.Solver.Monad
 import           Saga.Language.Typechecker.Type               (Type)
-import           Saga.Language.Typechecker.Variables          (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables          (Variable)
 
 
-data Implies = Implies [PolymorphicVar Type] [Assumption] Constraint
+data Implies = Implies [Variable Type] [Assumption] Constraint
 
 instance Solve Implies where
     solve = solve'

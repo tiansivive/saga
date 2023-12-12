@@ -6,7 +6,7 @@ module Saga.Language.Typechecker.Solver.Unification where
 import qualified Data.Map                                      as Map
 import qualified Data.Set                                      as Set
 
-import           Saga.Language.Typechecker.Variables           (PolymorphicVar (..))
+import           Saga.Language.Typechecker.Variables           (Variable (..))
 
 
 
@@ -68,8 +68,8 @@ type UnificationM t a = forall es. UnificationEff es t => Eff es a
 
 class Substitutable t => Unification t where
     unify       :: UnificationEff es t => t -> t -> Eff es (Subst t)
-    bind        :: UnificationEff es t => PolymorphicVar t -> t -> Eff es (Subst t)
-    occursCheck :: PolymorphicVar t -> t -> Bool
+    bind        :: UnificationEff es t => Variable t -> t -> Eff es (Subst t)
+    occursCheck :: Variable t -> t -> Bool
 
 
 

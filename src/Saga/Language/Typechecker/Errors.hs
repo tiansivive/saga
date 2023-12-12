@@ -9,7 +9,7 @@ import           Saga.Language.Typechecker.Solver.Constraints (Constraint,
 import           Saga.Language.Typechecker.Type               (Polymorphic, Tag,
                                                                Type)
 import           Saga.Language.Typechecker.TypeExpr           (TypeExpr)
-import           Saga.Language.Typechecker.Variables          (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables          (Variable)
 
 data SagaError where
   UnboundVariable     :: String -> SagaError
@@ -19,9 +19,9 @@ data SagaError where
 
   UnexpectedType                      :: Type -> String -> SagaError
   UnexpectedKind                      :: Kind -> String -> SagaError
-  UnexpectedPolymorphicVariable       :: (Show a, Show (PolymorphicVar a)) => PolymorphicVar a -> SagaError
-  UnexpectedInstantiationVariable     :: (Show a, Show (PolymorphicVar a)) =>  PolymorphicVar a -> SagaError
-  UnexpectedVariable                  :: (Show a, Show (PolymorphicVar a)) =>  PolymorphicVar a -> SagaError
+  UnexpectedPolymorphicVariable       :: (Show a, Show (Variable a)) => Variable a -> SagaError
+  UnexpectedInstantiationVariable     :: (Show a, Show (Variable a)) =>  Variable a -> SagaError
+  UnexpectedVariable                  :: (Show a, Show (Variable a)) =>  Variable a -> SagaError
 
   TagNotConstructor       :: String -> SagaError
   MultipleTagConstructors :: [Tag] -> SagaError
@@ -34,7 +34,7 @@ data SagaError where
 
 
   -- | INSTANTIATION
-  TooManyInstantiationArguments :: (Show t, Show (PolymorphicVar t)) => Polymorphic t -> [t] -> SagaError
+  TooManyInstantiationArguments :: (Show t, Show (Variable t)) => Polymorphic t -> [t] -> SagaError
 
   -- | UNIFICATION
   UnificationMismatch :: [Type] -> [Type]-> SagaError
@@ -44,8 +44,8 @@ data SagaError where
   KindMismatch :: Kind -> Kind -> SagaError
 
 
-  InfiniteType :: (Show a, Show (PolymorphicVar a)) => (PolymorphicVar a) -> Type-> SagaError
-  InfiniteKind :: (Show a, Show (PolymorphicVar a)) => PolymorphicVar a -> Kind -> SagaError
+  InfiniteType :: (Show a, Show (Variable a)) => (Variable a) -> Type-> SagaError
+  InfiniteKind :: (Show a, Show (Variable a)) => Variable a -> Kind -> SagaError
   CircularKind :: Kind -> Kind -> SagaError
 
   -- | PROTOCOLS

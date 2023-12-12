@@ -11,7 +11,7 @@ import           Saga.Language.Typechecker.Variables
 
 
 
-classifier :: (Eff.Error SagaError :> es) => PolymorphicVar Type -> Eff es (Classifier Type)
+classifier :: (Eff.Error SagaError :> es) => Variable Type -> Eff es (Classifier Type)
 classifier (T.Poly _ c)           = return c
 classifier (T.Skolem _ c)         = return c
 classifier (T.Unification _ c)  = return c

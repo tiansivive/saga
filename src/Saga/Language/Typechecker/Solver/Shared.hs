@@ -14,8 +14,8 @@ import           Saga.Language.Typechecker.Solver.Monad        (Solution (..),
 import qualified Effectful.State.Static.Local                  as Eff
 import           Saga.Language.Typechecker.Type                (Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
-import           Saga.Language.Typechecker.Variables           (PolymorphicVar,
-                                                                VarType)
+import           Saga.Language.Typechecker.Variables           (VarType,
+                                                                Variable)
 
 import           Effectful                                     (Eff)
 import qualified Saga.Language.Typechecker.Inference.Inference as I
@@ -49,6 +49,6 @@ fresh t = do
         E -> C.Evidence $ "cst_ev_" ++ count
         U -> T.Unification ("cst_uvar_" ++ count) K.Type -- Level 0 = top level
 
-type instance VarType Type I.Evidence       = Var.PolymorphicVar Evidence
-type instance VarType Type I.Unification    = Var.PolymorphicVar Type
+type instance VarType Type I.Evidence       = Var.Variable Evidence
+type instance VarType Type I.Unification    = Var.Variable Type
   --return $ Var.Evidence $ "cst_ev_" ++ count

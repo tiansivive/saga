@@ -32,20 +32,22 @@ import qualified Saga.Language.Typechecker.Variables           as V hiding
 data Constraint where
     Empty       :: Constraint
     Conjunction :: Constraint -> Constraint -> Constraint
-    Equality    :: PolymorphicVar Evidence -> Item -> Item -> Constraint
-    Impl        :: PolymorphicVar Evidence -> Item -> ProtocolID -> Constraint
+    Equality    :: Variable Evidence -> Item -> Item -> Constraint
+    Impl        :: Variable Evidence -> Item -> ProtocolID -> Constraint
     OneOf       :: Item -> Item -> Constraint
     Refined     :: Scope -> Item -> Liquid -> Constraint
     Resource    :: Item -> Multiplicity -> Constraint
     Consumed    :: Item -> Constraint
     Pure        :: Item -> Constraint
     Impure      :: Item -> Constraint
-    Implication :: [PolymorphicVar Type] -> [Assumption] -> Constraint -> Constraint
+    Implication :: [Variable Type] -> [Assumption] -> Constraint -> Constraint
 deriving instance Show Constraint
 deriving instance Eq Constraint
 
 data Item
-    = Variable Level (PolymorphicVar Type)
+    = Variable Level (Variable Type)
+    | Skolem String Kind
+    | Unification (Variable Type)
     | Mono Type
     | Poly (Polymorphic Type)
     deriving (Show, Eq)
@@ -58,22 +60,22 @@ data Evidence
     deriving (Show, Eq, Ord)
 
 
-data instance PolymorphicVar Evidence where
-    Evidence :: String -> PolymorphicVar Evidence
-deriving instance Show (PolymorphicVar Evidence)
-deriving instance Eq (PolymorphicVar Evidence)
-deriving instance Ord (PolymorphicVar Evidence)
+data instance Variable Evidence where
+    Evidence :: String -> Variable Evidence
+deriving instance Show (Variable Evidence)
+deriving instance Eq (Variable Evidence)
+deriving instance Ord (Variable Evidence)
 
 
 data Mechanism = Nominal | Structural deriving (Show, Eq, Ord)
-type Witnessed = Map.Map (PolymorphicVar Evidence) (PolymorphicVar Evidence)
+type Witnessed = Map.Map (Variable Evidence) (Variable Evidence)
 
 
 newtype Assumption
     = Assume Constraint
     deriving (Show, Eq)
 
-type Scope = Map.Map (PolymorphicVar Liquid) Item
+type Scope = Map.Map (Variable Liquid) Item
 
 
 

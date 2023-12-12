@@ -52,7 +52,7 @@ import           Saga.Language.Typechecker.Inference.Kind      (kind)
 import           Saga.Language.Typechecker.Solver.Substitution (ftv)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables           (Classifier,
-                                                                PolymorphicVar)
+                                                                Variable)
 import           Saga.Utils.Operators                          ((|>))
 
 
@@ -145,7 +145,7 @@ instance Evaluate TypeExpr (Polymorphic Type) where
                     applied = foldl T.Applied t tys
                 in return $ Forall (tvars ++ tvars') (bs <> bs' :| cs <> cs' :=> applied)
 
-            apply :: TypeExpr -> [PolymorphicVar Type] -> [Polymorphic Type] -> EvaluationM (Polymorphic Type)
+            apply :: TypeExpr -> [Variable Type] -> [Polymorphic Type] -> EvaluationM (Polymorphic Type)
             apply tyExpr [] [] = evaluate tyExpr
             apply tyExpr tvars [] = do
                 Saga { types, dataTypes, kinds, tags } <- Eff.ask
@@ -198,7 +198,7 @@ lookup id = do
     maybe (Eff.throwError $ UndefinedIdentifier id) return value
 
 
-collect :: (Ord t, Ord (PolymorphicVar t)) => [T.Polymorphic t] -> (Map.Map (PolymorphicVar t) (Qualified t), [Q.Constraint t], [PolymorphicVar t], [t])
+collect :: (Ord t, Ord (Variable t)) => [T.Polymorphic t] -> (Map.Map (Variable t) (Qualified t), [Q.Constraint t], [Variable t], [t])
 collect = foldr (\(Forall tvars (bs' :| cs' :=> qt)) (bs, cs, tvars', ts) -> (bs' <> bs, cs' <> cs, tvars <> tvars', qt : ts)) (Map.empty,[],[],[])
 
 

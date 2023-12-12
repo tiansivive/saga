@@ -39,7 +39,7 @@ import           Saga.Language.Typechecker.Solver.Monad        (Solve (..),
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import qualified Saga.Language.Typechecker.Type                as T
 import           Saga.Utils.Operators                          ((||>))
-import qualified Saga.Utils.TypeLevel                          as PolymorphicVars
+import qualified Saga.Utils.TypeLevel                          as Variables
 
 
 

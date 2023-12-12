@@ -44,7 +44,7 @@ import qualified Saga.Language.Typechecker.Type                         as T
 import           Saga.Language.Typechecker.Type                         (Scheme (..),
                                                                          Type)
 import qualified Saga.Language.Typechecker.Variables                    as Var
-import           Saga.Language.Typechecker.Variables                    (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables                    (Variable)
 
 
 
@@ -60,7 +60,7 @@ import           Effectful                                              (Eff)
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
 import           Saga.Language.Typechecker.Solver.Entailment            (Entails (..))
 
-data ImplConstraint = Impl (PolymorphicVar Evidence) Item ProtocolID
+data ImplConstraint = Impl (Variable Evidence) Item ProtocolID
 
 instance Solve ImplConstraint where
     solve = solve'

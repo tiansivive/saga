@@ -17,7 +17,7 @@ import           Saga.Language.Typechecker.Errors              (SagaError)
 import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import           Saga.Language.Typechecker.Solver.Constraints  (Constraint,
                                                                 Evidence,
-                                                                PolymorphicVar,
+                                                                Variable,
                                                                 Witnessed)
 import           Saga.Language.Typechecker.Solver.Substitution (Subst,
                                                                 Substitutable,

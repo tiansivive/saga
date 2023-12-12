@@ -32,9 +32,8 @@ import           Saga.Language.Typechecker.Monad         (TypeCheck)
 import           Saga.Language.Typechecker.Qualification (Qualified)
 import           Saga.Language.Typechecker.Type          (Polymorphic,
                                                           Scheme (..), Type)
-import           Saga.Language.Typechecker.Variables     (Classifier,
-                                                          PolymorphicVar,
-                                                          VarType)
+import           Saga.Language.Typechecker.Variables     (Classifier, VarType,
+                                                          Variable)
 
 
 
@@ -80,7 +79,7 @@ data Skolem = Skolem
 inform' :: InferEff es w => Info -> Eff es ()
 inform' = Eff.tell
 
-type Instantiable t es = (Eff.Error SagaError :> es, Instantiate t, Show t, Show (PolymorphicVar t))
+type Instantiable t es = (Eff.Error SagaError :> es, Instantiate t, Show t, Show (Variable t))
 instantiateWith :: Instantiable t es => Polymorphic t -> [t] -> Eff es (Polymorphic t)
 instantiateWith polymorphic ts = instantiate' polymorphic ts
   where

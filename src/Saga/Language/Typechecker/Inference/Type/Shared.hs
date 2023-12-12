@@ -26,11 +26,11 @@ type TypeInference es = InferEff es CST.Constraint
 
 type instance I.EmittedConstraint Type = CST.Constraint
 
-type instance VarType Expr I.Evidence       = Var.PolymorphicVar CST.Evidence
-type instance VarType Expr I.Unification    = Var.PolymorphicVar Type
-type instance VarType Expr I.Skolem         = Var.PolymorphicVar Type
-type instance VarType Expr I.TypeVar        = Var.PolymorphicVar Type
-type instance VarType Expr I.Instantiation  = Var.PolymorphicVar Type
+type instance VarType Expr I.Evidence       = Var.Variable CST.Evidence
+type instance VarType Expr I.Unification    = Var.Variable Type
+type instance VarType Expr I.Skolem         = Var.Variable Type
+type instance VarType Expr I.TypeVar        = Var.Variable Type
+type instance VarType Expr I.Instantiation  = Var.Variable Type
 
 
 

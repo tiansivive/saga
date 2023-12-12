@@ -14,8 +14,8 @@ import           Saga.Language.Typechecker.Inference.Inference   hiding (emit,
                                                                   fresh, infer)
 import qualified Saga.Language.Typechecker.Solver.Constraints    as CST
 import qualified Saga.Language.Typechecker.Variables             as Var
-import           Saga.Language.Typechecker.Variables             (PolymorphicVar,
-                                                                  VarType)
+import           Saga.Language.Typechecker.Variables             (VarType,
+                                                                  Variable)
 
 import           Control.Monad.Except                            (MonadError (..))
 import           Control.Monad.RWS                               (MonadReader (..),
@@ -54,15 +54,15 @@ import           Saga.Utils.Operators                            ((||>))
 
 
 type instance VarType Pattern I.Evidence       = CST.Evidence
-type instance VarType Pattern I.Unification    = Var.PolymorphicVar Type
-type instance VarType Pattern I.Skolem         = Var.PolymorphicVar Type
-type instance VarType Pattern I.TypeVar        = Var.PolymorphicVar Type
-type instance VarType Pattern I.Instantiation  = Var.PolymorphicVar Type
+type instance VarType Pattern I.Unification    = Var.Variable Type
+type instance VarType Pattern I.Skolem         = Var.Variable Type
+type instance VarType Pattern I.TypeVar        = Var.Variable Type
+type instance VarType Pattern I.Instantiation  = Var.Variable Type
 
 
 type PatternInferenceEff es = (InferEff es CST.Constraint, Eff.Writer TypeVars :> es)
 
-type TypeVars = [(String, PolymorphicVar Type)]
+type TypeVars = [(String, Variable Type)]
 
 
 
@@ -157,7 +157,7 @@ infer (PatData tag pats) = do
 fresh ::  PatternInferenceEff es =>I.Tag a -> Eff es (VarType Expr a)
 fresh = Shared.fresh
 
-emit :: PatternInferenceEff es => (String, PolymorphicVar Type) -> Eff es ()
+emit :: PatternInferenceEff es => (String, Variable Type) -> Eff es ()
 emit pair = Eff.tell [pair]
 
 --run :: PatternInference a -> m (a, TypeVars)

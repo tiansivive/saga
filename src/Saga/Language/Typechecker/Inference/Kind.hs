@@ -45,11 +45,11 @@ import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables
 
-type instance VarType TypeExpr I.Evidence       = Var.PolymorphicVar CST.Evidence
-type instance VarType TypeExpr I.Unification    = Var.PolymorphicVar Kind
-type instance VarType TypeExpr I.Skolem         = Var.PolymorphicVar Kind
-type instance VarType TypeExpr I.TypeVar        = Var.PolymorphicVar Kind
-type instance VarType TypeExpr I.Instantiation  = Var.PolymorphicVar Kind
+type instance VarType TypeExpr I.Evidence       = Var.Variable CST.Evidence
+type instance VarType TypeExpr I.Unification    = Var.Variable Kind
+type instance VarType TypeExpr I.Skolem         = Var.Variable Kind
+type instance VarType TypeExpr I.TypeVar        = Var.Variable Kind
+type instance VarType TypeExpr I.Instantiation  = Var.Variable Kind
 
 
 
@@ -179,9 +179,8 @@ instance HasKind Type where
   kind  _ = return K.Type
 
 
-instance HasKind (PolymorphicVar Type) where
+instance HasKind (Variable Type) where
     kind (T.Poly _ k)        = return k
-
     kind (T.Skolem _ k)      = return k
     kind (T.Unification _ k) = return k
     kind i                   = Eff.throwError $ UnexpectedVariable i

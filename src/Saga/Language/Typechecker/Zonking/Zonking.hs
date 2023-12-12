@@ -30,7 +30,7 @@ import           Saga.Language.Typechecker.Solver.Constraints  (Constraint,
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import           Saga.Language.Typechecker.Type                (Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
-import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables           (Variable)
 
 type ZonkingEff es = (TypeCheck es, Eff.Reader Context :> es)
 type Zonking a = forall es. ZonkingEff es => Eff es a
@@ -39,8 +39,8 @@ data Context = Context { solution:: Solution, residuals :: [Constraint] } derivi
 type ScopedVar = String
 
 type family KeyFor a where
-    KeyFor Ev = PolymorphicVar Evidence
-    KeyFor Ty = PolymorphicVar Type
+    KeyFor Ev = Variable Evidence
+    KeyFor Ty = Variable Type
 
 
 

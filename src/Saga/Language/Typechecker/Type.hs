@@ -28,8 +28,8 @@ data Type where
     Arrow       :: Type -> Type -> Type
     Data        :: String -> Kind -> Type
     Applied     :: Type -> Type -> Type
-    Var         :: PolymorphicVar Type -> Type
-    Closure     :: [PolymorphicVar Type] -> TypeExpr -> Scope -> Type
+    Var         :: Variable Type -> Type
+    Closure     :: [Variable Type] -> TypeExpr -> Scope -> Type
     Void        :: Type
     Any         :: Type
 
@@ -38,16 +38,16 @@ deriving instance Show Type
 deriving instance Eq Type
 deriving instance Ord Type
 
-data instance PolymorphicVar Type where
-  Poly              :: Classifiable Type => String -> Classifier Type -> PolymorphicVar Type
-  Skolem            :: Classifiable Type => String -> Classifier Type -> PolymorphicVar Type
-  Unification       :: Classifiable Type => String -> Classifier Type -> PolymorphicVar Type
-  Instantiation     :: Classifiable Type => String -> PolymorphicVar Type
-  Local             :: Classifiable Type => String -> Classifier Type -> PolymorphicVar Type
+data instance Variable Type where
+  Poly              :: Classifiable Type => String -> Classifier Type -> Variable Type
+  Skolem            :: Classifiable Type => String -> Classifier Type -> Variable Type
+  Unification       :: Classifiable Type => String -> Classifier Type -> Variable Type
+  Instantiation     :: Classifiable Type => String -> Variable Type
+  Local             :: Classifiable Type => String -> Classifier Type -> Variable Type
 
-deriving instance Show (PolymorphicVar Type)
-deriving instance Ord (PolymorphicVar Type)
-deriving instance Eq (PolymorphicVar Type)
+deriving instance Show (Variable Type)
+deriving instance Ord (Variable Type)
+deriving instance Eq (Variable Type)
 
 data Scope = Scope
   { types :: Map.Map String (Polymorphic Type)
@@ -56,11 +56,11 @@ data Scope = Scope
   } deriving (Show, Eq, Ord)
 
 
-data Scheme t = Forall [PolymorphicVar t] (Qualified t)
+data Scheme t = Forall [Variable t] (Qualified t)
 
-deriving instance (Show t, Show (PolymorphicVar t)) => Show (Scheme t)
-deriving instance (Eq t, Eq (PolymorphicVar t)) => Eq (Scheme t)
-deriving instance (Ord t, Ord (PolymorphicVar t)) => Ord (Scheme t)
+deriving instance (Show t, Show (Variable t)) => Show (Scheme t)
+deriving instance (Eq t, Eq (Variable t)) => Eq (Scheme t)
+deriving instance (Ord t, Ord (Variable t)) => Ord (Scheme t)
 type Polymorphic = Scheme
 
 data DataType = DataType { tycon :: Tycon, definition :: Polymorphic Type } deriving (Show, Eq, Ord)
