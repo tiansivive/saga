@@ -34,12 +34,11 @@ type TypeInference es = (TypeCheck es, Eff.Reader CST.Level :> es, Eff.State Sta
 data State = IST
   { tvars :: Int
   , evars :: Int
-  , level :: Int
   } deriving (Show)
 
 
 initialState :: State
-initialState = IST 0 0 0
+initialState = IST 0 0
 
 
 fresh :: (Eff.State State :> es) => Eff es § Variable Type
@@ -59,10 +58,10 @@ mkEvidence = do
 
 
 
-toItem :: (Eff.State State :> es) => (Variable Type -> Variable CST.Item) -> Type -> Eff es CST.Item
+toItem :: ( Eff.Reader CST.Level :> es) => (Variable Type -> Variable CST.Item) -> Type -> Eff es CST.Item
 toItem constructor (T.Var tvar) = do
-  l <- Eff.gets level
-  return $ CST.Variable (CST.Level l) (constructor tvar)
+  l <- Eff.ask
+  return $ CST.Variable l (constructor tvar)
 
 toItem _ t = return $ CST.Mono t
 

@@ -171,14 +171,14 @@ infer' e = case e of
         return $ Typed (Record pairs') (T.Record $ fmap extract <$> pairs')
 
     List elems -> do
-      l <- Eff.gets level
+      lvl <- Eff.ask
       tvar <- Shared.fresh
       elems' <-forM elems $ \e -> infer e
       let tys = fmap extract elems'
 
       forM_ tys $ \t -> do
         ev <- Shared.mkEvidence
-        Eff.tell $ Equality ev (CST.Variable (CST.Level l) (CST.Unification tvar)) (CST.Mono t)
+        Eff.tell $ Equality ev (CST.Variable lvl (CST.Unification tvar)) (CST.Mono t)
 
       return $ Typed (List elems') (T.Applied listConstructor $ T.Var tvar)
 
@@ -304,14 +304,14 @@ infer' e = case e of
                 (Typed expr' _) <- infer expr
                 walk (Declaration (Let id (Just typeExp) k expr') : processed) rest
             Declaration (Let id Nothing k expr) -> do
-              l <- Eff.gets level
+              lvl <- Eff.ask
               tvar <- Shared.fresh
               let qt = Forall [] (Q.none :=> T.Var tvar)
               let scoped = Eff.local (\e -> e{ types = Map.insert id qt $ types e })
               scoped $ do
                 (Typed expr' ty) <- infer expr
                 ev <- Shared.mkEvidence
-                Eff.tell $ CST.Equality ev (CST.Variable (CST.Level l) (CST.Unification tvar)) (CST.Mono ty)
+                Eff.tell $ CST.Equality ev (CST.Variable lvl (CST.Unification tvar)) (CST.Mono ty)
                 walk processed rest
             d -> walk (d:processed) rest
     where
