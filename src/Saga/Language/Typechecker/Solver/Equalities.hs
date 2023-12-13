@@ -50,8 +50,8 @@ solve' :: SolverEff es => Eq -> Eff es (Status, C.Constraint)
 --solve' eq | pTrace ("\nSOLVING EQ:\n" ++ show eq) False = undefined
 solve' (Eq _ it it') = case (it, it') of
     (Mono ty, Mono ty')        -> ty `equals` ty'
-    (Mono ty, Variable _ (C.Unification tvar)) -> ty `equals` T.Var tvar
-    (Variable _ (C.Unification tvar), Mono ty) -> ty `equals` T.Var tvar
+    (Mono ty, Variable (C.Unification _ tvar)) -> ty `equals` T.Var tvar
+    (Variable (C.Unification _ tvar), Mono ty) -> ty `equals` T.Var tvar
     (Mono ty, Poly ty')        -> instAndUnify ty' ty
     (Poly ty', Mono ty)        -> instAndUnify ty' ty
     eq -> crash $ NotYetImplemented $ "Solving equality: " ++ show eq

@@ -58,12 +58,9 @@ mkEvidence = do
 
 
 
-toItem :: ( Eff.Reader CST.Level :> es) => (Variable Type -> Variable CST.Item) -> Type -> Eff es CST.Item
-toItem constructor (T.Var tvar) = do
-  l <- Eff.ask
-  return $ CST.Variable l (constructor tvar)
-
-toItem _ t = return $ CST.Mono t
+toItem :: (Variable Type -> Variable CST.Item) -> Type -> CST.Item
+toItem constructor (T.Var tvar) = CST.Variable (constructor tvar)
+toItem _ t                      = CST.Mono t
 
 
 propagate :: TypeInference es => T.Constraint -> Eff es ()
@@ -71,3 +68,8 @@ propagate (ty `Q.Implements` prtcl) = mkEvidence >>= \e -> Eff.tell $ CST.Impl e
 propagate (Q.Resource mul ty) = Eff.tell $ CST.Resource (CST.Mono ty) mul
 propagate (Q.Pure ty) = Eff.tell $ CST.Pure (CST.Mono ty)
 propagate (Q.Refinement bs expr ty) = Eff.tell $ CST.Refined (fmap CST.Mono bs) (CST.Mono ty) expr
+
+
+
+
+

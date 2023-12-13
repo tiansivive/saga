@@ -78,15 +78,16 @@ infer (PatTuple pats rest) = T.Tuple <$> mapM infer pats
 infer (PatList pats rest) = do
     tys <- mapM infer pats
     tvar <- Shared.fresh
+
     let result = T.Applied Lib.listConstructor $ choice (T.Var tvar) tys
 
     case rest of
       Nothing -> return result
       Just id -> do
+        lvl <- Eff.ask
         tvar <- Shared.fresh
         ev   <- Shared.mkEvidence
-        it   <- Shared.toItem CST.Unification (T.Var tvar)
-        Eff.tell $ Equality ev (CST.Mono result) it
+        Eff.tell $ Equality ev (CST.Mono result) (CST.Variable $ CST.Unification lvl tvar)
         emit (id, tvar)
         return result
 

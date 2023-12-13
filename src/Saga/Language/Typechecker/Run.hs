@@ -4,7 +4,7 @@ module Saga.Language.Typechecker.Run where
 import qualified Saga.Language.Core.Expr                                 as E
 import           Saga.Language.Core.Expr                                 (Expr)
 import           Saga.Language.Typechecker.Inference.Inference           (Inference (infer))
-import           Saga.Language.Typechecker.Inference.Type.Expr
+
 import           Saga.Language.Typechecker.Inference.Type.Generalization
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
 
@@ -21,6 +21,7 @@ import           Saga.Language.Typechecker.Environment                   (Compil
                                                                           Info)
 import           Saga.Language.Typechecker.Errors                        (SagaError)
 import qualified Saga.Language.Typechecker.Inference.Inference           as I
+import qualified Saga.Language.Typechecker.Inference.Type.Expr           as TI
 import qualified Saga.Language.Typechecker.Inference.Type.Shared         as TI
 
 import           Saga.Language.Typechecker.Lib                           (defaultEnv)

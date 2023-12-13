@@ -79,7 +79,10 @@ import qualified Effectful.State.Static.Local                            as Eff
 import           Saga.Language.Typechecker.Inference.Type.Generalization
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
 import           Saga.Language.Typechecker.Inference.Type.Shared         (State (..))
+import           Saga.Language.Typechecker.Monad                         (TypeCheck)
 
+run :: TypeCheck es => Expr -> Eff es ((Expr, State), CST.Constraint)
+run = Eff.runWriter @CST.Constraint . Eff.runState Shared.initialState . Eff.runReader (CST.Level 0) . infer
 instance Inference Expr where
 
     type instance Effects Expr es = Shared.TypeInference es
@@ -115,7 +118,8 @@ infer' e = case e of
             lvl <- Eff.ask
             assumptions <- fmap CST.Assume <$> forM (Map.toList sub) (\(local, t) -> do
               ev <- Shared.mkEvidence
-              return $ CST.Equality ev (CST.Variable lvl (CST.Scoped local)) (CST.Mono t))
+              let it = Shared.toItem (CST.Unification lvl) t
+              return $ CST.Equality ev (CST.Variable (CST.Scoped lvl local)) it)
 
             return (locals t, assumptions, cs <> cs')
 
@@ -178,7 +182,7 @@ infer' e = case e of
 
       forM_ tys $ \t -> do
         ev <- Shared.mkEvidence
-        Eff.tell $ Equality ev (CST.Variable lvl (CST.Unification tvar)) (CST.Mono t)
+        Eff.tell $ Equality ev (CST.Variable $ CST.Unification lvl tvar) (CST.Mono t)
 
       return $ Typed (List elems') (T.Applied listConstructor $ T.Var tvar)
 
@@ -311,7 +315,7 @@ infer' e = case e of
               scoped $ do
                 (Typed expr' ty) <- infer expr
                 ev <- Shared.mkEvidence
-                Eff.tell $ CST.Equality ev (CST.Variable lvl (CST.Unification tvar)) (CST.Mono ty)
+                Eff.tell $ CST.Equality ev (CST.Variable $ CST.Unification lvl tvar) (CST.Mono ty)
                 walk processed rest
             d -> walk (d:processed) rest
     where

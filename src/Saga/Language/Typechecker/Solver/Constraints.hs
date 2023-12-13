@@ -43,15 +43,15 @@ deriving instance Show Constraint
 deriving instance Eq Constraint
 
 data Item
-    = Variable Level (Variable Item)
+    = Variable (Variable Item)
     -- | Skolem (Variable Type)
     | Mono Type
     | Poly (Polymorphic Type)
     deriving (Show, Eq)
 data instance Variable Item where
-    Skolem          :: Variable Type -> Variable Item
-    Scoped          :: Variable Type -> Variable Item
-    Unification     :: Variable Type -> Variable Item
+    Skolem          :: Level -> Variable Type -> Variable Item
+    Scoped          :: Level -> Variable Type -> Variable Item
+    Unification     :: Level -> Variable Type -> Variable Item
     Instantiation   :: Variable Type -> Variable Item
 deriving instance Show (Variable Item)
 deriving instance Eq (Variable Item)
@@ -100,19 +100,19 @@ instance Substitutable Constraint where
 
 instance Substitutable Item where
     type Target Item = Type
-    apply sub v@(Variable _ (Unification tvar))     = maybe v Mono $ Map.lookup tvar sub
-    apply sub v@(Variable _ (Instantiation tvar))   = maybe v Mono $ Map.lookup tvar sub
-    apply sub v@(Variable _ (Skolem tvar))          = maybe v Mono $ Map.lookup tvar sub
-    apply sub v@(Variable _ (Scoped tvar))          = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Variable (Unification _ tvar))     = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Variable (Instantiation tvar))   = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Variable (Skolem _ tvar))          = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Variable (Scoped _ tvar))          = maybe v Mono $ Map.lookup tvar sub
 
     apply sub v@(Mono ty)         = Mono $ apply sub ty
     apply _ it                    = it
 
-    ftv (Variable _ (Unification tvar))   = Set.singleton tvar
-    ftv (Variable _ (Skolem tvar))        = Set.singleton tvar
-    ftv (Variable _ (Scoped tvar))        = Set.singleton tvar
-    ftv (Variable _ (Instantiation tvar)) = Set.singleton tvar
-    ftv _                                 = Set.empty
+    ftv (Variable (Unification _ tvar)) = Set.singleton tvar
+    ftv (Variable (Skolem _ tvar))      = Set.singleton tvar
+    ftv (Variable (Scoped _ tvar))      = Set.singleton tvar
+    ftv (Variable (Instantiation tvar)) = Set.singleton tvar
+    ftv _                               = Set.empty
 
 
 
