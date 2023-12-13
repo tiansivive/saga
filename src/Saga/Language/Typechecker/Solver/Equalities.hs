@@ -20,7 +20,7 @@ import           Saga.Language.Typechecker.Solver.Unification           (Unifica
 import qualified Saga.Language.Typechecker.Type                         as T
 import           Saga.Language.Typechecker.Type                         (Scheme (..),
                                                                          Type)
-import           Saga.Language.Typechecker.Variables                    (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables                    (Variable)
 
 
 import           Control.Monad                                          (foldM)
@@ -37,7 +37,7 @@ import qualified Saga.Language.Typechecker.Solver.Monad                 as Solve
 import           Saga.Language.Typechecker.Solver.Protocols             (propagate)
 
 
-data Eq = Eq (PolymorphicVar Evidence) Item Item
+data Eq = Eq (Variable Evidence) Item Item
     deriving Show
 
 
@@ -50,8 +50,8 @@ solve' :: SolverEff es => Eq -> Eff es (Status, C.Constraint)
 --solve' eq | pTrace ("\nSOLVING EQ:\n" ++ show eq) False = undefined
 solve' (Eq _ it it') = case (it, it') of
     (Mono ty, Mono ty')        -> ty `equals` ty'
-    (Mono ty, Unification var) -> ty `equals` T.Var var
-    (Unification var, Mono ty) -> ty `equals` T.Var var
+    (Mono ty, Variable _ (C.Unification tvar)) -> ty `equals` T.Var tvar
+    (Variable _ (C.Unification tvar), Mono ty) -> ty `equals` T.Var tvar
     (Mono ty, Poly ty')        -> instAndUnify ty' ty
     (Poly ty', Mono ty)        -> instAndUnify ty' ty
     eq -> crash $ NotYetImplemented $ "Solving equality: " ++ show eq
@@ -77,8 +77,10 @@ solve' (Eq _ it it') = case (it, it') of
 
         generate constraint tys [] = return (constraint, reverse tys)
         generate constraint tys (tvar:tvars) = do
-            ty <- T.Var <$> Shared.fresh Inf.U
-            ev <- Shared.fresh Inf.E
+            ty <- T.Var <$> Shared.fresh Shared.T
+            ev <-   Shared.fresh Shared.E
+            -- | Potential HACK:
+            -- | QUESTION: Why wrap the fresh tvar in a Mono? Can we use the tvar directly in a Variable?
             let eq = C.Equality ev (Mono $ T.Var tvar) (Mono ty)
             generate (C.Conjunction constraint eq) (ty : tys) tvars
 

@@ -20,6 +20,7 @@ import           Saga.Language.Typechecker.Environment
 import           Saga.Language.Typechecker.Errors        (SagaError (TooManyArguments, TooManyInstantiationArguments))
 import           Saga.Language.Typechecker.Kind          (Kind)
 
+import qualified Data.Kind                               as GHC
 import           Effectful                               (Eff, (:>))
 import qualified Effectful                               as Eff
 import qualified Effectful.Error.Static                  as Eff
@@ -32,55 +33,33 @@ import           Saga.Language.Typechecker.Monad         (TypeCheck)
 import           Saga.Language.Typechecker.Qualification (Qualified)
 import           Saga.Language.Typechecker.Type          (Polymorphic,
                                                           Scheme (..), Type)
-import           Saga.Language.Typechecker.Variables     (Classifier,
-                                                          PolymorphicVar,
-                                                          VarType)
-
-
-
-type InferEff es w = (TypeCheck es, Eff.State State :> es, Eff.Writer w :> es, Monoid w)
-
-
-data State = IST
-  { vars  :: Int
-  , level :: Int
-  } deriving (Show)
+import           Saga.Language.Typechecker.Variables     (Classifier, VarType,
+                                                          Variable)
 
 class
   ( Instantiate (Classifier e)
   , Generalize (Classifier e)
   ) => Inference e where
-    infer       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => e -> Eff es e
-    lookup      :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => String -> Eff es (Qualified t)
-    fresh       :: (t ~ Classifier e, w ~ EmittedConstraint t, InferEff es w)  => Tag a -> Eff es (VarType e a)
+    -- | Effects required for inference: this should be a tuple in the format `(Effect :> es)`
+    type family Effects e (es :: [Eff.Effect]) :: GHC.Constraint
+    infer       :: Effects e es                       => e -> Eff es e
+    lookup      :: (t ~ Classifier e, Effects e es)   => String -> Eff es (Qualified t)
+    fresh       :: (t ~ Classifier e, Effects e es)   => Eff es (Variable t)
 
     --qualify     :: (t ~ Classifier e, w ~ Constraint t)              => w -> Polymorphic t -> Polymorphic t
-
 class Instantiate t where
     instantiate :: Polymorphic t -> t -> Polymorphic t
+
+-- QUESTION: Is this the right place to define Generalization? It should now happen only after zonking, so there's no need for Inference to depend on it.
 class Generalize t where
-    generalize :: (w ~ EmittedConstraint t, InferEff es w) => t -> Eff es (Polymorphic t)
-
-type family EmittedConstraint t :: *
-
-data Tag a where
-  E   :: Tag Evidence
-  Sk  :: Tag Skolem
-  U   :: Tag Unification
-  T   :: Tag TypeVar
-  I   :: Tag Instantiation
-
-data Evidence = Evidence
-data Unification = Unification
-data Instantiation = Instantiation
-data TypeVar = TypeVar
-data Skolem = Skolem
+    -- ENHANCEMENT: Define the needed effects as an associated type
+    type family Counter t :: *
+    generalize :: (Eff.State (Counter t) :> es)  => t -> Eff es (Polymorphic t)
 
 
-inform' :: InferEff es w => Info -> Eff es ()
-inform' = Eff.tell
 
-type Instantiable t es = (Eff.Error SagaError :> es, Instantiate t, Show t, Show (PolymorphicVar t))
+
+type Instantiable t es = (Eff.Error SagaError :> es, Instantiate t, Show t, Show (Variable t))
 instantiateWith :: Instantiable t es => Polymorphic t -> [t] -> Eff es (Polymorphic t)
 instantiateWith polymorphic ts = instantiate' polymorphic ts
   where
@@ -89,8 +68,4 @@ instantiateWith polymorphic ts = instantiate' polymorphic ts
     instantiate' ty (t:ts) = do
       let ty' = instantiate ty t
       instantiate' ty' ts
-
-
-initialState :: State
-initialState = IST 0 0
 

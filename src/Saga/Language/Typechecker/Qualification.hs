@@ -1,7 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Saga.Language.Typechecker.Qualification where
 import Saga.Language.Typechecker.Refinement.Liquid (Liquid)
-import Saga.Language.Typechecker.Variables (PolymorphicVar)
+import Saga.Language.Typechecker.Variables (Variable)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Bifunctor (Bifunctor(bimap))
@@ -19,13 +19,13 @@ deriving instance (Eq t, Eq (Given t)) => Eq (Qualified t)
 deriving instance (Ord t, Ord (Given t)) => Ord (Qualified t)
 
 data Given t = (:|)
-  { bindings:: Map (PolymorphicVar t) (Qualified t)
+  { bindings:: Map (Variable t) (Qualified t)
   , constraints :: [Constraint t]
   }
 infixl 1 :|
-deriving instance (Show t, Show (PolymorphicVar t)) => Show (Given t) 
-deriving instance (Eq t, Eq (PolymorphicVar t)) => Eq (Given t)
-deriving instance (Ord t, Ord (PolymorphicVar t)) => Ord (Given t)
+deriving instance (Show t, Show (Variable t)) => Show (Given t) 
+deriving instance (Eq t, Eq (Variable t)) => Eq (Given t)
+deriving instance (Ord t, Ord (Variable t)) => Ord (Given t)
 
 data Constraint a
   = a `Implements` String
@@ -35,7 +35,7 @@ data Constraint a
   | Equality a a
   deriving (Show, Eq, Ord)
 
-type Binding a = Map (PolymorphicVar Liquid) a
+type Binding a = Map (Variable Liquid) a
 
 data Multiplicity
   = Erased

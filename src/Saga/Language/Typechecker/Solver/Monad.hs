@@ -17,7 +17,7 @@ import           Saga.Language.Typechecker.Errors              (SagaError)
 import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import           Saga.Language.Typechecker.Solver.Constraints  (Constraint,
                                                                 Evidence,
-                                                                PolymorphicVar,
+                                                                Variable,
                                                                 Witnessed)
 import           Saga.Language.Typechecker.Solver.Substitution (Subst,
                                                                 Substitutable,
@@ -33,11 +33,12 @@ import           Saga.Language.Typechecker.Type                (Type)
 
 
 
--- | FIXME: #23 @tiansivive Effects: Use member constraints
-type SolverEff es = (TypeCheck es, Eff.State Solution :> es, Eff.State [Cycle Type] :> es)
+type SolverEff es = (TypeCheck es, Eff.State Solution :> es, Eff.State Count :> es, Eff.State [Cycle Type] :> es)
 
+data Count = Count { evs :: Int, tvs :: Int }
+  deriving Show
 
-data Solution = Solution { count :: Int, evidence :: Subst Evidence, tvars :: Subst Type, witnessed :: Witnessed }
+data Solution = Solution { evidence :: Subst Evidence, tvars :: Subst Type, witnessed :: Witnessed }
   deriving (Show)
 data Status = Solved | Deferred | Impossible deriving Show
 
@@ -50,26 +51,20 @@ class Solve c where
 
 
 initialSolution :: Solution
-initialSolution = Solution { count = 0, evidence = Map.empty, tvars = Map.empty, witnessed = Map.empty }
+initialSolution = Solution { evidence = Map.empty, tvars = Map.empty, witnessed = Map.empty }
+initialCount :: Count
+initialCount = Count 0 0
 
 
-
-update :: SolverEff es => Tag a -> Subst (Of a) -> Eff es ()
+update :: SolverEff es => Tag a -> Subst a -> Eff es ()
 update E sub = Eff.modify $ \s -> s{ evidence = sub `Map.union` evidence s }
 update T sub = Eff.modify $ \s -> s{ tvars = sub `compose` tvars s }
 
-data Ev = Ev
-data Ty = Ty
 data Tag a where
-  E  :: Tag Ev
-  T  :: Tag Ty
-
-type family Of a where
-    Of Ev = Evidence
-    Of Ty = Type
+  E  :: Tag Evidence
+  T  :: Tag Type
 
 
 
-
-run :: Eff (Eff.State [Cycle Type] : Eff.State Solution : es) a -> Eff es ((a, [Cycle Type]), Solution)
-run =  Eff.runState initialSolution . Eff.runState []
+run :: Eff (Eff.State [Cycle Type] : Eff.State Solution : Eff.State Count : es) a -> Eff es (((a, [Cycle Type]), Solution), Count)
+run =  Eff.runState initialCount . Eff.runState initialSolution . Eff.runState []

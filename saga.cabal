@@ -27,7 +27,6 @@ library
       Saga.Language.Typechecker.Inference.Elaboration
       Saga.Language.Typechecker.Inference.Inference
       Saga.Language.Typechecker.Inference.Kind
-      Saga.Language.Typechecker.Inference.Run
       Saga.Language.Typechecker.Inference.Type.Expr
       Saga.Language.Typechecker.Inference.Type.Generalization
       Saga.Language.Typechecker.Inference.Type.Instantiation

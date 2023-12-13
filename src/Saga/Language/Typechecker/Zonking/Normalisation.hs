@@ -19,11 +19,10 @@ import qualified Effectful.Reader.Static                         as Eff
 import qualified Saga.Language.Core.Expr                         as AST
 import qualified Saga.Language.Typechecker.Kind                  as K
 import           Saga.Language.Typechecker.Monad                 (TypeCheck)
-import qualified Saga.Language.Typechecker.Shared                as Shared
 import qualified Saga.Language.Typechecker.Type                  as T
 import           Saga.Language.Typechecker.Type                  (Type)
 import qualified Saga.Language.Typechecker.Variables             as Var
-import           Saga.Language.Typechecker.Variables             (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables             (Variable)
 import           Saga.Language.Typechecker.Zonking.Substitutions
 
 
@@ -37,7 +36,7 @@ import           Saga.Language.Typechecker.Errors                (Exception (Not
 import qualified Saga.Language.Typechecker.Solver.Constraints    as Solver
 import           Saga.Language.Typechecker.TypeExpr              (TypeExpr)
 
-type NormalizedEff es t = (TypeCheck es,  Eff.Reader [(PolymorphicVar t, String)] :> es)
+type NormalizedEff es t = (TypeCheck es,  Eff.Reader [(Variable t, String)] :> es)
 type Normalized t a = forall es. NormalizedEff es t => Eff es a
 class Normalisation a where
     type Of a
@@ -94,16 +93,14 @@ instance Normalisation Type where
         T.Closure params tyExpr scope   -> T.Closure <$> mapM normalise params <*> pure tyExpr <*> pure scope
         t                               -> return t
 
-instance Normalisation (PolymorphicVar Type) where
-    type Of (PolymorphicVar Type) = Type
+instance Normalisation (Variable Type) where
+    type Of (Variable Type) = Type
 
     normalise tvar = do
         mapping <- Eff.ask
         replaced <- sequence $ lookup tvar mapping <&> \id -> case tvar of
-                (T.Poly _ k)            -> return $ T.Poly id k
-                (T.Unification _ lvl k) -> return $ T.Poly id k
-
-                v                       -> Eff.throwError $ UnexpectedVariable v
+                (T.Poly _ k) -> return $ T.Poly id k
+                v            -> Eff.throwError $ UnexpectedVariable v
 
         return $ fromMaybe tvar replaced
 

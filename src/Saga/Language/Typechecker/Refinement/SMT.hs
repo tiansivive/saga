@@ -31,14 +31,13 @@ import           Saga.Language.Core.Literals                 (Literal (..))
 import           Saga.Language.Typechecker.Monad             (TypeCheck)
 import qualified Saga.Language.Typechecker.Refinement.Liquid as L
 import           Saga.Language.Typechecker.Refinement.Liquid (Liquid (..),
-                                                              Op (..),
-                                                              PolymorphicVar)
+                                                              Op (..), Variable)
 import qualified Saga.Language.Typechecker.Type              as T
 import           Saga.Language.Typechecker.Type              (Type)
 
 
 
-data State = St { nums :: Map (PolymorphicVar Liquid) SInteger, bools :: Map (PolymorphicVar Liquid) SBool }
+data State = St { nums :: Map (Variable Liquid) SInteger, bools :: Map (Variable Liquid) SBool }
     deriving (Show)
 empty :: State
 empty = St { nums = mempty, bools = mempty }

@@ -10,8 +10,7 @@ import           Saga.Language.Typechecker.Qualification       (Multiplicity)
 
 import           Saga.Language.Typechecker.Type                (Polymorphic,
                                                                 Type)
-import           Saga.Language.Typechecker.Variables           hiding
-                                                               (Unification)
+
 
 
 import           Control.Monad.RWS
@@ -21,60 +20,61 @@ import           Saga.Language.Core.Expr                       (Expr)
 import qualified Saga.Language.Typechecker.Qualification       as Q
 
 import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid)
+
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import qualified Saga.Language.Typechecker.Type                as T
-import qualified Saga.Language.Typechecker.Variables           as V hiding
-                                                                    (Unification)
 
-
+import           Saga.Language.Typechecker.Variables           (Variable)
 
 
 data Constraint where
     Empty       :: Constraint
     Conjunction :: Constraint -> Constraint -> Constraint
-    Equality    :: PolymorphicVar Evidence -> Item -> Item -> Constraint
-    Impl        :: PolymorphicVar Evidence -> Item -> ProtocolID -> Constraint
+    Equality    :: Variable Evidence -> Item -> Item -> Constraint
+    Impl        :: Variable Evidence -> Item -> ProtocolID -> Constraint
     OneOf       :: Item -> Item -> Constraint
     Refined     :: Scope -> Item -> Liquid -> Constraint
     Resource    :: Item -> Multiplicity -> Constraint
     Consumed    :: Item -> Constraint
     Pure        :: Item -> Constraint
     Impure      :: Item -> Constraint
-    Implication :: [PolymorphicVar Type] -> [Assumption] -> Constraint -> Constraint
+    Implication :: [Variable Type] -> [Assumption] -> Constraint -> Constraint
 deriving instance Show Constraint
 deriving instance Eq Constraint
 
 data Item
-    = Skolem String Kind
-    | Unification (PolymorphicVar Type)
+    = Variable Level (Variable Item)
+    -- | Skolem (Variable Type)
     | Mono Type
     | Poly (Polymorphic Type)
     deriving (Show, Eq)
+data instance Variable Item where
+    Skolem          :: Variable Type -> Variable Item
+    Scoped          :: Variable Type -> Variable Item
+    Unification     :: Variable Type -> Variable Item
+    Instantiation   :: Variable Type -> Variable Item
+deriving instance Show (Variable Item)
+deriving instance Eq (Variable Item)
+newtype Level = Level Int deriving (Show, Eq, Ord, Num)
 
 data Evidence
     = Protocol Implementation
     | Coercion Mechanism
     deriving (Show, Eq, Ord)
-
-
-data instance PolymorphicVar Evidence where
-    Evidence :: String -> PolymorphicVar Evidence
-deriving instance Show (PolymorphicVar Evidence)
-deriving instance Eq (PolymorphicVar Evidence)
-deriving instance Ord (PolymorphicVar Evidence)
-
+data instance Variable Evidence where
+    Evidence :: String -> Variable Evidence
+deriving instance Show (Variable Evidence)
+deriving instance Eq (Variable Evidence)
+deriving instance Ord (Variable Evidence)
 
 data Mechanism = Nominal | Structural deriving (Show, Eq, Ord)
-type Witnessed = Map.Map (PolymorphicVar Evidence) (PolymorphicVar Evidence)
-
+type Witnessed = Map.Map (Variable Evidence) (Variable Evidence)
 
 newtype Assumption
     = Assume Constraint
     deriving (Show, Eq)
 
-type Scope = Map.Map (PolymorphicVar Liquid) Item
-
-
+type Scope = Map.Map (Variable Liquid) Item
 
 
 
@@ -100,12 +100,19 @@ instance Substitutable Constraint where
 
 instance Substitutable Item where
     type Target Item = Type
-    apply sub v@(Unification uvar) = maybe v Mono $ Map.lookup uvar sub
-    apply sub v@(Mono ty)          = Mono $ apply sub ty
-    apply _ it                     = it
+    apply sub v@(Variable _ (Unification tvar))     = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Variable _ (Instantiation tvar))   = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Variable _ (Skolem tvar))          = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Variable _ (Scoped tvar))          = maybe v Mono $ Map.lookup tvar sub
 
-    ftv (Unification uvar) = Set.singleton uvar
-    ftv _                  = Set.empty
+    apply sub v@(Mono ty)         = Mono $ apply sub ty
+    apply _ it                    = it
+
+    ftv (Variable _ (Unification tvar))   = Set.singleton tvar
+    ftv (Variable _ (Skolem tvar))        = Set.singleton tvar
+    ftv (Variable _ (Scoped tvar))        = Set.singleton tvar
+    ftv (Variable _ (Instantiation tvar)) = Set.singleton tvar
+    ftv _                                 = Set.empty
 
 
 

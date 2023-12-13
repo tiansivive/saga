@@ -7,12 +7,12 @@
 module Saga.Language.Typechecker.Refinement.Liquid  where
 
 import           Saga.Language.Core.Literals
-import           Saga.Language.Typechecker.Variables (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables (Variable)
 
 
 
 data Liquid where
-    Var          :: (PolymorphicVar Liquid) -> Liquid
+    Var          :: (Variable Liquid) -> Liquid
     Number       :: Int -> Liquid
     Boolean      :: Bool -> Liquid
     Logical      :: Op -> Liquid -> Liquid -> Liquid
@@ -26,11 +26,11 @@ deriving instance Ord Liquid
 deriving instance Eq Liquid
 
 
-data instance PolymorphicVar Liquid where
-    Poly :: String -> PolymorphicVar Liquid
-deriving instance Show (PolymorphicVar Liquid)
-deriving instance Eq (PolymorphicVar Liquid)
-deriving instance Ord (PolymorphicVar Liquid)
+data instance Variable Liquid where
+    Poly :: String -> Variable Liquid
+deriving instance Show (Variable Liquid)
+deriving instance Eq (Variable Liquid)
+deriving instance Ord (Variable Liquid)
 
 
 

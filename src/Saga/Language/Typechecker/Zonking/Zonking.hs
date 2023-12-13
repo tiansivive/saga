@@ -4,10 +4,9 @@
 module Saga.Language.Typechecker.Zonking.Zonking where
 import qualified Saga.Language.Core.Expr                       as AST
 import           Saga.Language.Core.Expr                       (Expr (..))
-import           Saga.Language.Typechecker.Solver.Monad        (Ev, Of,
-                                                                Solution (..),
+import           Saga.Language.Typechecker.Solver.Monad        (Solution (..),
                                                                 SolverEff,
-                                                                Tag (..), Ty)
+                                                                Tag (..))
 
 import qualified Data.Map                                      as Map
 import qualified Effectful.State.Static.Local                  as Eff
@@ -30,7 +29,8 @@ import           Saga.Language.Typechecker.Solver.Constraints  (Constraint,
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import           Saga.Language.Typechecker.Type                (Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
-import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables           (Variable)
+import           Saga.Utils.TypeLevel                          (type (§))
 
 type ZonkingEff es = (TypeCheck es, Eff.Reader Context :> es)
 type Zonking a = forall es. ZonkingEff es => Eff es a
@@ -38,13 +38,10 @@ type Zonking a = forall es. ZonkingEff es => Eff es a
 data Context = Context { solution:: Solution, residuals :: [Constraint] } deriving Show
 type ScopedVar = String
 
-type family KeyFor a where
-    KeyFor Ev = PolymorphicVar Evidence
-    KeyFor Ty = PolymorphicVar Type
 
 
 
-lookup :: Tag a -> KeyFor a -> Zonking (Maybe (Of a))
+lookup :: Tag a -> Variable a -> Zonking (Maybe a)
 lookup T k = Eff.asks $ solution |> tvars |> Map.lookup k
 lookup E k = do
     Solution { evidence, witnessed } <- Eff.asks solution

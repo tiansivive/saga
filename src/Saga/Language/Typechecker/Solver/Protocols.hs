@@ -44,7 +44,7 @@ import qualified Saga.Language.Typechecker.Type                         as T
 import           Saga.Language.Typechecker.Type                         (Scheme (..),
                                                                          Type)
 import qualified Saga.Language.Typechecker.Variables                    as Var
-import           Saga.Language.Typechecker.Variables                    (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables                    (Variable)
 
 
 
@@ -60,7 +60,7 @@ import           Effectful                                              (Eff)
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
 import           Saga.Language.Typechecker.Solver.Entailment            (Entails (..))
 
-data ImplConstraint = Impl (PolymorphicVar Evidence) Item ProtocolID
+data ImplConstraint = Impl (Variable Evidence) Item ProtocolID
 
 instance Solve ImplConstraint where
     solve = solve'
@@ -101,9 +101,9 @@ instance Entails ImplConstraint where
 solve' :: SolverEff es => ImplConstraint -> Eff es (Status, Constraint)
 solve' (Impl e@(C.Evidence ev) t@(C.Mono ty) prtcl) =
     case ty of
-        T.Var (T.Unification {}) -> return (Deferred, C.Impl e t prtcl)
+        T.Var (T.Poly {}) -> return (Deferred, C.Impl e t prtcl)
+        T.Var (T.Existential id k)     -> crash $ NotYetImplemented "Solving ImplConstraint for existential type Vars"
         T.Var (T.Local id k)     -> crash $ NotYetImplemented "Solving ImplConstraint for locally scoped type Vars"
-        T.Var v                    -> crash $ Unexpected v "Unification Var"
 
         ty                         -> do
             impl <- Eff.asks $ protocols
@@ -124,15 +124,19 @@ solve' (Impl e item prtcl)                           = crash $ NotYetImplemented
 
 
 simplify' :: SolverEff es => ImplConstraint -> Eff es Constraint
-simplify' impl@(Impl ev t prtcl) = do
+simplify' impl@(Impl ev it prtcl) = do
     Solution { evidence, tvars } <- Eff.get
     process evidence tvars
 
     where
         process evidence tvars
             | isJust $ Map.lookup ev evidence   = return C.Empty
-            | C.Unification uvar <- t
-            , isJust $ Map.lookup uvar tvars    = return $ C.Impl ev (C.Mono $ apply tvars (T.Var uvar)) prtcl
+            | C.Variable lvl (C.Unification tvar) <- it
+            , isJust $ Map.lookup tvar tvars    =
+                let it' = case apply tvars (T.Var tvar) of
+                        T.Var tvar' -> C.Variable lvl (C.Unification tvar')
+                        ty          -> C.Mono ty
+                in return $ C.Impl ev it' prtcl
             | otherwise                         = flatten impl
 
 
@@ -153,7 +157,7 @@ flatten (Impl ev item prtcl) = do
         impl = C.Impl ev item prtcl
 
         ty = case item of
-            C.Unification u -> T.Var u
+            C.Variable _ (C.Unification tvar) -> T.Var tvar
             C.Mono ty -> ty
 
             _ -> crash $ NotYetImplemented $ "Flattening ImplConstraint for " ++ show item
