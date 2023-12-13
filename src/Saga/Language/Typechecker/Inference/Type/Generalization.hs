@@ -22,7 +22,7 @@ import           Saga.Language.Typechecker.Type                  (Scheme (..),
 
 instance Generalize Type where
   -- TODO This can probably be simplified, we probably don't need the full Shared.State
-  type St Type = Shared.State
+  type Counter Type = Shared.State
 
   generalize (T.Tuple tys) = do
     ts <- mapM generalize tys

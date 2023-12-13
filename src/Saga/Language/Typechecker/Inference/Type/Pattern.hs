@@ -57,7 +57,7 @@ import           Saga.Utils.Operators                            ((||>))
 
 
 
-type PatternInferenceEff es = (InferEff es Shared.State CST.Constraint, Eff.Writer TypeVars :> es)
+type PatternInferenceEff es = (Shared.TypeInference es, Eff.Writer TypeVars :> es)
 
 type TypeVars = [(String, Variable Type)]
 

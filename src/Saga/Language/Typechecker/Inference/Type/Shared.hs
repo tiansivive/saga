@@ -16,7 +16,9 @@ import           Saga.Language.Typechecker.Type                (Type)
 import qualified Effectful.State.Static.Local                  as Eff
 
 import           Effectful                                     (Eff, (:>))
+import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.Writer.Static.Local                 as Eff
+import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import qualified Saga.Language.Typechecker.Type                as T
 import qualified Saga.Language.Typechecker.Variables           as Var
@@ -26,8 +28,8 @@ import           Saga.Utils.TypeLevel                          (type (§))
 
 
 
-type TypeInference es = InferEff es State CST.Constraint
-type instance I.EmittedConstraint Type = CST.Constraint
+type TypeInference es = (TypeCheck es, Eff.Reader CST.Level :> es, Eff.State State :> es, Eff.Writer CST.Constraint :> es)
+
 
 data State = IST
   { tvars :: Int

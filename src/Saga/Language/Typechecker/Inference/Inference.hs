@@ -20,6 +20,7 @@ import           Saga.Language.Typechecker.Environment
 import           Saga.Language.Typechecker.Errors        (SagaError (TooManyArguments, TooManyInstantiationArguments))
 import           Saga.Language.Typechecker.Kind          (Kind)
 
+import qualified Data.Kind                               as GHC
 import           Effectful                               (Eff, (:>))
 import qualified Effectful                               as Eff
 import qualified Effectful.Error.Static                  as Eff
@@ -40,10 +41,12 @@ class
   , Generalize (Classifier e)
   ) => Inference e where
     -- ENHANCEMENT: Define the needed effects as an associated type
-    type family State e :: *
-    infer       :: (s ~ State e, t ~ Classifier e, w ~ EmittedConstraint t, InferEff es s w)  => e -> Eff es e
-    lookup      :: (s ~ State e, t ~ Classifier e, w ~ EmittedConstraint t, InferEff es s w)  => String -> Eff es (Qualified t)
-    fresh       :: (s ~ State e, t ~ Classifier e, w ~ EmittedConstraint t, InferEff es s w)  => Eff es (Variable t)
+
+    -- | Effects required for inference: this should be a tuple in the format `(Effect :> es)`
+    type family Effects e (es :: [Eff.Effect]) :: GHC.Constraint
+    infer       :: Effects e es                       => e -> Eff es e
+    lookup      :: (t ~ Classifier e, Effects e es)   => String -> Eff es (Qualified t)
+    fresh       :: (t ~ Classifier e, Effects e es)   => Eff es (Variable t)
 
     --qualify     :: (t ~ Classifier e, w ~ Constraint t)              => w -> Polymorphic t -> Polymorphic t
 class Instantiate t where
@@ -52,13 +55,10 @@ class Instantiate t where
 -- QUESTION: Is this the right place to define Generalization? It should now happen only after zonking, so there's no need for Inference to depend on it.
 class Generalize t where
     -- ENHANCEMENT: Define the needed effects as an associated type
-    type family St t :: *
-    generalize :: (Eff.State (St t) :> es)  => t -> Eff es (Polymorphic t)
-
-type family EmittedConstraint t :: *
+    type family Counter t :: *
+    generalize :: (Eff.State (Counter t) :> es)  => t -> Eff es (Polymorphic t)
 
 
-type InferEff es s w = (TypeCheck es, Eff.State s :> es, Eff.Writer w :> es, Monoid w)
 
 
 type Instantiable t es = (Eff.Error SagaError :> es, Instantiate t, Show t, Show (Variable t))

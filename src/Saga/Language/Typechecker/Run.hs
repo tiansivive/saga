@@ -30,13 +30,14 @@ import qualified Saga.Language.Typechecker.Solver.Run                    as Solv
 import           Saga.Language.Typechecker.Type                          (Polymorphic,
                                                                           Type)
 import qualified Saga.Language.Typechecker.Zonking.Run                   as Zonking
+import           Saga.Utils.Operators                                    ((|>))
 import           Saga.Utils.TypeLevel                                    (type (§))
 
 
 
 typecheck :: TypeCheck es => Expr -> Eff es (Expr, Polymorphic Type)
 typecheck expr  = do
-    ((ast, st), constraint) <-Eff.runWriter @CST.Constraint . Eff.runState TI.initialState $ infer expr
+    ((ast, st), constraint) <- Eff.runWriter @CST.Constraint . Eff.runState TI.initialState . Eff.runReader (CST.Level 0) $ infer expr
     pTraceM $ "AST:\n" ++ show ast
     pTraceM $ "State:\n" ++ show st
     context <- Eff.inject $ Solver.run constraint
@@ -47,7 +48,7 @@ typecheck expr  = do
 
 
 run :: Eff '[Eff.Reader CompilerState, Eff.Writer Info, Eff.Error SagaError, Eff.Fail, Eff.IOE] a -> IO § Either String (Either (Eff.CallStack, SagaError) (a, Info))
-run e = Eff.runEff . Eff.runFail . Eff.runError . Eff.runWriter $ Eff.runReader defaultEnv e
+run = Eff.runReader defaultEnv |> Eff.runWriter |> Eff.runError |> Eff.runFail |> Eff.runEff
 
 
 int = E.Literal . LInt

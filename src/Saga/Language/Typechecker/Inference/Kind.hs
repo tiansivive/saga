@@ -12,7 +12,6 @@ import qualified Data.Map                                      as Map
 import           Saga.Language.Typechecker.Environment
 import qualified Saga.Language.Typechecker.Inference.Inference as I
 import           Saga.Language.Typechecker.Inference.Inference (Generalize (..),
-                                                                InferEff,
                                                                 Inference (..),
                                                                 Instantiate (..))
 
@@ -26,7 +25,7 @@ import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.State.Static.Local                  as Eff
 import qualified Effectful.Writer.Static.Local                 as Eff
 
-import           Effectful                                     (Eff)
+import           Effectful                                     (Eff, (:>))
 import           Saga.Language.Typechecker.Errors              (SagaError (..))
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import           Saga.Language.Typechecker.Qualification       (Qualified (..))
@@ -43,25 +42,27 @@ import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables
 import           Saga.Utils.Operators                          ((|>))
+import Saga.Language.Typechecker.Monad (TypeCheck)
 
 
 
-type KindInference es = InferEff es Counts [UnificationConstraint]
+type KindInference es = (TypeCheck es, Eff.State Counts :> es, Eff.Writer [UnificationConstraint] :> es)
 newtype Counts = Counts { kvars:: Int }
 
-type instance I.EmittedConstraint Kind = [UnificationConstraint]
 data UnificationConstraint = Empty | Unify Kind Kind
+
+
 
 -- | Inferring Kinds of Types
 instance Inference TypeExpr where
-    type State TypeExpr = Counts
+    type instance Effects TypeExpr es = KindInference es
     infer = infer'
     lookup = lookup'
     fresh = fresh'
 
 
 
-infer' :: InferEff es Counts [UnificationConstraint] => TypeExpr -> Eff es TypeExpr
+infer' :: KindInference es => TypeExpr -> Eff es TypeExpr
 infer' te = case te of
     TE.Identifier id -> do
       _ :=> k <- lookup' id
@@ -149,7 +150,7 @@ instance Instantiate Kind  where
       qt' = apply sub qt
 
 instance Generalize Kind where
-    type St Kind = ()
+    type Counter Kind = ()
     generalize k = return $ Forall (Set.toList $ ftv k) (Q.none :=> k)
 
 class HasKind t where

@@ -55,7 +55,7 @@ data instance Variable Item where
     Instantiation   :: Variable Type -> Variable Item
 deriving instance Show (Variable Item)
 deriving instance Eq (Variable Item)
-newtype Level = Level Int deriving (Show, Eq, Ord)
+newtype Level = Level Int deriving (Show, Eq, Ord, Num)
 
 data Evidence
     = Protocol Implementation

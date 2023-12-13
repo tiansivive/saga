@@ -81,7 +81,9 @@ import           Saga.Language.Typechecker.Inference.Type.Instantiation
 import           Saga.Language.Typechecker.Inference.Type.Shared         (State (..))
 
 instance Inference Expr where
-    type State Expr = Shared.State
+
+    type instance Effects Expr es = Shared.TypeInference es
+
     infer = infer'
     lookup = lookup'
     fresh = Shared.fresh
@@ -108,12 +110,14 @@ infer' e = case e of
           pTraceM "\nContextualizing:"
           pTraceM $ show ty
           (cs', sub) <- Eff.runState @(Subst Type) nullSubst . Eff.runReader bs $ concat <$> forM (locals t) collect
-          l <- Eff.gets level
-          assumptions <- fmap CST.Assume <$> forM (Map.toList sub) (\(local, t) -> do
-            ev <- Shared.mkEvidence
-            return $ CST.Equality ev (CST.Variable (CST.Level l) (CST.Scoped local)) (CST.Mono t))
+          let scoped = Eff.local @CST.Level (+1)
+          scoped $ do
+            lvl <- Eff.ask
+            assumptions <- fmap CST.Assume <$> forM (Map.toList sub) (\(local, t) -> do
+              ev <- Shared.mkEvidence
+              return $ CST.Equality ev (CST.Variable lvl (CST.Scoped local)) (CST.Mono t))
 
-          return (locals t, assumptions, cs <> cs')
+            return (locals t, assumptions, cs <> cs')
 
 
         elaborate (expr, cs) (ty `Q.Implements` protocol) = do
