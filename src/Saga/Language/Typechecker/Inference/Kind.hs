@@ -27,6 +27,7 @@ import qualified Effectful.Writer.Static.Local                 as Eff
 
 import           Effectful                                     (Eff, (:>))
 import           Saga.Language.Typechecker.Errors              (SagaError (..))
+import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import           Saga.Language.Typechecker.Qualification       (Qualified (..))
 import qualified Saga.Language.Typechecker.Solver.Constraints  as CST hiding
@@ -42,7 +43,6 @@ import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables
 import           Saga.Utils.Operators                          ((|>))
-import Saga.Language.Typechecker.Monad (TypeCheck)
 
 
 
@@ -70,18 +70,18 @@ infer' te = case te of
 
     s@(TE.Singleton lit) -> return $ TE.KindedType s K.Type
 
-    TE.Union list ->TE.KindedType <$> (TE.Union <$> mapM infer' list) <*> pure K.Type
-    TE.Tuple tup -> TE.KindedType <$> (TE.Tuple <$> mapM infer' tup) <*> pure K.Type
-    TE.Record pairs -> TE.KindedType <$> (TE.Record <$> mapM (mapM infer') pairs) <*> pure K.Type
+    TE.Union list ->TE.KindedType <$> (TE.Union <$> mapM infer list) <*> pure K.Type
+    TE.Tuple tup -> TE.KindedType <$> (TE.Tuple <$> mapM infer tup) <*> pure K.Type
+    TE.Record pairs -> TE.KindedType <$> (TE.Record <$> mapM (mapM infer) pairs) <*> pure K.Type
 
     TE.Arrow in' out' -> do
-      kindedIn <- infer' in'
-      kindedOut <- infer' out'
+      kindedIn <- infer in'
+      kindedOut <- infer out'
       return $ TE.KindedType (kindedIn `TE.Arrow` kindedOut) K.Type
 
-    TE.Implementation p tyExpr -> infer' tyExpr
+    TE.Implementation p tyExpr -> infer tyExpr
     TE.Tagged tag tyExpr -> do
-        (TE.KindedType ty k) <- infer' tyExpr
+        (TE.KindedType ty k) <- infer tyExpr
         return $ TE.KindedType ty (K.Data tag k)
 
     TE.Lambda ps@(param : rest) body -> do
@@ -89,7 +89,7 @@ infer' te = case te of
         let qk = Forall [] (Q.none :=> K.Var kVar)
         let scoped = Eff.local (\e -> e { kinds = Map.insert param qk $ kinds e })
         scoped $ do
-            o@(TE.KindedType _ out') <- infer' out
+            o@(TE.KindedType _ out') <- infer out
             let k = K.Var kVar `K.Arrow` out'
             let tyExpr = TE.Lambda ps o
             return $ TE.KindedType tyExpr k
@@ -101,12 +101,12 @@ infer' te = case te of
 
     TE.Application fn [arg] -> do
         out <- K.Var <$> fresh'
-        fn'@(TE.KindedType _ fnK)   <- infer' fn
-        arg'@(TE.KindedType _ argK) <- infer' arg
+        fn'@(TE.KindedType _ fnK)   <- infer fn
+        arg'@(TE.KindedType _ argK) <- infer arg
 
         Eff.tell [Unify fnK (argK `K.Arrow` out)]
         return $ TE.KindedType (TE.Application fn' [arg']) out
-    TE.Application fn (a : as) -> infer' curried
+    TE.Application fn (a : as) -> infer curried
         where
           partial = TE.Application fn [a]
           curried = foldl (\f a -> TE.Application f [a]) partial as
@@ -166,7 +166,7 @@ instance HasKind Type where
       k'             -> Eff.throwError $ UnexpectedKind k' "Tried to apply a type to a non Arrow Kind"
 
   kind (T.Closure ps tyExpr closure) = do
-    TE.KindedType _ k <- infer' tyExpr
+    TE.KindedType _ k <- infer tyExpr
     foldrM mkArrow k ps
     where
         mkArrow v k = do

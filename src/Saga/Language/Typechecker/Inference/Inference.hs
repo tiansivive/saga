@@ -40,8 +40,6 @@ class
   ( Instantiate (Classifier e)
   , Generalize (Classifier e)
   ) => Inference e where
-    -- ENHANCEMENT: Define the needed effects as an associated type
-
     -- | Effects required for inference: this should be a tuple in the format `(Effect :> es)`
     type family Effects e (es :: [Eff.Effect]) :: GHC.Constraint
     infer       :: Effects e es                       => e -> Eff es e

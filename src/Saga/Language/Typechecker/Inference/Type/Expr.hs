@@ -150,6 +150,11 @@ infer' e = case e of
         Typed expr' inferred <- infer expr
         evidence <- Shared.mkEvidence
           -- | Inferred type is generalized as much as possible and unification expects the LHS to be the subtype
+
+          -- | QUESTION: does the above still apply?
+          -- | We now want to only generalize after zonking, or potentially during certain solving conditions,
+          -- | but probably never during initial inference traversal
+          -- | Probably should be worked into #33
         case expr' of
           -- | When expression is a literal, it doesn't get generalized to preserve the literal type
           Literal _ -> Eff.tell $ CST.Equality evidence (CST.Mono inferred) (CST.Mono ty)

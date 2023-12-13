@@ -57,7 +57,5 @@ fresh T = do
     Eff.modify $ \s -> s {tvs  = i}
     let count = show ([1 ..] !! i)
     return $ T.Poly ("ct_" ++ count) K.Type
-    -- return $ case t of
-    --     E -> C.Evidence $ "cst_ev_" ++ count
-    --     U -> T.Unification ("cst_uvar_" ++ count) K.Type -- Level 0 = top level
+
 
