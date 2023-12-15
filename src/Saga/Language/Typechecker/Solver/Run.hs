@@ -44,6 +44,7 @@ import           Saga.Language.Typechecker.Solver.Entailment     (Entails (..))
 import           Effectful                                       (Eff)
 import qualified Saga.Language.Typechecker.Solver.Implications   as Imp
 import qualified Saga.Language.Typechecker.Solver.Refinements    as R
+import qualified Saga.Language.Typechecker.Variables             as Var
 import           Saga.Language.Typechecker.Variables             (Variable)
 import           Saga.Language.Typechecker.Zonking.Normalisation (Normalisation (normalise))
 import           Saga.Language.Typechecker.Zonking.Qualification (qualify)
@@ -52,13 +53,11 @@ import           Saga.Language.Typechecker.Zonking.Zonking       (Context (..),
 
 run :: TypeCheck es => Constraint -> Eff es Context
 run constraint = do
-    pTraceM "Constraints:"
-    pTraceM $ show (flatten constraint)
-    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState []  $ process (flatten constraint) []
+    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState [] . Eff.runReader (Var.Level 0) $ process (flatten constraint) []
     types <- foldM collapse (tvars solution) cycles
 
 
-    return Context { solution = Solution { tvars = types, evidence = evidence solution, witnessed = witnessed solution }, residuals }
+    return Context { solution = Solution { tvars = types, evidence = evidence solution, witnessed = witnessed solution, proofs = proofs solution }, residuals }
 
     where
         process :: SolverEff es => [C.Constraint] -> [(Status, C.Constraint)] -> Eff es [C.Constraint]

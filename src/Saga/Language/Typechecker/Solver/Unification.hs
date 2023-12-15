@@ -58,9 +58,10 @@ import qualified Effectful.Writer.Static.Local                 as Eff
 import qualified Saga.Language.Typechecker.Inference.Kind      as KI
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import           Saga.Language.Typechecker.Solver.Cycles       (Cycle)
+import           Saga.Language.Typechecker.Solver.Monad        (Proofs)
 
 
-type UnificationEff es t = (TypeCheck es, Eff.Writer [Cycle t] :> es)
+type UnificationEff es t = (TypeCheck es, Eff.Writer [Cycle t] :> es, Eff.Writer Proofs :> es)
 type UnificationM t a = forall es. UnificationEff es t => Eff es a
 
 
@@ -74,7 +75,7 @@ class Substitutable t => Unification t where
 type TypeUnification es = UnificationEff es Type
 instance Unification Type where
     unify :: TypeUnification es => Type -> Type -> Eff es (Subst Type)
---    unify t t' | pTrace ("\nUnifying:\n\t" ++ show t ++ "\n\t" ++ show t') False = undefined
+    unify t t' | pTrace ("\nUnifying:\n" ++ show t ++ "\nWith:\n" ++ show t') False = undefined
     unify (T.Var v) t                                               = bind v t
     unify t (T.Var v)                                               = bind v t
     unify (T.Singleton a) (T.Singleton b) | a == b                  = return nullSubst
@@ -151,7 +152,6 @@ instance Unification Type where
 
 
     bind a t
-        | T.Local id k <- a = crash $ NotYetImplemented "Unifying and Binding locally scoped type vars"
         | t == T.Var a = return nullSubst
         | occursCheck a t = case t of
             T.Union tys | T.Var a `elem` tys    -> do
@@ -165,10 +165,15 @@ instance Unification Type where
             (tk, cs) <- KI.run $ kind t
             let ak = T.classifier a
 
-           -- | QUESTION: Should we intercept the error here to add extra context? eg. throwError $ KindMismatch k k'
+            -- | QUESTION: Should we intercept the error here to add extra context? eg. throwError $ KindMismatch k k'
             (subst, cycles) <- Eff.runWriter @[Cycle Kind] $ unify ak tk
             unless (null cycles) (Eff.throwError $ CircularKind ak tk)
 
+
+            -- | QUESTION: How to remove the double cases .. of check on `t` here?
+            case t of
+              T.Singleton lit -> Eff.tell $ Map.singleton a lit
+              _               -> return ()
             return . Map.singleton a $ case t of
                 T.Singleton (LInt _)    -> Lib.int
                 T.Singleton (LString _) -> Lib.string

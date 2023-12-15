@@ -174,11 +174,16 @@ builtInFns =
       liquidVar = L.Poly "x"
 
       nonZeroNum = T.Local "NonZero" K.Type
-      clause = Map.fromList [(nonZeroNum, Q.none :=> T.Var tvar)]
+      clause = Map.fromList
+        [ (nonZeroNum, Map.empty :|
+                        [ Q.Refinement liquidBindings refinement (T.Var tvar)
+                        ]
+                      :=> T.Var tvar)
+        ]
       liquidBindings = Map.fromList [(liquidVar, T.Var nonZeroNum)]
       refinement = L.Negation $ L.Equality (L.Number 0) (L.Var liquidVar)
       div =  Forall [tvar] $ clause
-              :| [T.Var tvar `Q.Implements` "Num", Q.Refinement liquidBindings refinement (T.Var nonZeroNum)  ]
+              :| [T.Var tvar `Q.Implements` "Num" ]
               :=> T.Var tvar `T.Arrow` (T.Var nonZeroNum `T.Arrow` T.Var tvar)
 
       binaryEqTypeExpr  = Forall [tvar] $ Map.empty :| [T.Var tvar `Q.Implements` "Eq"]          :=> T.Var tvar `T.Arrow` (T.Var tvar `T.Arrow` bool)

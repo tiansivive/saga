@@ -33,6 +33,7 @@ import           Saga.Language.Typechecker.Monad         (TypeCheck)
 import           Saga.Language.Typechecker.Qualification (Qualified)
 import           Saga.Language.Typechecker.Type          (Polymorphic,
                                                           Scheme (..), Type)
+import qualified Saga.Language.Typechecker.Variables     as Var
 import           Saga.Language.Typechecker.Variables     (Classifier, VarType,
                                                           Variable)
 
@@ -54,7 +55,7 @@ class Instantiate t where
 class Generalize t where
     -- ENHANCEMENT: Define the needed effects as an associated type
     type family Counter t :: *
-    generalize :: (Eff.State (Counter t) :> es)  => t -> Eff es (Polymorphic t)
+    generalize :: (Eff.State (Counter t) :> es, Eff.Reader Var.Level :> es)  => t -> Eff es (Polymorphic t)
 
 
 

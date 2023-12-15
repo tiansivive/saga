@@ -97,32 +97,13 @@ let fn
 
 
 
--- | Modelling fn's Type
-tvar = Var.Type "t" K.Type
-nonNeg = Var.Local "NonNeg"
 
-gt0 = L.BinaryOp L.GT (L.Var $ Var.Refinement "n") (L.Literal $ LInt 0)
-refinement = Q.Refinement gt0 (T.Var tvar)
+let div
+  : \a => a -> NonZero -> a 
+    where 
+      a implements Num
+      NonZero = a | \n -> n != 0
 
-binding = (nonNeg, Map.empty := [refinement] :=> T.Var tvar)
-fnTy = Polymorphic [tvar] ([binding] := [] :=> T.Var nonNeg `T.Arrow` T.Var tvar)
-
--- | emitted constraints while traversing foo 
-lvl = 0
-tvarX = Var.Unification "u1" lvl
-Eq e1 (tvarX) (T.Singleton $ LInt 1)
-
-r1 = Var.Refinement "r1"
-eqTo1 = L.BinaryOp L.Eq (L.Var r1) (L.Literal $ L.Int 1)
-assumps = [Q.Refined (T.Var r1) eqTo1, Eq e2 (Mono $ T.Var r1) (Unification tvarX)  ]
-
-Implication [] assumps <constraint emitted by traversing 'fn x'>
-
-
-
--- | Solving refinements when applying x to fn
-
-
-
+  = \a b -> a / b
 
 

@@ -84,10 +84,9 @@ infer (PatList pats rest) = do
     case rest of
       Nothing -> return result
       Just id -> do
-        lvl <- Eff.ask
         tvar <- Shared.fresh
         ev   <- Shared.mkEvidence
-        Eff.tell $ Equality ev (CST.Mono result) (CST.Variable $ CST.Unification lvl tvar)
+        Eff.tell $ Equality ev (CST.Mono result) (CST.Unification  tvar)
         emit (id, tvar)
         return result
 

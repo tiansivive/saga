@@ -131,10 +131,10 @@ simplify' impl@(Impl ev it prtcl) = do
     where
         process evidence tvars
             | isJust $ Map.lookup ev evidence   = return C.Empty
-            | C.Variable (C.Unification lvl tvar) <- it
+            | C.Unification tvar <- it
             , isJust $ Map.lookup tvar tvars    =
                 let it' = case apply tvars (T.Var tvar) of
-                        T.Var tvar' -> C.Variable $ C.Unification lvl tvar'
+                        T.Var tvar' -> C.Unification tvar'
                         ty          -> C.Mono ty
                 in return $ C.Impl ev it' prtcl
             | otherwise                         = flatten impl
@@ -157,7 +157,7 @@ flatten (Impl ev item prtcl) = do
         impl = C.Impl ev item prtcl
 
         ty = case item of
-            C.Variable (C.Unification _ tvar) -> T.Var tvar
+            C.Unification tvar -> T.Var tvar
             C.Mono ty -> ty
 
             _ -> crash $ NotYetImplemented $ "Flattening ImplConstraint for " ++ show item

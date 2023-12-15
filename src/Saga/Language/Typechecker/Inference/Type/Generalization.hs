@@ -5,6 +5,7 @@ module Saga.Language.Typechecker.Inference.Type.Generalization where
 import           Data.List                                       (nub)
 import qualified Data.Map                                        as Map
 import           Effectful                                       (Eff, (:>))
+import qualified Effectful.Reader.Static                         as Eff
 import qualified Effectful.State.Static.Local                    as Eff
 import qualified Effectful.Writer.Static.Local                   as Eff
 import           Saga.Language.Core.Literals
@@ -19,6 +20,7 @@ import           Saga.Language.Typechecker.Solver.Constraints    (Constraint (..
 import qualified Saga.Language.Typechecker.Type                  as T
 import           Saga.Language.Typechecker.Type                  (Scheme (..),
                                                                   Type)
+import qualified Saga.Language.Typechecker.Variables             as Var
 
 instance Generalize Type where
   -- TODO This can probably be simplified, we probably don't need the full Shared.State
@@ -57,7 +59,7 @@ instance Generalize Type where
     _ -> return $ Forall [] (Q.none :=> ty)
 
     where
-      generalize' :: Eff.State Shared.State :> es => ProtocolID -> Eff es (T.Polymorphic Type)
+      generalize' :: (Eff.Reader Var.Level :> es, Eff.State Shared.State :> es) => ProtocolID -> Eff es (T.Polymorphic Type)
       generalize' protocol = do
         tvar <- Shared.fresh
         return $ Forall [tvar] (Map.empty :| [T.Var tvar `Q.Implements` protocol] :=> T.Var tvar)
