@@ -42,6 +42,15 @@ from (Q.Equality t t')   = do
 
 
 
+flatten :: C.Constraint -> [C.Constraint]
+flatten (Conjunction left right) = flatten left ++ flatten right
+flatten c                        = pure c
+
+
+merge :: [Constraint] -> Constraint
+merge = foldl C.Conjunction C.Empty
+
+
 data Tag a where
     E :: Tag Evidence
     T :: Tag Type

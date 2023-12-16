@@ -33,6 +33,9 @@ import           Saga.Language.Typechecker.Environment
 import           Saga.Language.Typechecker.Errors                (Exception (NotYetImplemented),
                                                                   SagaError (UnexpectedVariable),
                                                                   crash)
+import qualified Saga.Language.Typechecker.Qualification         as Q
+import           Saga.Language.Typechecker.Qualification         (Given (..),
+                                                                  Qualified (..))
 import qualified Saga.Language.Typechecker.Solver.Constraints    as Solver
 import           Saga.Language.Typechecker.TypeExpr              (TypeExpr)
 
@@ -80,6 +83,36 @@ instance Normalisation AST.Declaration where
         d -> return d
 
 
+instance Normalisation (T.Polymorphic Type) where
+    type Of (T.Polymorphic Type) = Type
+
+    normalise (T.Forall tvars qt) = do
+        tvars' <- mapM normalise tvars
+        qt' <- normalise qt
+        return $ T.Forall tvars' qt'
+
+instance Normalisation (Qualified Type) where
+    type Of (Qualified Type) = Type
+    normalise (bs :| cs :=> ty) = do
+        bs' <- mapM normalise bs
+        cs' <- mapM normalise cs
+        ty' <- normalise ty
+        return $ bs' :| cs' :=> ty'
+
+instance Normalisation T.Constraint where
+    type Of T.Constraint = Type
+
+    normalise (Q.Equality ty ty') = Q.Equality <$> normalise ty <*> normalise ty'
+    normalise (Q.Implements ty prtcl) = Q.Implements <$> normalise ty <*> pure prtcl
+    normalise (Q.Refinement binding liquid ty) = Q.Refinement <$> normalise binding <*> pure liquid <*> normalise ty
+    normalise (Q.Pure ty ) = Q.Pure <$> normalise ty
+    normalise (Q.Resource m ty) = Q.Resource m <$> normalise ty
+
+instance Normalisation (Q.Binding a) where
+    type Of (Q.Binding a) = Type
+
+    normalise = normalise
+
 instance Normalisation Type where
     type Of Type = Type
 
@@ -99,8 +132,9 @@ instance Normalisation (Variable Type) where
     normalise tvar = do
         mapping <- Eff.ask
         replaced <- sequence $ lookup tvar mapping <&> \id -> case tvar of
-                (T.Poly _ k) -> return $ T.Poly id k
-                v            -> Eff.throwError $ UnexpectedVariable v
+                (T.Poly _ k)  -> return $ T.Poly id k
+                (T.Local _ k) -> return $ T.Local id k
+                v             -> Eff.throwError $ UnexpectedVariable v
 
         return $ fromMaybe tvar replaced
 
@@ -125,4 +159,10 @@ instance Normalisation Solver.Item where
     type Of Solver.Item = Type
 
     normalise (Solver.Mono ty) = Solver.Mono <$> normalise ty
-    normalise it = crash . NotYetImplemented $ "Normalisation for item: " ++ show it
+    normalise (Solver.Poly ty) = Solver.Poly <$> normalise ty
+    normalise (Solver.Unification tvar) = Solver.Unification <$> normalise tvar
+    normalise (Solver.Scoped tvar) = Solver.Scoped <$> normalise tvar
+    normalise (Solver.Skolem tvar) = Solver.Skolem <$> normalise tvar
+    normalise (Solver.Instantiation tvar) = Solver.Instantiation <$> normalise tvar
+
+    -- normalise it = crash . NotYetImplemented $ "Normalisation for item: " ++ show it

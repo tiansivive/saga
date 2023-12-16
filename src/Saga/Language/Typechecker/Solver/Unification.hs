@@ -174,6 +174,8 @@ instance Unification Type where
             case t of
               T.Singleton lit -> Eff.tell $ Map.singleton a lit
               _               -> return ()
+
+            -- | TODO:ISSUE: #32 Generalize here?
             return . Map.singleton a $ case t of
                 T.Singleton (LInt _)    -> Lib.int
                 T.Singleton (LString _) -> Lib.string

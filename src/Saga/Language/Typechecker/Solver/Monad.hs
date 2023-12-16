@@ -36,7 +36,7 @@ import qualified Saga.Language.Typechecker.Variables           as Var
 
 
 
-type SolverEff es = (TypeCheck es, Eff.Reader Var.Level :> es, Eff.State Solution :> es, Eff.State Count :> es, Eff.State [Cycle Type] :> es)
+type SolverEff es = (TypeCheck es, Eff.Reader Var.Level :> es, Eff.Reader Levels :> es, Eff.State Solution :> es, Eff.State Count :> es, Eff.State [Cycle Type] :> es)
 
 data Count = Count { evs :: Int, tvs :: Int }
   deriving Show
@@ -46,6 +46,7 @@ data Solution = Solution { evidence :: Subst Evidence, tvars :: Subst Type, witn
 data Status = Solved | Deferred | Impossible deriving Show
 type Witnessed = Map.Map (Variable Evidence) (Variable Evidence)
 type Proofs = Map.Map (Variable Type) Literal
+type Levels = Map.Map (Variable Type) Var.Level
 
 class Solve c where
     solve       :: SolverEff es => c -> Eff es (Status, Constraint)

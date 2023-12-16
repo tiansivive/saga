@@ -55,7 +55,7 @@ class Instantiate t where
 class Generalize t where
     -- ENHANCEMENT: Define the needed effects as an associated type
     type family Counter t :: *
-    generalize :: (Eff.State (Counter t) :> es, Eff.Reader Var.Level :> es)  => t -> Eff es (Polymorphic t)
+    generalize :: (Eff.State Int :> es)  => t -> Eff es (Polymorphic t)
 
 
 

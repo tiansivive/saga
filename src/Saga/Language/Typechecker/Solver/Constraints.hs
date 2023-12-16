@@ -24,8 +24,10 @@ import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid)
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import qualified Saga.Language.Typechecker.Type                as T
 
+import           Data.Array                                    (elems)
 import           Saga.Language.Core.Literals                   (Literal)
 import           Saga.Language.Typechecker.Variables           (Variable)
+import           Saga.Utils.Operators                          ((|>), (||>))
 
 
 data Constraint where
@@ -96,7 +98,7 @@ instance Substitutable Constraint where
     ftv (Conjunction c c')        = ftv c <> ftv c'
     ftv (Equality ev it it')      = ftv it <> ftv it'
     ftv (Impl ev it prtcl)        = ftv it
-    ftv (Refined scope it liquid) = ftv it
+    ftv (Refined scope it liquid) = ftv it <> (Map.elems scope ||> fmap ftv |> mconcat)
     ftv _                         = Set.empty
 
 instance Substitutable Item where

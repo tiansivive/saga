@@ -1,12 +1,16 @@
+{-# LANGUAGE LambdaCase   #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Saga.Language.Typechecker.Solver.Run where
 
-import           Control.Monad                                   (foldM, forM)
+import           Control.Monad                                   (foldM, forM,
+                                                                  forM_)
 import qualified Effectful                                       as Eff
 import qualified Effectful.State.Static.Local                    as Eff
 import qualified Effectful.Writer.Static.Local                   as Eff
 import           Saga.Language.Core.Expr                         (Expr)
-import           Saga.Language.Typechecker.Inference.Type.Shared (TypeInference)
+import           Saga.Language.Typechecker.Inference.Type.Shared (State (levels),
+                                                                  TypeInference)
 import qualified Saga.Language.Typechecker.Solver.Constraints    as C
 import           Saga.Language.Typechecker.Solver.Constraints    (Constraint (Conjunction))
 import qualified Saga.Language.Typechecker.Solver.Monad          as Solve
@@ -41,9 +45,11 @@ import           Saga.Language.Typechecker.Monad                 (TypeCheck)
 import qualified Saga.Language.Typechecker.Shared                as Shared
 import           Saga.Language.Typechecker.Solver.Entailment     (Entails (..))
 
+import           Data.Maybe                                      (catMaybes)
 import           Effectful                                       (Eff)
 import qualified Saga.Language.Typechecker.Solver.Implications   as Imp
 import qualified Saga.Language.Typechecker.Solver.Refinements    as R
+import qualified Saga.Language.Typechecker.Solver.Shared         as Shared
 import qualified Saga.Language.Typechecker.Variables             as Var
 import           Saga.Language.Typechecker.Variables             (Variable)
 import           Saga.Language.Typechecker.Zonking.Normalisation (Normalisation (normalise))
@@ -51,9 +57,11 @@ import           Saga.Language.Typechecker.Zonking.Qualification (qualify)
 import           Saga.Language.Typechecker.Zonking.Zonking       (Context (..),
                                                                   zonk)
 
-run :: TypeCheck es => Constraint -> Eff es Context
-run constraint = do
-    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState [] . Eff.runReader (Var.Level 0) $ process (flatten constraint) []
+run :: TypeCheck es => (Constraint, Levels) -> Eff es Context
+run (constraint, levels) = do
+    pTraceM "\n-------------------------------\nSolving constraints: "
+    pTraceM $ show constraint
+    ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState [] . Eff.runReader (Var.Level 0) . Eff.runReader levels $ process (Shared.flatten constraint) []
     types <- foldM collapse (tvars solution) cycles
 
 
@@ -80,18 +88,35 @@ run constraint = do
 
 step :: SolverEff es => [C.Constraint] -> Eff es [C.Constraint]
 step cs = do
-    Solution { tvars } <- Eff.get
-    simplified <- forM cs $ \c -> simplify c
-    entailment $ simplified ||> apply tvars >>= flatten |> List.filter unsolved
+    Solution { tvars, proofs } <- Eff.get
+    simplified <- forM cs simplify
+    forM_ simplified $ propagate proofs
+    entailment $ simplified ||> apply tvars >>= Shared.flatten |> List.filter unsolved
 
     where
+
+        propagate proofs (C.Equality ev it it') = let
+            tvar = \case
+                C.Unification tv -> Just tv
+                C.Skolem tv      -> Just tv
+                C.Scoped tv      -> Just tv
+                _                -> Nothing
+            in case (tvar it, tvar it') of
+                (Just tvar, Just tvar')
+                    | Just proof <- Map.lookup tvar  proofs
+                        -> Eff.modify $ \sol -> sol{ proofs = Map.insert tvar' proof proofs }
+                    | Just proof <- Map.lookup tvar' proofs
+                        -> Eff.modify $ \sol -> sol{ proofs = Map.insert tvar  proof proofs }
+                    | otherwise -> return ()
+                _ -> return ()
+
+        propagate _ _ = return ()
+
         unsolved C.Empty = False
         unsolved _       = True
 
 
-flatten :: C.Constraint -> [C.Constraint]
-flatten (Conjunction left right) = flatten left ++ flatten right
-flatten c                        = pure c
+
 
 
 entailment :: SolverEff es =>  [Constraint] -> Eff es [Constraint]
@@ -104,21 +129,26 @@ entailment cs = List.nub <$> loop cs cs
             loop cs' done'
 
 
+
+
+
 instance Entails Constraint where
 
     entails (C.Impl ev it p)            cs = entails (P.Impl ev it p) cs
     entails (C.Refined scope it liquid) cs = entails (R.Refine scope it liquid) cs
     entails _                           cs = return cs
 
+-- | SUGGESTION: This is a good place to start refactoring the constraints into a data family.
+-- | That way we do not need to pattern match on the constructors here, we can just have a different instance for each constructor.
 instance Solve C.Constraint where
     solve (C.Equality ev it it')                    = solve $ E.Eq ev it it'
     solve (C.Impl ev it p)                          = solve $ P.Impl ev it p
-    solve (C.Implication vars assumps constraint)   = solve $ Imp.Implies vars assumps constraint
+    solve (C.Implication vars assumps constraint)   = Imp.solve' $ Imp.Implies vars assumps constraint
     solve (C.Refined scope it liquid)               = solve $ R.Refine scope it liquid
     solve c                                         = return (Deferred, c)
 
     simplify (C.Equality ev it it')                      = simplify $ E.Eq ev it it'
     simplify (C.Impl ev it p)                            = simplify $ P.Impl ev it p
-    simplify (C.Implication vars assumps constraint)     = simplify $ Imp.Implies vars assumps constraint
+    simplify (C.Implication vars assumps constraint)     = Imp.simplify' $ Imp.Implies vars assumps constraint
     simplify c                                           = return c
 

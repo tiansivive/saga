@@ -24,6 +24,7 @@ import qualified Saga.Language.Typechecker.Inference.Inference           as I
 import qualified Saga.Language.Typechecker.Inference.Type.Expr           as TI
 import qualified Saga.Language.Typechecker.Inference.Type.Shared         as TI
 
+import           Saga.Language.Typechecker.Inference.Type.Shared         (State (levels))
 import           Saga.Language.Typechecker.Lib                           (defaultEnv)
 import           Saga.Language.Typechecker.Monad                         (TypeCheck)
 import qualified Saga.Language.Typechecker.Solver.Constraints            as CST
@@ -33,6 +34,7 @@ import           Saga.Language.Typechecker.Solver.Monad                  (Count 
                                                                           initialCount,
                                                                           initialSolution)
 import qualified Saga.Language.Typechecker.Solver.Run                    as Solver
+import qualified Saga.Language.Typechecker.Solver.Shared                 as Shared
 import           Saga.Language.Typechecker.Type                          (Polymorphic,
                                                                           Type)
 import qualified Saga.Language.Typechecker.Variables                     as Var
@@ -47,7 +49,7 @@ typecheck expr  = do
     ((ast, st), constraint) <- Eff.runWriter @CST.Constraint . Eff.runState TI.initialState . Eff.runReader (Var.Level 0) $ infer expr
     pTraceM $ "AST:\n" ++ show ast
     pTraceM $ "State:\n" ++ show st
-    context <- Eff.inject $ Solver.run constraint
+    context <- Eff.inject $ Solver.run (constraint, levels st)
     (ast', ty) <- Zonking.run ast context
 
     return (ast', ty)
@@ -61,9 +63,9 @@ run = Eff.runReader defaultEnv |> Eff.runWriter |> Eff.runError |> Eff.runFail |
 
 test e = run $ do
     ((e, st), cs) <- TI.run e
-    Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState @[Cycle Type] [] . Eff.runReader (Var.Level 0) $ simplified cs
+    Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState @[Cycle Type] [] . Eff.runReader (Var.Level 0) . Eff.runReader (levels st) $ simplified cs
         where
-            simplified = mapM simplify . Solver.flatten
+            simplified = mapM simplify . Shared.flatten
 
 int = E.Literal . LInt
 

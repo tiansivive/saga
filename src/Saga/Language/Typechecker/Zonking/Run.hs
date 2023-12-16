@@ -5,6 +5,7 @@ import           Effectful                                       (Eff)
 import qualified Effectful                                       as Eff
 import qualified Effectful.Reader.Static                         as Eff
 import           Saga.Language.Core.Expr                         (Expr)
+
 import           Saga.Language.Typechecker.Monad                 (TypeCheck)
 import qualified Saga.Language.Typechecker.Shared                as Shared
 import           Saga.Language.Typechecker.Solver.Substitution   (Substitutable (..))
@@ -22,11 +23,12 @@ run ast context@(Context { residuals, solution }) = do
     zonked <- Eff.runReader context $ zonk ast
 
     ast' <- Eff.runReader (mapping zonked) $ normalise zonked
-    residuals' <- Eff.runReader (mapping zonked) $ forM residuals $ \r -> normalise r
+    residuals' <- Eff.runReader (mapping zonked) $ forM residuals normalise
 
-    ty <- Eff.inject $ qualify ast' residuals'
+    qt <- Eff.inject $ qualify zonked residuals
 
-    return (ast', ty)
+
+    return (ast', qt)
 
     where
         mapping zonked = zip (ftvs zonked) Shared.letters
