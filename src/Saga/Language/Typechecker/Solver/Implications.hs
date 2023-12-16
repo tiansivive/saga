@@ -30,11 +30,7 @@ data Implies = Implies [Variable Type] [Assumption] Constraint
 --     simplify = simplify'
 
 
-solve' :: (SolverEff es, Solve Constraint) => Implies -> Eff es (Status, Constraint)
-solve' (Implies vs as C.Empty) = return (Deferred, Shared.merge cs)
-    where cs = [c | C.Assume c <- as]
 
-solve' (Implies vs as c) = Eff.local @Var.Level (+1) $ solve c
 
 simplify' :: SolverEff es => Implies -> Eff es Constraint
 simplify' (Implies vs as c) = do

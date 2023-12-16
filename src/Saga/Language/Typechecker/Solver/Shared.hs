@@ -10,7 +10,8 @@ import           Saga.Language.Typechecker.Solver.Constraints  (Constraint (..),
                                                                 Item (..))
 import           Saga.Language.Typechecker.Solver.Monad        (Count (evs, tvs),
                                                                 Solution (..),
-                                                                SolverEff)
+                                                                SolverEff,
+                                                                Status (..))
 
 import qualified Effectful.State.Static.Local                  as Eff
 import           Saga.Language.Typechecker.Type                (Type)
@@ -38,7 +39,6 @@ from (Q.Implements t p)  = do
 from (Q.Equality t t')   = do
     eqEv <- fresh E
     return $ C.Equality eqEv (Mono t) (Mono t')
-
 
 
 

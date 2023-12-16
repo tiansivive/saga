@@ -13,8 +13,9 @@ import           Saga.Language.Typechecker.Inference.Type.Shared (State (levels)
                                                                   TypeInference)
 import qualified Saga.Language.Typechecker.Solver.Constraints    as C
 import           Saga.Language.Typechecker.Solver.Constraints    (Constraint (Conjunction))
-import qualified Saga.Language.Typechecker.Solver.Monad          as Solve
-import           Saga.Language.Typechecker.Solver.Monad
+import qualified Saga.Language.Typechecker.Solver.Monad          as Solve hiding
+                                                                          (run)
+import           Saga.Language.Typechecker.Solver.Monad          hiding (run)
 import qualified Saga.Language.Typechecker.Solver.Protocols      as P
 
 import           Saga.Language.Typechecker.Type                  (Polymorphic,
@@ -39,7 +40,7 @@ import           Debug.Pretty.Simple                             (pTrace,
                                                                   pTraceShow)
 import           Debug.Trace                                     (trace)
 import qualified Effectful.Error.Static                          as Eff
-import           Saga.Language.Typechecker.Inference.Type.Expr
+import           Saga.Language.Typechecker.Inference.Type.Expr   hiding (run)
 import qualified Saga.Language.Typechecker.Monad                 as TC
 import           Saga.Language.Typechecker.Monad                 (TypeCheck)
 import qualified Saga.Language.Typechecker.Shared                as Shared
@@ -47,6 +48,8 @@ import           Saga.Language.Typechecker.Solver.Entailment     (Entails (..))
 
 import           Data.Maybe                                      (catMaybes)
 import           Effectful                                       (Eff)
+import           Saga.Language.Typechecker.Errors                (Exception (..),
+                                                                  crash)
 import qualified Saga.Language.Typechecker.Solver.Implications   as Imp
 import qualified Saga.Language.Typechecker.Solver.Refinements    as R
 import qualified Saga.Language.Typechecker.Solver.Shared         as Shared
@@ -59,8 +62,7 @@ import           Saga.Language.Typechecker.Zonking.Zonking       (Context (..),
 
 run :: TypeCheck es => (Constraint, Levels) -> Eff es Context
 run (constraint, levels) = do
-    pTraceM "\n-------------------------------\nSolving constraints: "
-    pTraceM $ show constraint
+    pTraceM $ "\nCONTRAINTS:\n" ++ show constraint
     ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState [] . Eff.runReader (Var.Level 0) . Eff.runReader levels $ process (Shared.flatten constraint) []
     types <- foldM collapse (tvars solution) cycles
 
@@ -94,7 +96,7 @@ step cs = do
     entailment $ simplified ||> apply tvars >>= Shared.flatten |> List.filter unsolved
 
     where
-
+        propagate proofs (C.Conjunction left right) = propagate proofs left >> propagate proofs right
         propagate proofs (C.Equality ev it it') = let
             tvar = \case
                 C.Unification tv -> Just tv
@@ -143,12 +145,28 @@ instance Entails Constraint where
 instance Solve C.Constraint where
     solve (C.Equality ev it it')                    = solve $ E.Eq ev it it'
     solve (C.Impl ev it p)                          = solve $ P.Impl ev it p
-    solve (C.Implication vars assumps constraint)   = Imp.solve' $ Imp.Implies vars assumps constraint
+    solve (C.Implication vars assumps constraint)   = solveImplication $ Imp.Implies vars assumps constraint
     solve (C.Refined scope it liquid)               = solve $ R.Refine scope it liquid
-    solve c                                         = return (Deferred, c)
+    solve C.Empty                                   = return (Solved, C.Empty)
+    solve c@(C.Conjunction {})                      = return (Deferred, c)
+    solve c                                         = crash $ NotYetImplemented $ "Solving constraint: " ++ show c
 
+    simplify :: SolverEff es => Constraint -> Eff es Constraint
     simplify (C.Equality ev it it')                      = simplify $ E.Eq ev it it'
     simplify (C.Impl ev it p)                            = simplify $ P.Impl ev it p
+    simplify (C.Refined scope it liquid)                 = simplify $ R.Refine scope it liquid
     simplify (C.Implication vars assumps constraint)     = Imp.simplify' $ Imp.Implies vars assumps constraint
-    simplify c                                           = return c
+    simplify c@(C.Conjunction {})                        = return c
+    simplify c@C.Empty                                   = return c
+    simplify c                                           = crash $ NotYetImplemented $ "Simplifying constraint: " ++ show c
 
+-- FIXME: #35 This needs to be moved to its own file. It's only here to prevent cyclic import dependencies.
+solveImplication :: (SolverEff es, Solve Constraint) => Imp.Implies -> Eff es (Status, Constraint)
+solveImplication (Imp.Implies vs as C.Empty) = return (Deferred, Shared.merge cs)
+    where cs = [c | C.Assume c <- as]
+
+solveImplication (Imp.Implies vs as c) = Eff.local @Var.Level (+1) $ do
+    lvls <- Eff.ask @Levels
+    Context { residuals } <- run (c, lvls)
+    let cs = [c | C.Assume c <- as]
+    return (Deferred, Shared.merge $ cs ++ residuals)
