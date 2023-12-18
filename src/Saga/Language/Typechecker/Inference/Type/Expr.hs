@@ -80,6 +80,7 @@ import           Saga.Language.Typechecker.Inference.Type.Generalization
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
 import           Saga.Language.Typechecker.Inference.Type.Shared         (State (..))
 import           Saga.Language.Typechecker.Monad                         (TypeCheck)
+import qualified Saga.Language.Typechecker.Refinement.Liquid             as Liq
 
 run :: TypeCheck es => Expr -> Eff es ((Expr, State), CST.Constraint)
 run = Eff.runWriter @CST.Constraint . Eff.runState Shared.initialState . Eff.runReader (Var.Level 0) . infer
@@ -223,7 +224,7 @@ infer' e = case e of
         -- Eff.tell $ CST.Equality evidence (CST.Mono fnTy) (CST.Poly inferred)
 
         evidence <- Shared.mkEvidence
-        Eff.tell $ CST.Equality evidence (CST.Mono $ argTy `T.Arrow` out) (CST.Mono fnTy)
+        Eff.tell $ CST.Equality evidence (CST.Mono $ argTy `T.Arrow` out) (Shared.toItem CST.Unification fnTy)
 
         return $ Typed (FnApp fn' [arg']) out
     FnApp fn (a : as) -> infer' curried
@@ -237,34 +238,37 @@ infer' e = case e of
         let (tvars, tys) = foldl separate ([], []) cases'
         let ty' = case length tys of
                   0 -> Nothing
-                  1 -> Just $ head tys -- | TODO: do we need this anymore? we now collapse unions...
                   _ -> Just $ T.Union tys
 
         for_ ty' $ \t -> do
           ev <- Shared.mkEvidence
-          Eff.tell $ CST.Equality ev (CST.Mono ty) (CST.Mono t)
+          Eff.tell $ CST.Equality ev (item ty) (item t)
 
         forM_ tvars $ \v -> do
           ev <- Shared.mkEvidence
-          Eff.tell $ CST.Equality ev (CST.Mono v) (maybe (CST.Mono ty) CST.Mono ty')
+          Eff.tell $ CST.Equality ev (item v) (maybe (item ty) item ty')
 
         let out = T.Union $ fmap extractTy cases'
         return $ Typed (Match scrutinee' cases') out
 
         where
 
-          inferCase scrutineeType (Case pat expr)  = do
+          item = Shared.toItem CST.Unification
+
+          inferCase scrutineeType (Case pat expr)  = Eff.local @Var.Level (+1) $ do
+
             (patTy, tyvars) <- Eff.runWriter $ Pat.infer pat
             let (pairs, tvars) = unzip $ tyvars ||> fmap (\(id, tvar) -> ((id, Forall [tvar] (Q.none :=> T.Var tvar)), tvar))
             let scoped = Eff.local $ \env -> env { types = Map.fromList pairs <> types env }
             scoped $ do
               (inferred, constraint) <- Eff.listen @Constraint $ infer expr
               ev <- Shared.mkEvidence
+              -- QUESTION: Perhaps we should add another type of constraint here, to specifically prove a refinement rather than relying on equality
               Eff.tell $ CST.Implication tvars [assume ev scrutineeType patTy] constraint
 
               return $ TypedCase pat patTy inferred
-
-            where assume ev ty ty' = CST.Assume $ CST.Equality ev (CST.Mono ty) (CST.Mono ty')
+            where
+              assume ev ty ty' = CST.Assume $ CST.Equality ev (item ty) (item ty')
 
           extractTy (TypedCase _ _ (Typed _ ty)) = ty
           separate (tvars, tys) caseExpr = case caseExpr of

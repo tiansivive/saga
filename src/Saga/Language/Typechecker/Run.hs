@@ -78,5 +78,9 @@ lt x y = E.FnApp (E.Identifier "<") [x, y]
 lte x y = E.FnApp (E.Identifier "<=") [x, y]
 
 
-foo = E.FnApp (E.Identifier "/") [E.Literal $ LInt 1, E.Literal $ LInt 0]
+op x = E.FnApp (E.Identifier "/") [E.Literal $ LInt 1, x]
 
+fn = E.Lambda ["x"] $
+        E.Match (E.Identifier "x")
+            [ E.Case (E.Lit $ LInt 1) (op $ E.Identifier "x")
+            ]

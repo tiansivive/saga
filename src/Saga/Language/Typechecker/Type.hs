@@ -93,7 +93,7 @@ instance Substitutable Type where
   apply _ ty = ty
 
   ftv ty = case ty of
-    Var id             -> Set.singleton id
+    Var tvar           -> Set.singleton tvar
     Tuple elems        -> ftv elems
     Record pairs       -> ftv pairs
     Union tys          -> ftv tys
