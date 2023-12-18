@@ -120,7 +120,7 @@ desugarTypeExpr (ParserTy.TLambda params tyExpr)            = TypeSystem.Lambda 
 desugarKind :: ParserTy.Kind -> KindSystem.Kind
 desugarKind ParserTy.KType = KindSystem.Type
 desugarKind (ParserTy.KProtocol k) = KindSystem.Protocol $ desugarKind k
-desugarKind (ParserTy.KVar id) = KindSystem.Var $ Var.Kind id KindSystem.Kind
+desugarKind (ParserTy.KVar id) = KindSystem.Var $ K.Poly id KindSystem.Kind
 desugarKind (ParserTy.KArrow inK outK) = KindSystem.Arrow (desugarKind inK) (desugarKind outK)
 
 

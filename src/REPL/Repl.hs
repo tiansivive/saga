@@ -13,6 +13,7 @@ import           Control.Monad.State           (StateT)
 import           Debug.Trace                   (traceM)
 import           Saga.Language.Core.Expr       (Expr)
 
+import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import qualified Effectful                     as Eff
 import qualified Saga.Language.Typechecker.Run as TC
 import           Saga.Parser.Desugar
@@ -122,7 +123,7 @@ repl = runInputT defaultSettings $ repl' Map.empty
                     let inferred = fmap (fmap (TC.run . TC.typecheck)) $ desugaredExpr $ P.runSagaExpr input
                     case inferred of
                         (Left e)                 -> pPrint e
-                        (Right (Parsed res _ _)) -> pPrint res
+                        (Right (Parsed res _ _)) -> liftIO $ res >>= pPrint
                     repl' env
 
                 print' env' = do

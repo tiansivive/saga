@@ -84,3 +84,26 @@ let try
         return val1 + val2
         }
 
+
+let foo = \x -> match x 
+            | 1 -> fn x
+            | otherwise -> "fail"
+
+let fn
+  : \t => NonNeg -> t 
+    where NonNeg = t | \n -> n > 0
+  
+  = \gt0 -> gt0 + 10
+
+
+
+
+let div
+  : \a => a -> NonZero -> a 
+    where 
+      a implements Num
+      NonZero = a | \n -> n != 0
+
+  = \a b -> a / b
+
+

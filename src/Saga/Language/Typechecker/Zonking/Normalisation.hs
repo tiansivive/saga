@@ -1,7 +1,8 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE TypeFamilies          #-}
 
 module Saga.Language.Typechecker.Zonking.Normalisation where
 import           Saga.Language.Core.Expr                         (Expr)
@@ -12,43 +13,47 @@ import qualified Data.Map                                        as Map
 import           Data.Maybe                                      (fromMaybe)
 import           Data.Set                                        (Set)
 import qualified Data.Set                                        as Set
-import           Effectful                                       (Eff)
+import           Effectful                                       (Eff, (:>))
 import qualified Effectful.Reader.Static                         as Eff
 
 import qualified Saga.Language.Core.Expr                         as AST
 import qualified Saga.Language.Typechecker.Kind                  as K
 import           Saga.Language.Typechecker.Monad                 (TypeCheck)
-import qualified Saga.Language.Typechecker.Shared                as Shared
 import qualified Saga.Language.Typechecker.Type                  as T
 import           Saga.Language.Typechecker.Type                  (Type)
 import qualified Saga.Language.Typechecker.Variables             as Var
-import           Saga.Language.Typechecker.Variables             (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables             (Variable)
 import           Saga.Language.Typechecker.Zonking.Substitutions
 
 
+import           Control.Monad                                   (forM)
 import           Data.Functor                                    ((<&>))
 import qualified Effectful.Error.Static                          as Eff
 import           Saga.Language.Typechecker.Environment
-import           Saga.Language.Typechecker.Errors                (SagaError (UnexpectedVariable))
+import           Saga.Language.Typechecker.Errors                (Exception (NotYetImplemented),
+                                                                  SagaError (UnexpectedVariable),
+                                                                  crash)
+import qualified Saga.Language.Typechecker.Qualification         as Q
+import           Saga.Language.Typechecker.Qualification         (Given (..),
+                                                                  Qualified (..))
 import qualified Saga.Language.Typechecker.Solver.Constraints    as Solver
 import           Saga.Language.Typechecker.TypeExpr              (TypeExpr)
 
-type Normalized t = TypeCheck '[Eff.Reader [(PolymorphicVar t, String)]]
-
+type NormalizedEff es t = (TypeCheck es,  Eff.Reader [(Variable t, String)] :> es)
+type Normalized t a = forall es. NormalizedEff es t => Eff es a
 class Normalisation a where
-    type Target a
-    normalise :: a -> Normalized (Target a) a
+    type Of a
+    normalise :: NormalizedEff es (Of a) => a -> Eff es a
 
 instance Normalisation Expr where
-    type Target Expr = Type
+    type Of Expr = Type
 
-    normalise :: Expr -> Normalized (Target Expr) Expr
     normalise =  \case
         AST.Typed e ty -> AST.Typed <$> normalise e <*> normalise ty
 
         AST.Lambda ps body -> AST.Lambda ps <$> normalise body
-        AST.FnApp fn args  -> AST.FnApp <$> normalise fn <*> mapM normalise args
-        AST.Match cond cases -> AST.Match <$> normalise cond <*> mapM normalise cases
+        AST.FnApp fn args  -> AST.FnApp <$> normalise fn <*> forM args normalise
+        AST.Match cond cases -> AST.Match <$> normalise cond <*> forM cases normalise
 
         AST.Record es -> AST.Record <$> mapM (mapM normalise) es
         AST.Tuple es  -> AST.Tuple <$> mapM normalise es
@@ -59,27 +64,57 @@ instance Normalisation Expr where
 
 
 instance Normalisation AST.Case where
-    type Target AST.Case = Type
+    type Of AST.Case = Type
     normalise = \case
         AST.Case pat e -> AST.Case pat <$> normalise e
         AST.TypedCase pat ty e -> AST.TypedCase pat <$> normalise ty <*> normalise e
 
 instance Normalisation AST.Statement where
-    type Target AST.Statement = Type
+    type Of AST.Statement = Type
     normalise = \case
         AST.Return e -> AST.Return <$> normalise  e
         AST.Procedure e -> AST.Procedure <$> normalise e
         AST.Declaration d -> AST.Declaration <$> normalise d
 
 instance Normalisation AST.Declaration where
-    type Target AST.Declaration = Type
+    type Of AST.Declaration = Type
     normalise = \case
         AST.Let id ty k e -> AST.Let id ty k <$> normalise e
         d -> return d
 
 
+instance Normalisation (T.Polymorphic Type) where
+    type Of (T.Polymorphic Type) = Type
+
+    normalise (T.Forall tvars qt) = do
+        tvars' <- mapM normalise tvars
+        qt' <- normalise qt
+        return $ T.Forall tvars' qt'
+
+instance Normalisation (Qualified Type) where
+    type Of (Qualified Type) = Type
+    normalise (bs :| cs :=> ty) = do
+        bs' <- mapM normalise bs
+        cs' <- mapM normalise cs
+        ty' <- normalise ty
+        return $ bs' :| cs' :=> ty'
+
+instance Normalisation T.Constraint where
+    type Of T.Constraint = Type
+
+    normalise (Q.Equality ty ty') = Q.Equality <$> normalise ty <*> normalise ty'
+    normalise (Q.Implements ty prtcl) = Q.Implements <$> normalise ty <*> pure prtcl
+    normalise (Q.Refinement binding liquid ty) = Q.Refinement <$> normalise binding <*> pure liquid <*> normalise ty
+    normalise (Q.Pure ty ) = Q.Pure <$> normalise ty
+    normalise (Q.Resource m ty) = Q.Resource m <$> normalise ty
+
+instance Normalisation (Q.Binding a) where
+    type Of (Q.Binding a) = Type
+
+    normalise = normalise
+
 instance Normalisation Type where
-    type Target Type = Type
+    type Of Type = Type
 
     normalise = \case
         T.Var tvar                      -> T.Var <$> normalise tvar
@@ -91,26 +126,43 @@ instance Normalisation Type where
         T.Closure params tyExpr scope   -> T.Closure <$> mapM normalise params <*> pure tyExpr <*> pure scope
         t                               -> return t
 
-instance Normalisation (PolymorphicVar Type) where
-    type Target (PolymorphicVar Type) = Type
+instance Normalisation (Variable Type) where
+    type Of (Variable Type) = Type
 
     normalise tvar = do
         mapping <- Eff.ask
         replaced <- sequence $ lookup tvar mapping <&> \id -> case tvar of
-                (Var.Type _ k) -> return $ Var.Type id k
-                (Var.Unification _ lvl k) -> return $ Var.Type id k
-
-                v -> Eff.throwError $ UnexpectedVariable v
+                (T.Poly _ k)  -> return $ T.Poly id k
+                (T.Local _ k) -> return $ T.Local id k
+                v             -> Eff.throwError $ UnexpectedVariable v
 
         return $ fromMaybe tvar replaced
 
 
 
 instance Normalisation Solver.Constraint where
-    type Target Solver.Constraint = Type
+    type Of Solver.Constraint = Type
 
     normalise = \case
         Solver.Impl ev (Solver.Mono ty) pid -> do
             ty' <- normalise ty
             return $ Solver.Impl ev (Solver.Mono ty') pid
+        Solver.Refined scope (Solver.Mono ty) liquid -> do
+            ty' <- normalise ty
+            scope' <- mapM normalise scope
+            return $ Solver.Refined scope' (Solver.Mono ty') liquid
+
         c -> return c
+
+
+instance Normalisation Solver.Item where
+    type Of Solver.Item = Type
+
+    normalise (Solver.Mono ty) = Solver.Mono <$> normalise ty
+    normalise (Solver.Poly ty) = Solver.Poly <$> normalise ty
+    normalise (Solver.Unification tvar) = Solver.Unification <$> normalise tvar
+    normalise (Solver.Scoped tvar) = Solver.Scoped <$> normalise tvar
+    normalise (Solver.Skolem tvar) = Solver.Skolem <$> normalise tvar
+    normalise (Solver.Instantiation tvar) = Solver.Instantiation <$> normalise tvar
+
+    -- normalise it = crash . NotYetImplemented $ "Normalisation for item: " ++ show it

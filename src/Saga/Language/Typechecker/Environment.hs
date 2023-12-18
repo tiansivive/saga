@@ -16,17 +16,18 @@ import Saga.Language.Typechecker.Solver.Constraints (Assumption)
 import Saga.Language.Typechecker.Errors (SagaError)
 
 type Saga = MonadRWS Config Info CompilerState 
-data Config = Config { init:: Map.Map String String }
+newtype Config = Config { init:: Map.Map String String }
 
 data CompilerState = Saga
   { protocols   :: [Protocol]
   , values      :: Map.Map String Value.Expr
   , types       :: Map.Map String (Polymorphic Type)
   , kinds       :: Map.Map String (Polymorphic Kind)
-  , dataTypes   :: Map.Map String DataType
+, dataTypes   :: Map.Map String DataType
   , tags        :: [Tag]
   , assumptions :: [Assumption]
   } deriving (Show)
+
 
 
 

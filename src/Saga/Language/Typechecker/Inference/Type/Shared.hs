@@ -5,48 +5,76 @@ module Saga.Language.Typechecker.Inference.Type.Shared where
 
 import           Saga.Language.Core.Expr                       (Expr)
 import qualified Saga.Language.Typechecker.Inference.Inference as I hiding
-                                                                    (fresh)
-import           Saga.Language.Typechecker.Inference.Inference hiding (fresh)
+                                                                    (State,
+                                                                     fresh)
+import           Saga.Language.Typechecker.Inference.Inference hiding (State,
+                                                                fresh)
 import qualified Saga.Language.Typechecker.Kind                as K
 import qualified Saga.Language.Typechecker.Solver.Constraints  as CST
 import           Saga.Language.Typechecker.Type                (Type)
 
 import qualified Effectful.State.Static.Local                  as Eff
 
+import qualified Data.Map                                      as Map
+import           Effectful                                     (Eff, (:>))
+import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.Writer.Static.Local                 as Eff
+import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import qualified Saga.Language.Typechecker.Type                as T
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables
+import           Saga.Utils.Operators                          ((|>))
+import           Saga.Utils.TypeLevel                          (type (§))
 
 
 
-type TypeInference = InferM CST.Constraint
-
-type instance I.EmittedConstraint Type = CST.Constraint
-
-type instance VarType Expr I.Evidence       = Var.PolymorphicVar CST.Evidence
-type instance VarType Expr I.Unification    = Var.PolymorphicVar Type
-type instance VarType Expr I.Skolem         = Var.PolymorphicVar Type
-type instance VarType Expr I.TypeVar        = Var.PolymorphicVar Type
-type instance VarType Expr I.Instantiation  = Var.PolymorphicVar Type
+type TypeInference es = (TypeCheck es, Eff.Reader Var.Level :> es, Eff.State State :> es, Eff.Writer CST.Constraint :> es)
 
 
+data State = IST
+  { tvars  :: Int
+  , evars  :: Int
+  , levels :: Map.Map (Variable Type) Var.Level
+  } deriving (Show)
 
 
-fresh :: Tag a -> TypeInference (VarType Expr a)
-fresh t = do
-  Eff.modify $ \s -> s {vars = vars s + 1}
-  s <- Eff.get
-  let count = show ([1 ..] !! vars s)
-  return $ case t of
-    E -> Var.Evidence $ "e" ++ count
-    U -> Var.Unification ("v" ++ count) (Level $ level s) K.Type
-    T -> Var.Type ("p" ++ count) K.Type
+initialState :: State
+initialState = IST 0 0 Map.empty
 
 
-propagate :: T.Constraint -> TypeInference ()
-propagate (ty `Q.Implements` prtcl) = fresh E >>= \e -> Eff.tell $ CST.Impl e (CST.Mono ty) prtcl
+fresh :: (Eff.Reader Var.Level :> es, Eff.State State :> es) => Eff es § Variable Type
+fresh = do
+  i <- Eff.gets $ tvars |> (+1)
+  Eff.modify $ \s -> s { tvars = i }
+  let count = show ([1 ..] !! i)
+  let tvar = T.Poly ("t" ++ count) K.Type
+  lvl <- Eff.ask @Var.Level
+  Eff.modify $ \s -> s { levels = Map.insert tvar lvl $ levels s }
+  return tvar
+
+mkEvidence :: (Eff.State State :> es) => Eff es § Variable CST.Evidence
+mkEvidence = do
+  i <- Eff.gets $ evars |> (+1)
+  Eff.modify $ \s -> s { evars = i }
+  let count = show ([1 ..] !! i)
+  return $ CST.Evidence ("ev_" ++ count)
+
+
+
+
+toItem :: (Variable Type -> CST.Item) -> Type -> CST.Item
+toItem constructor (T.Var tvar) = constructor tvar
+toItem _ t                      = CST.Mono t
+
+
+propagate :: TypeInference es => T.Constraint -> Eff es ()
+propagate (ty `Q.Implements` prtcl) = mkEvidence >>= \e -> Eff.tell $ CST.Impl e (CST.Mono ty) prtcl
 propagate (Q.Resource mul ty) = Eff.tell $ CST.Resource (CST.Mono ty) mul
 propagate (Q.Pure ty) = Eff.tell $ CST.Pure (CST.Mono ty)
-propagate (Q.Refinement expr ty) = Eff.tell $ CST.Refined (CST.Mono ty) expr
+propagate (Q.Refinement bs expr ty) = Eff.tell $ CST.Refined (fmap CST.Mono bs) (CST.Mono ty) expr
+
+
+
+
+

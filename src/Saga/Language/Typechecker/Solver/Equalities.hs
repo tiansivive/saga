@@ -7,7 +7,8 @@ import           Prelude                                                hiding
 
 import qualified Saga.Language.Typechecker.Inference.Inference          as Inf
 import           Saga.Language.Typechecker.Inference.Inference          (instantiateWith)
-import           Saga.Language.Typechecker.Qualification                (Qualified ((:=>)))
+import           Saga.Language.Typechecker.Qualification                (Given (..),
+                                                                         Qualified ((:=>)))
 import qualified Saga.Language.Typechecker.Solver.Constraints           as C
 import           Saga.Language.Typechecker.Solver.Constraints           (Evidence,
                                                                          Item (..))
@@ -19,7 +20,7 @@ import           Saga.Language.Typechecker.Solver.Unification           (Unifica
 import qualified Saga.Language.Typechecker.Type                         as T
 import           Saga.Language.Typechecker.Type                         (Scheme (..),
                                                                          Type)
-import           Saga.Language.Typechecker.Variables                    (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables                    (Variable)
 
 
 import           Control.Monad                                          (foldM)
@@ -27,6 +28,7 @@ import qualified Data.Map                                               as Map
 import           Data.Maybe                                             (isJust)
 import           Debug.Pretty.Simple                                    (pTrace,
                                                                          pTraceM)
+import           Effectful                                              (Eff)
 import           Saga.Language.Typechecker.Errors                       (Exception (NotYetImplemented),
                                                                          crash)
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
@@ -35,21 +37,28 @@ import qualified Saga.Language.Typechecker.Solver.Monad                 as Solve
 import           Saga.Language.Typechecker.Solver.Protocols             (propagate)
 
 
-data Eq = Eq (PolymorphicVar Evidence) Item Item
+data Eq = Eq (Variable Evidence) Item Item
     deriving Show
 
 
 instance Solve Eq where
     solve = solve'
+    simplify :: SolverEff es => Eq -> Eff es C.Constraint
     simplify = simplify'
 
 
-solve' :: Eq -> SolverM (Status, C.Constraint)
+solve' :: SolverEff es => Eq -> Eff es (Status, C.Constraint)
 --solve' eq | pTrace ("\nSOLVING EQ:\n" ++ show eq) False = undefined
 solve' (Eq _ it it') = case (it, it') of
-    (Mono ty, Mono ty')        -> ty `equals` ty'
-    (Mono ty, Unification var) -> ty `equals` T.Var var
-    (Unification var, Mono ty) -> ty `equals` T.Var var
+    (Mono ty, Mono ty')                     -> ty `equals` ty'
+    (Mono ty, C.Unification tvar)           -> ty `equals` T.Var tvar
+    (Mono ty, C.Scoped tvar)                -> ty `equals` T.Var tvar
+
+    (C.Unification tvar, Mono ty)           -> ty `equals` T.Var tvar
+    (C.Unification tvar, C.Scoped tvar')    -> T.Var tvar `equals` T.Var tvar'
+    (C.Scoped tvar, C.Unification tvar')    -> T.Var tvar `equals` T.Var tvar'
+    (C.Scoped tvar, Mono ty)                -> ty `equals` T.Var tvar
+
     (Mono ty, Poly ty')        -> instAndUnify ty' ty
     (Poly ty', Mono ty)        -> instAndUnify ty' ty
     eq -> crash $ NotYetImplemented $ "Solving equality: " ++ show eq
@@ -58,13 +67,14 @@ solve' (Eq _ it it') = case (it, it') of
         ty `equals`  ty' = unify' ty ty' >> return (Solved, C.Empty)
 
         instAndUnify poly ty = do
-            r@(constraint, pt@(Forall [] (cs :=> qt))) <- inst poly
+            (constraint, pt@(Forall [] (bs :| cs :=> qt))) <- inst poly
             unify' ty qt
             result <- propagate cs
             return (Solved, C.Conjunction constraint result)
 
         unify' ty ty' = do
-            (sub, cycles) <- Eff.runWriter @[Cycle Type] $ Eff.inject $ unify ty ty'
+            ((sub, cycles), proofs') <- Eff.runWriter @Proofs . Eff.runWriter @[Cycle Type]  $ unify ty ty'
+            Eff.modify $ \sol -> sol{ proofs = proofs' `Map.union` proofs sol }
             Eff.modify $ mappend cycles
             update T sub
 
@@ -75,11 +85,19 @@ solve' (Eq _ it it') = case (it, it') of
 
         generate constraint tys [] = return (constraint, reverse tys)
         generate constraint tys (tvar:tvars) = do
-            ty <- T.Var <$> Shared.fresh Inf.U
-            ev <- Shared.fresh Inf.E
+            ty <- T.Var <$> Shared.fresh Shared.T
+            ev <-   Shared.fresh Shared.E
+            -- | Potential HACK:
+            -- | QUESTION: Why wrap the fresh tvar in a Mono? Can we use the tvar directly in a Variable?
             let eq = C.Equality ev (Mono $ T.Var tvar) (Mono ty)
             generate (C.Conjunction constraint eq) (ty : tys) tvars
 
+
+
+simplify' (Eq ev (C.Mono (arg `T.Arrow`  out)) (C.Mono (arg' `T.Arrow`  out'))) = do
+    ev1 <- Shared.fresh Shared.E
+    ev2 <- Shared.fresh Shared.E
+    return $ C.Conjunction (C.Equality ev1 (Mono arg) (Mono arg')) (C.Equality ev2 (Mono out) (Mono out'))
 
 simplify' (Eq ev it it')
     | it == it' = do

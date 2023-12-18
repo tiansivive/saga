@@ -1,10 +1,11 @@
 
 
 
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DataKinds           #-}
-{-# LANGUAGE TypeFamilies        #-}
-{-# LANGUAGE TypeOperators       #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeOperators         #-}
 
 
 module Saga.Language.Typechecker.Inference.Inference where
@@ -19,6 +20,7 @@ import           Saga.Language.Typechecker.Environment
 import           Saga.Language.Typechecker.Errors        (SagaError (TooManyArguments, TooManyInstantiationArguments))
 import           Saga.Language.Typechecker.Kind          (Kind)
 
+import qualified Data.Kind                               as GHC
 import           Effectful                               (Eff, (:>))
 import qualified Effectful                               as Eff
 import qualified Effectful.Error.Static                  as Eff
@@ -31,55 +33,35 @@ import           Saga.Language.Typechecker.Monad         (TypeCheck)
 import           Saga.Language.Typechecker.Qualification (Qualified)
 import           Saga.Language.Typechecker.Type          (Polymorphic,
                                                           Scheme (..), Type)
-import           Saga.Language.Typechecker.Variables     (Classifier,
-                                                          PolymorphicVar,
-                                                          VarType)
-
-
-
-type InferEff es w = TypeCheck (Eff.State State ': Eff.Writer w ': es)
-type InferM w = InferEff '[] w
-
-data State = IST
-  { vars  :: Int
-  , level :: Int
-  } deriving (Show)
+import qualified Saga.Language.Typechecker.Variables     as Var
+import           Saga.Language.Typechecker.Variables     (Classifier, VarType,
+                                                          Variable)
 
 class
   ( Instantiate (Classifier e)
   , Generalize (Classifier e)
   ) => Inference e where
-    infer       :: (t ~ Classifier e, w ~ EmittedConstraint t)  => e -> InferM w e
-    lookup      :: (t ~ Classifier e, w ~ EmittedConstraint t)  => String -> InferM w (Qualified t)
-    fresh       :: (t ~ Classifier e, w ~ EmittedConstraint t)  => Tag a -> InferM w (VarType e a)
+    -- | Effects required for inference: this should be a tuple in the format `(Effect :> es)`
+    type family Effects e (es :: [Eff.Effect]) :: GHC.Constraint
+    infer       :: Effects e es                       => e -> Eff es e
+    lookup      :: (t ~ Classifier e, Effects e es)   => String -> Eff es (Qualified t)
+    fresh       :: (t ~ Classifier e, Effects e es)   => Eff es (Variable t)
 
     --qualify     :: (t ~ Classifier e, w ~ Constraint t)              => w -> Polymorphic t -> Polymorphic t
-
 class Instantiate t where
     instantiate :: Polymorphic t -> t -> Polymorphic t
+
+-- QUESTION: Is this the right place to define Generalization? It should now happen only after zonking, so there's no need for Inference to depend on it.
 class Generalize t where
-    generalize :: w ~ EmittedConstraint t => t -> InferM w (Polymorphic t)
-
-type family EmittedConstraint t :: *
-
-data Tag a where
-  E   :: Tag Evidence
-  Sk  :: Tag Skolem
-  U   :: Tag Unification
-  T   :: Tag TypeVar
-  I   :: Tag Instantiation
-
-data Evidence = Evidence
-data Unification = Unification
-data Instantiation = Instantiation
-data TypeVar = TypeVar
-data Skolem = Skolem
+    -- ENHANCEMENT: Define the needed effects as an associated type
+    type family Counter t :: *
+    generalize :: (Eff.State Int :> es)  => t -> Eff es (Polymorphic t)
 
 
-inform' :: Info -> InferEff es w ()
-inform' = Eff.tell
 
-instantiateWith :: (Show t, Instantiate t, w ~ EmittedConstraint t, Eff.Error SagaError :> es) => Polymorphic t -> [t] -> Eff es (Polymorphic t)
+
+type Instantiable t es = (Eff.Error SagaError :> es, Instantiate t, Show t, Show (Variable t))
+instantiateWith :: Instantiable t es => Polymorphic t -> [t] -> Eff es (Polymorphic t)
 instantiateWith polymorphic ts = instantiate' polymorphic ts
   where
     instantiate' ty []                 = return ty
@@ -88,10 +70,3 @@ instantiateWith polymorphic ts = instantiate' polymorphic ts
       let ty' = instantiate ty t
       instantiate' ty' ts
 
-
-initialState :: State
-initialState = IST 0 0
-
-
-run :: Monoid w => InferEff es w a -> Eff es ((Either String (Either (Eff.CallStack, SagaError) (a, Info)), State), w)
-run = Eff.runWriter . Eff.runState initialState . TC.run

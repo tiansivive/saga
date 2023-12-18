@@ -4,11 +4,9 @@
 module Saga.Language.Typechecker.Zonking.Zonking where
 import qualified Saga.Language.Core.Expr                       as AST
 import           Saga.Language.Core.Expr                       (Expr (..))
-import           Saga.Language.Typechecker.Solver.Monad        (Ev, Of,
-                                                                Solution (..),
+import           Saga.Language.Typechecker.Solver.Monad        (Solution (..),
                                                                 SolverEff,
-                                                                SolverM,
-                                                                Tag (..), Ty)
+                                                                Tag (..))
 
 import qualified Data.Map                                      as Map
 import qualified Effectful.State.Static.Local                  as Eff
@@ -18,6 +16,7 @@ import           Control.Applicative                           ((<|>))
 import qualified Data.List                                     as List
 import           Data.Maybe                                    (isNothing)
 import           Debug.Pretty.Simple                           (pTraceM)
+import           Effectful                                     (Eff, (:>))
 import qualified Effectful.Error.Static                        as Eff
 import qualified Effectful.Reader.Static                       as Eff
 import           Prelude                                       hiding (lookup)
@@ -30,20 +29,19 @@ import           Saga.Language.Typechecker.Solver.Constraints  (Constraint,
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import           Saga.Language.Typechecker.Type                (Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
-import           Saga.Language.Typechecker.Variables           (PolymorphicVar)
+import           Saga.Language.Typechecker.Variables           (Variable)
+import           Saga.Utils.TypeLevel                          (type (§))
 
-type Zonking = TypeCheck '[Eff.Reader Context]
+type ZonkingEff es = (TypeCheck es, Eff.Reader Context :> es)
+type Zonking a = forall es. ZonkingEff es => Eff es a
 
 data Context = Context { solution:: Solution, residuals :: [Constraint] } deriving Show
 type ScopedVar = String
 
-type family KeyFor a where
-    KeyFor Ev = PolymorphicVar Evidence
-    KeyFor Ty = PolymorphicVar Type
 
 
 
-lookup :: Tag a -> KeyFor a -> Zonking (Maybe (Of a))
+lookup :: Tag a -> Variable a -> Zonking (Maybe a)
 lookup T k = Eff.asks $ solution |> tvars |> Map.lookup k
 lookup E k = do
     Solution { evidence, witnessed } <- Eff.asks solution
@@ -71,7 +69,7 @@ zonk ast = do
                 AST.Identifier x -> do
                     if x `elem` evidenceParameters residuals then
                         return $ AST.Identifier x
-                    else lookup E (Var.Evidence x) >>= \case
+                    else lookup E (C.Evidence x) >>= \case
                             Just (C.Protocol (P.Implementation (P.Name id, ty, expr))) -> return $ AST.Identifier id
                             Just ev -> Eff.throwError $ UnexpectedEvidence ev "Expected Protocol Implementation"
                             -- TODO: This is a legit case, but E.Identifier should represent what it's holding: a true identifier, an evidence var, some other var, etc
@@ -127,4 +125,4 @@ zonk ast = do
 
 
 evidenceParameters ::  [Constraint] -> [String]
-evidenceParameters cs = [id | C.Impl (Var.Evidence id) _ _ <- cs]
+evidenceParameters cs = [id | C.Impl (C.Evidence id) _ _ <- cs]

@@ -30,7 +30,7 @@ builtInEnv :: [String]
 builtInEnv = ["+", "-","*", "^", "/", "%", "<", ">", "<=", ">=", "==", "!=", "||", "&&"]
 
 data Value
-  = VInt Int
+  = VNum Int
   | VBool Bool
   | VString String
   | VList [Value ]
@@ -91,8 +91,8 @@ eval (FnApp fnExpr argExprs) = do
   vals <- mapM eval argExprs
   closure <- eval fnExpr
   env <- ask
-  let (VInt x) = head vals
-  let (VInt y) = vals !! 1
+  let (VNum x) = head vals
+  let (VNum y) = vals !! 1
 
   let (VBool b1) = head vals
   let (VBool b2) = vals !! 1
@@ -100,11 +100,11 @@ eval (FnApp fnExpr argExprs) = do
 
 
   case closure of
-    (BuiltIn "+") -> return $ VInt (x + y)
-    (BuiltIn "-") -> return $ VInt (x - y)
-    (BuiltIn "*") -> return $ VInt (x * y)
-    (BuiltIn "/") -> return $ VInt (x `div` y)
-    (BuiltIn "%") -> return $ VInt (x `mod` y)
+    (BuiltIn "+") -> return $ VNum (x + y)
+    (BuiltIn "-") -> return $ VNum (x - y)
+    (BuiltIn "*") -> return $ VNum (x * y)
+    (BuiltIn "/") -> return $ VNum (x `div` y)
+    --(BuiltIn "%") -> return $ VNum (x `mod` y)
 
     (BuiltIn "||") -> return $ VBool (b1 || b2)
     (BuiltIn "&&") -> return $ VBool (b1 && b2)
@@ -133,7 +133,7 @@ eval (FnApp fnExpr argExprs) = do
 
 
 evalLiteral :: Literal -> Evaluated Value
-evalLiteral (LInt int)    = return $ VInt int
+evalLiteral (LInt int)    = return $ VNum int
 evalLiteral (LBool bool)  = return $ VBool bool
 evalLiteral (LString str) = return $ VString str
 -- evalLiteral (LList _ list) = do

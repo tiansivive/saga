@@ -1,8 +1,11 @@
 module Saga.Language.Typechecker.Zonking.Run where
+import           Control.Monad                                   (forM)
 import qualified Data.Set                                        as Set
+import           Effectful                                       (Eff)
 import qualified Effectful                                       as Eff
 import qualified Effectful.Reader.Static                         as Eff
 import           Saga.Language.Core.Expr                         (Expr)
+
 import           Saga.Language.Typechecker.Monad                 (TypeCheck)
 import qualified Saga.Language.Typechecker.Shared                as Shared
 import           Saga.Language.Typechecker.Solver.Substitution   (Substitutable (..))
@@ -13,16 +16,19 @@ import           Saga.Language.Typechecker.Zonking.Qualification
 import           Saga.Language.Typechecker.Zonking.Zonking       (Context (..),
                                                                   Zonking, zonk)
 
-run :: Expr -> Context -> TypeCheck es (Expr, Polymorphic Type)
+
+
+run :: TypeCheck es =>  Expr -> Context -> Eff es (Expr, Polymorphic Type)
 run ast context@(Context { residuals, solution }) = do
-    zonked <- Eff.runReader context . Eff.inject $ zonk ast
+    zonked <- Eff.runReader context $ zonk ast
 
-    ast' <- Eff.runReader (mapping zonked) $ Eff.inject $ normalise zonked
-    residuals' <- Eff.runReader (mapping zonked) $ Eff.inject $ mapM normalise residuals
+    ast' <- Eff.runReader (mapping zonked) $ normalise zonked
+    residuals' <- Eff.runReader (mapping zonked) $ forM residuals normalise
 
-    ty <- Eff.inject $ qualify ast' residuals'
+    qt <- Eff.inject $ qualify zonked residuals
 
-    return (ast', ty)
+
+    return (ast', qt)
 
     where
         mapping zonked = zip (ftvs zonked) Shared.letters

@@ -1,9 +1,12 @@
 {-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE ExplicitNamespaces    #-}
 {-# LANGUAGE QuantifiedConstraints #-}
+
 module Saga.Language.Typechecker.Monad where
 import           Control.Monad.Except
 import           Control.Monad.RWS
-import           Effectful                             (Eff)
+import           Effectful                             (Eff, IOE, (:>))
+import qualified Effectful                             as Eff
 import           Effectful.Error.Static                (Error)
 import qualified Effectful.Error.Static                as Eff
 import           Effectful.Fail                        (Fail)
@@ -15,14 +18,13 @@ import qualified Effectful.Writer.Static.Local         as Eff
 import           Saga.Language.Typechecker.Environment hiding (Error)
 import           Saga.Language.Typechecker.Errors      (SagaError)
 import           Saga.Language.Typechecker.Lib         (defaultEnv)
+import           Saga.Utils.TypeLevel                  (type (§))
 
 
--- type TypeCheck s m  = (MonadRWS CompilerState Info s m, MonadError SagaError m, MonadFail m)
 
--- class (MonadReader CompilerState m, MonadWriter Info m, MonadError SagaError m) => TypeCheck m where
---     inform :: Info -> m ()
+type TypeCheck es = (IOE :> es, Reader CompilerState :> es, Writer Info :> es,  Error SagaError :> es, Fail :> es)
 
-type TypeCheck es = Eff (Reader CompilerState ': Writer Info ': Error SagaError ': Fail ': es)
 
-run :: TypeCheck es a -> Eff es (Either String (Either (Eff.CallStack, SagaError) (a, Info)))
-run = Eff.runFail . Eff.runError . Eff.runWriter . Eff.runReader defaultEnv
+
+run :: Eff '[Reader CompilerState, Writer Info, Error SagaError, Fail, IOE] a -> IO § Either String (Either (Eff.CallStack, SagaError) (a, Info))
+run s = Eff.runEff . Eff.runFail . Eff.runError . Eff.runWriter $ Eff.runReader defaultEnv s

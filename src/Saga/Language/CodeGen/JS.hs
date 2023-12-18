@@ -4,17 +4,10 @@ module Saga.Language.CodeGen.JS where
 
 
 import           Control.Monad.State
-import           Data.List                           (intercalate)
-import           Data.Maybe                          (fromMaybe)
-import           Saga.Language.Core.Expr             hiding (Binding)
-import           Saga.Language.Core.Literals         (Literal (..))
-import           Saga.Language.TypeSystem.Refinement
-import           Saga.Language.TypeSystem.Types      (Binding,
-                                                      CompositeExpr (..),
-                                                      Constraint (..),
-                                                      PrimitiveType (..),
-                                                      Qualified ((:=>)),
-                                                      Type (..), TypeExpr (..))
+import           Data.List                   (intercalate)
+import           Data.Maybe                  (fromMaybe)
+import           Saga.Language.Core.Expr     hiding (Binding)
+import           Saga.Language.Core.Literals (Literal (..))
 
 
 class Generator a where
@@ -53,7 +46,7 @@ instance Generator Statement where
 instance Generator Declaration where
     generate (Type {})              = ""
     generate (Let id tyExpr _ expr) = "let " ++ id ++ " = " ++ generate expr
-    generate (Data id k (TClause (TLambda _ ty) bindings)) = ""
+    --generate (Data id k (TClause (TLambda _ ty) bindings)) = ""
 
 
 instance Generator Script where

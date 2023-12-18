@@ -8,26 +8,31 @@ import qualified Saga.Language.Typechecker.Solver.Constraints  as C
 import           Saga.Language.Typechecker.Solver.Constraints  (Constraint (..),
                                                                 Evidence,
                                                                 Item (..))
-import           Saga.Language.Typechecker.Solver.Monad        (Solution (..),
-                                                                SolverM)
+import           Saga.Language.Typechecker.Solver.Monad        (Count (evs, tvs),
+                                                                Solution (..),
+                                                                SolverEff,
+                                                                Status (..))
 
 import qualified Effectful.State.Static.Local                  as Eff
 import           Saga.Language.Typechecker.Type                (Type)
 import qualified Saga.Language.Typechecker.Variables           as Var
-import           Saga.Language.Typechecker.Variables           (Level (..),
-                                                                PolymorphicVar,
-                                                                VarType)
+import           Saga.Language.Typechecker.Variables           (VarType,
+                                                                Variable)
 
+import           Effectful                                     (Eff)
 import qualified Saga.Language.Typechecker.Inference.Inference as I
-import           Saga.Language.Typechecker.Inference.Inference (Tag (..))
+
 import qualified Saga.Language.Typechecker.Kind                as K
+import qualified Saga.Language.Typechecker.Type                as T
+import           Saga.Utils.Operators                          ((|>))
 
 
 
-from :: Q.Constraint Type -> SolverM Constraint
+
+from :: SolverEff es => Q.Constraint Type -> Eff es Constraint
 from (Q.Pure t)          = return $ C.Pure $ Mono t
 from (Q.Resource m t)    = return $ C.Resource (Mono t) m
-from (Q.Refinement re t) = return $ C.Refined (Mono t) re
+from (Q.Refinement bs re t) = return $ C.Refined (fmap Mono bs) (Mono t) re
 from (Q.Implements t p)  = do
     superEv <- fresh E
     return $ C.Impl superEv (Mono t) p
@@ -37,17 +42,29 @@ from (Q.Equality t t')   = do
 
 
 
-type instance VarType Type I.Evidence       = Var.PolymorphicVar Evidence
-type instance VarType Type I.Unification    = Var.PolymorphicVar Type
+flatten :: C.Constraint -> [C.Constraint]
+flatten (Conjunction left right) = flatten left ++ flatten right
+flatten c                        = pure c
 
 
-fresh :: Tag a -> SolverM (VarType Type a)
-fresh t = do
-    Eff.modify $ \s -> s {count = count s + 1}
-    index <- Eff.gets count
-    let count = show ([1 ..] !! index)
-    return $ case t of
-        E -> Var.Evidence $ "cst_ev_" ++ count
-        U -> Var.Unification ("cst_uvar_" ++ count) (Level 0) K.Type -- Level 0 = top level
+merge :: [Constraint] -> Constraint
+merge = foldl C.Conjunction C.Empty
 
-  --return $ Var.Evidence $ "cst_ev_" ++ count
+
+data Tag a where
+    E :: Tag Evidence
+    T :: Tag Type
+
+fresh :: SolverEff es => Tag a -> Eff es (Variable a)
+fresh E = do
+    i <- Eff.gets $ evs |> (+1)
+    Eff.modify $ \s -> s { evs = i}
+    let count = show ([1 ..] !! i)
+    return $ C.Evidence $ "ev_" ++ count
+fresh T = do
+    i <- Eff.gets $ tvs |> (+1)
+    Eff.modify $ \s -> s {tvs  = i}
+    let count = show ([1 ..] !! i)
+    return $ T.Poly ("ct_" ++ count) K.Type
+
+

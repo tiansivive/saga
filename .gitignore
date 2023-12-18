@@ -12,3 +12,6 @@ src/Main
 
 logs
 *.log
+
+
+.external/*
