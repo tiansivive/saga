@@ -5,11 +5,13 @@ module Saga.Language.Typechecker.Inference.Type.Generalization where
 import           Data.List                                       (nub)
 import qualified Data.Map                                        as Map
 import           Effectful                                       (Eff, (:>))
+import qualified Effectful.Reader.Static                         as Eff
 import qualified Effectful.State.Static.Local                    as Eff
 import qualified Effectful.Writer.Static.Local                   as Eff
 import           Saga.Language.Core.Literals
 import           Saga.Language.Typechecker.Inference.Inference
 import qualified Saga.Language.Typechecker.Inference.Type.Shared as Shared
+import qualified Saga.Language.Typechecker.Kind                  as K
 import           Saga.Language.Typechecker.Protocols             (ProtocolID)
 import qualified Saga.Language.Typechecker.Qualification         as Q
 import           Saga.Language.Typechecker.Qualification         (Given (..),
@@ -18,7 +20,9 @@ import qualified Saga.Language.Typechecker.Solver.Constraints    as CST
 import           Saga.Language.Typechecker.Solver.Constraints    (Constraint (..))
 import qualified Saga.Language.Typechecker.Type                  as T
 import           Saga.Language.Typechecker.Type                  (Scheme (..),
-                                                                  Type)
+                                                                  Type,
+                                                                  Variable)
+import qualified Saga.Language.Typechecker.Variables             as Var
 
 instance Generalize Type where
   -- TODO This can probably be simplified, we probably don't need the full Shared.State
@@ -45,6 +49,8 @@ instance Generalize Type where
     tys' <- mapM generalize tys
     let (tvars, bs, cs, qts) = mapM (\(Forall tvars (bs :| cs :=> qt)) -> (tvars, bs, cs, qt)) tys'
     return $ Forall (nub tvars) (bs :| nub cs :=> T.Union (nub qts))
+
+  generalize (T.Var tvar) = return $ Forall [tvar] (Map.empty :| [] :=> T.Var tvar)
   generalize ty = case ty of
     T.Singleton lit -> generalize' $ case lit of
       LString _ -> "IsString"
@@ -57,8 +63,15 @@ instance Generalize Type where
     _ -> return $ Forall [] (Q.none :=> ty)
 
     where
-      generalize' :: Eff.State Shared.State :> es => ProtocolID -> Eff es (T.Polymorphic Type)
+      generalize' :: (Eff.State Int :> es) => ProtocolID -> Eff es (T.Polymorphic Type)
       generalize' protocol = do
-        tvar <- Shared.fresh
+        tvar <- fresh
         return $ Forall [tvar] (Map.empty :| [T.Var tvar `Q.Implements` protocol] :=> T.Var tvar)
 
+      fresh :: (Eff.State Int :> es) => Eff es (Variable Type)
+      fresh = do
+        i <- Eff.get
+        Eff.modify @Int (+1)
+        let count = show ([1 ..] !! i)
+        let tvar = T.Poly ("t" ++ count) K.Type
+        return tvar

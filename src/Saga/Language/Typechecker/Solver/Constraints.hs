@@ -24,7 +24,10 @@ import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid)
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 import qualified Saga.Language.Typechecker.Type                as T
 
+import           Data.Array                                    (elems)
+import           Saga.Language.Core.Literals                   (Literal)
 import           Saga.Language.Typechecker.Variables           (Variable)
+import           Saga.Utils.Operators                          ((|>), (||>))
 
 
 data Constraint where
@@ -34,6 +37,7 @@ data Constraint where
     Impl        :: Variable Evidence -> Item -> ProtocolID -> Constraint
     OneOf       :: Item -> Item -> Constraint
     Refined     :: Scope -> Item -> Liquid -> Constraint
+    --Proof       :: Item -> Literal -> Constraint
     Resource    :: Item -> Multiplicity -> Constraint
     Consumed    :: Item -> Constraint
     Pure        :: Item -> Constraint
@@ -43,19 +47,20 @@ deriving instance Show Constraint
 deriving instance Eq Constraint
 
 data Item
-    = Variable Level (Variable Item)
-    -- | Skolem (Variable Type)
+    = Skolem (Variable Type)
+    | Scoped (Variable Type)
+    | Unification (Variable Type)
+    | Instantiation (Variable Type)
     | Mono Type
     | Poly (Polymorphic Type)
     deriving (Show, Eq)
-data instance Variable Item where
-    Skolem          :: Variable Type -> Variable Item
-    Scoped          :: Variable Type -> Variable Item
-    Unification     :: Variable Type -> Variable Item
-    Instantiation   :: Variable Type -> Variable Item
-deriving instance Show (Variable Item)
-deriving instance Eq (Variable Item)
-newtype Level = Level Int deriving (Show, Eq, Ord, Num)
+-- data instance Variable Item where
+--     Skolem          :: Variable Type -> Variable Item
+--     Scoped          :: Variable Type -> Variable Item
+--     Unification     :: Variable Type -> Variable Item
+--     Instantiation   :: Variable Type -> Variable Item
+-- deriving instance Show (Variable Item)
+-- deriving instance Eq (Variable Item)
 
 data Evidence
     = Protocol Implementation
@@ -68,7 +73,6 @@ deriving instance Eq (Variable Evidence)
 deriving instance Ord (Variable Evidence)
 
 data Mechanism = Nominal | Structural deriving (Show, Eq, Ord)
-type Witnessed = Map.Map (Variable Evidence) (Variable Evidence)
 
 newtype Assumption
     = Assume Constraint
@@ -89,30 +93,30 @@ instance Substitutable Constraint where
     apply sub (Conjunction c c')   = Conjunction (apply sub c) (apply sub c')
     apply sub (Equality ev it it') = Equality ev (apply sub it) (apply sub it')
     apply sub (Impl ev it prtcl)   = Impl ev (apply sub it) prtcl
-    apply sub (Refined scope it liquid)   = Refined (apply sub scope) (apply sub it) liquid
+    apply sub (Refined scope it liquid)   = Refined scope (apply sub it) liquid
     apply sub c                    = c
 
     ftv (Conjunction c c')        = ftv c <> ftv c'
     ftv (Equality ev it it')      = ftv it <> ftv it'
     ftv (Impl ev it prtcl)        = ftv it
-    ftv (Refined scope it liquid) = ftv it
+    ftv (Refined scope it liquid) = ftv it <> (Map.elems scope ||> fmap ftv |> mconcat)
     ftv _                         = Set.empty
 
 instance Substitutable Item where
     type Target Item = Type
-    apply sub v@(Variable _ (Unification tvar))     = maybe v Mono $ Map.lookup tvar sub
-    apply sub v@(Variable _ (Instantiation tvar))   = maybe v Mono $ Map.lookup tvar sub
-    apply sub v@(Variable _ (Skolem tvar))          = maybe v Mono $ Map.lookup tvar sub
-    apply sub v@(Variable _ (Scoped tvar))          = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Unification tvar)   = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Instantiation tvar) = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Skolem tvar)        = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Scoped tvar)        = maybe v Mono $ Map.lookup tvar sub
 
-    apply sub v@(Mono ty)         = Mono $ apply sub ty
-    apply _ it                    = it
+    apply sub v@(Mono ty)            = Mono $ apply sub ty
+    apply _ it                       = it
 
-    ftv (Variable _ (Unification tvar))   = Set.singleton tvar
-    ftv (Variable _ (Skolem tvar))        = Set.singleton tvar
-    ftv (Variable _ (Scoped tvar))        = Set.singleton tvar
-    ftv (Variable _ (Instantiation tvar)) = Set.singleton tvar
-    ftv _                                 = Set.empty
+    ftv (Unification  tvar)  = Set.singleton tvar
+    ftv (Skolem  tvar)       = Set.singleton tvar
+    ftv (Scoped tvar)        = Set.singleton tvar
+    ftv (Instantiation tvar) = Set.singleton tvar
+    ftv _                    = Set.empty
 
 
 

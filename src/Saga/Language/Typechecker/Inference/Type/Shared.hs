@@ -15,6 +15,7 @@ import           Saga.Language.Typechecker.Type                (Type)
 
 import qualified Effectful.State.Static.Local                  as Eff
 
+import qualified Data.Map                                      as Map
 import           Effectful                                     (Eff, (:>))
 import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.Writer.Static.Local                 as Eff
@@ -28,26 +29,29 @@ import           Saga.Utils.TypeLevel                          (type (§))
 
 
 
-type TypeInference es = (TypeCheck es, Eff.Reader CST.Level :> es, Eff.State State :> es, Eff.Writer CST.Constraint :> es)
+type TypeInference es = (TypeCheck es, Eff.Reader Var.Level :> es, Eff.State State :> es, Eff.Writer CST.Constraint :> es)
 
 
 data State = IST
-  { tvars :: Int
-  , evars :: Int
-  , level :: Int
+  { tvars  :: Int
+  , evars  :: Int
+  , levels :: Map.Map (Variable Type) Var.Level
   } deriving (Show)
 
 
 initialState :: State
-initialState = IST 0 0 0
+initialState = IST 0 0 Map.empty
 
 
-fresh :: (Eff.State State :> es) => Eff es § Variable Type
+fresh :: (Eff.Reader Var.Level :> es, Eff.State State :> es) => Eff es § Variable Type
 fresh = do
   i <- Eff.gets $ tvars |> (+1)
   Eff.modify $ \s -> s { tvars = i }
   let count = show ([1 ..] !! i)
-  return $ T.Poly ("t" ++ count) K.Type
+  let tvar = T.Poly ("t" ++ count) K.Type
+  lvl <- Eff.ask @Var.Level
+  Eff.modify $ \s -> s { levels = Map.insert tvar lvl $ levels s }
+  return tvar
 
 mkEvidence :: (Eff.State State :> es) => Eff es § Variable CST.Evidence
 mkEvidence = do
@@ -59,12 +63,9 @@ mkEvidence = do
 
 
 
-toItem :: (Eff.State State :> es) => (Variable Type -> Variable CST.Item) -> Type -> Eff es CST.Item
-toItem constructor (T.Var tvar) = do
-  l <- Eff.gets level
-  return $ CST.Variable (CST.Level l) (constructor tvar)
-
-toItem _ t = return $ CST.Mono t
+toItem :: (Variable Type -> CST.Item) -> Type -> CST.Item
+toItem constructor (T.Var tvar) = constructor tvar
+toItem _ t                      = CST.Mono t
 
 
 propagate :: TypeInference es => T.Constraint -> Eff es ()
@@ -72,3 +73,8 @@ propagate (ty `Q.Implements` prtcl) = mkEvidence >>= \e -> Eff.tell $ CST.Impl e
 propagate (Q.Resource mul ty) = Eff.tell $ CST.Resource (CST.Mono ty) mul
 propagate (Q.Pure ty) = Eff.tell $ CST.Pure (CST.Mono ty)
 propagate (Q.Refinement bs expr ty) = Eff.tell $ CST.Refined (fmap CST.Mono bs) (CST.Mono ty) expr
+
+
+
+
+

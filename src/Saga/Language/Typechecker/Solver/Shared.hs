@@ -10,7 +10,8 @@ import           Saga.Language.Typechecker.Solver.Constraints  (Constraint (..),
                                                                 Item (..))
 import           Saga.Language.Typechecker.Solver.Monad        (Count (evs, tvs),
                                                                 Solution (..),
-                                                                SolverEff)
+                                                                SolverEff,
+                                                                Status (..))
 
 import qualified Effectful.State.Static.Local                  as Eff
 import           Saga.Language.Typechecker.Type                (Type)
@@ -40,6 +41,14 @@ from (Q.Equality t t')   = do
     return $ C.Equality eqEv (Mono t) (Mono t')
 
 
+
+flatten :: C.Constraint -> [C.Constraint]
+flatten (Conjunction left right) = flatten left ++ flatten right
+flatten c                        = pure c
+
+
+merge :: [Constraint] -> Constraint
+merge = foldl C.Conjunction C.Empty
 
 
 data Tag a where

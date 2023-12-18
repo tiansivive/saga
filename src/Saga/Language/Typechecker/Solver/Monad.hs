@@ -17,8 +17,8 @@ import           Saga.Language.Typechecker.Errors              (SagaError)
 import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import           Saga.Language.Typechecker.Solver.Constraints  (Constraint,
                                                                 Evidence,
-                                                                Variable,
-                                                                Witnessed)
+                                                                Variable)
+
 import           Saga.Language.Typechecker.Solver.Substitution (Subst,
                                                                 Substitutable,
                                                                 compose)
@@ -26,21 +26,27 @@ import           Saga.Language.Typechecker.Solver.Substitution (Subst,
 import           Debug.Pretty.Simple                           (pTraceM)
 import           Effectful                                     (Eff, (:>))
 import qualified Effectful                                     as Eff
+import qualified Effectful.Reader.Static                       as Eff
 import           GHC.Stack.Types                               (CallStack)
+import           Saga.Language.Core.Literals
 import qualified Saga.Language.Typechecker.Monad               as TC
 import           Saga.Language.Typechecker.Solver.Cycles       (Cycle)
 import           Saga.Language.Typechecker.Type                (Type)
+import qualified Saga.Language.Typechecker.Variables           as Var
 
 
 
-type SolverEff es = (TypeCheck es, Eff.State Solution :> es, Eff.State Count :> es, Eff.State [Cycle Type] :> es)
+type SolverEff es = (TypeCheck es, Eff.Reader Var.Level :> es, Eff.Reader Levels :> es, Eff.State Solution :> es, Eff.State Count :> es, Eff.State [Cycle Type] :> es)
 
 data Count = Count { evs :: Int, tvs :: Int }
   deriving Show
 
-data Solution = Solution { evidence :: Subst Evidence, tvars :: Subst Type, witnessed :: Witnessed }
+data Solution = Solution { evidence :: Subst Evidence, tvars :: Subst Type, witnessed :: Witnessed, proofs :: Proofs }
   deriving (Show)
 data Status = Solved | Deferred | Impossible deriving Show
+type Witnessed = Map.Map (Variable Evidence) (Variable Evidence)
+type Proofs = Map.Map (Variable Type) Literal
+type Levels = Map.Map (Variable Type) Var.Level
 
 class Solve c where
     solve       :: SolverEff es => c -> Eff es (Status, Constraint)
@@ -51,7 +57,7 @@ class Solve c where
 
 
 initialSolution :: Solution
-initialSolution = Solution { evidence = Map.empty, tvars = Map.empty, witnessed = Map.empty }
+initialSolution = Solution { evidence = Map.empty, tvars = Map.empty, witnessed = Map.empty, proofs = Map.empty }
 initialCount :: Count
 initialCount = Count 0 0
 

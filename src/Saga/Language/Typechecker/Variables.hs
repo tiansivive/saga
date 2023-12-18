@@ -15,3 +15,6 @@ data family Variable t
 
 type family Classifier a  :: GHC.Type
 type family VarType e a   :: GHC.Type
+
+newtype Level = Level Int deriving (Show, Eq, Ord, Num)
+

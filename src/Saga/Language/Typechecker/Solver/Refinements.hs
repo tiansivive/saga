@@ -17,10 +17,11 @@ import qualified Data.SBV                                      as SBV
 
 import           Control.Monad.IO.Class                        (MonadIO (..))
 import qualified Data.Set                                      as Set
-import           Debug.Pretty.Simple                           (pTraceM)
+import           Debug.Pretty.Simple                           (pTrace, pTraceM)
 import           Effectful                                     (Eff)
 import qualified Effectful                                     as Eff
 import qualified Effectful.Error.Static                        as Eff
+import qualified Effectful.State.Static.Local                  as Eff
 import           Saga.Language.Core.Literals                   (Literal (LBool, LInt))
 import           Saga.Language.Typechecker.Environment         (CompilerState (assumptions))
 import           Saga.Language.Typechecker.Errors              (SagaError (..))
@@ -33,7 +34,8 @@ import           Saga.Language.Typechecker.Solver.Constraints  (Constraint (Empt
                                                                 Item (..),
                                                                 Scope)
 import           Saga.Language.Typechecker.Solver.Entailment   (Entails (..))
-import           Saga.Language.Typechecker.Solver.Monad        (Solve (..),
+import           Saga.Language.Typechecker.Solver.Monad        (Solution (proofs),
+                                                                Solve (..),
                                                                 SolverEff,
                                                                 Status (..))
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
@@ -52,7 +54,7 @@ data Refinement = Refine Scope Item Liquid deriving (Show)
 instance Entails Refinement where
     entails :: SolverEff es => Refinement -> [Constraint] -> Eff es [Constraint]
     entails ref@(Refine scope it liquid) cs = do
-
+        pTraceM "\n\n---------------------------------------\nEntailment Refinement:"
         implications <- Eff.liftIO $ forM refinements mkImplication
         let entailments = [ i | i@(SatResult (SBV.Unsatisfiable {})) <- implications ]
         if null entailments then
@@ -83,8 +85,8 @@ instance Solve Refinement where
 -- | QUESTION: #30 Generate proofs/witnesses by leveraging the evidence system. This is how to identify that a certain type has been refined/narrowed
 solve' :: SolverEff es => Refinement -> Eff es (Status, Constraint)
 solve' r@(Refine scope it liquid) = do
-    -- pTraceM "\n\n---------------------------------------\nSolving Refinement:"
-    -- pTraceM $ show r
+    pTraceM "\n\n---------------------------------------\nSolving Refinement:"
+    pTraceM $ show r
     res <- Eff.liftIO . SBV.sat $ evalStateT (translate liquid) empty
     case res of
         SatResult (SBV.Satisfiable _ model) -> return $
@@ -96,15 +98,20 @@ solve' r@(Refine scope it liquid) = do
 
 simplify' :: SolverEff es => Refinement -> Eff es  Constraint
 simplify' (Refine scope it liquid) = do
-    let subst = scope ||> Map.mapWithKey convert
+    pTraceM "\n\n---------------------------------------\nSimplifying Refinement:"
+    proofs' <- Eff.gets proofs
+    let subst = scope ||> Map.mapWithKey (convert proofs')
     return $ Refined scope it (apply subst liquid)
 
     where
-        convert _ (Mono (T.Singleton lit))  | LInt n <- lit     = L.Number n
-                                            | LBool b <- lit    = L.Boolean b
-        convert var _                                           = L.Var var
+        convert proofs _ (Scoped tvar)      | Just lit <- Map.lookup tvar proofs      = fromLit lit
+        convert proofs _ (Skolem tvar)      | Just lit <- Map.lookup tvar proofs      = fromLit lit
+        convert proofs _ (Unification tvar) | Just lit <- Map.lookup tvar proofs      = fromLit lit
+        convert proofs _ (Mono (T.Singleton lit))                                     = fromLit lit
+        convert proofs var _                                                          = L.Var var
 
-
+        fromLit (LInt n)  = L.Number n
+        fromLit (LBool b) = L.Boolean b
 instance Substitutable Liquid where
     type Target Liquid = Liquid
 
