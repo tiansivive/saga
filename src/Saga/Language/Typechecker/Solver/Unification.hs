@@ -75,7 +75,7 @@ class Substitutable t => Unification t where
 type TypeUnification es = UnificationEff es Type
 instance Unification Type where
     unify :: TypeUnification es => Type -> Type -> Eff es (Subst Type)
-    --unify t t' | pTrace ("\nUnifying:\n" ++ show t ++ "\nWith:\n" ++ show t') False = undefined
+    unify t t' | pTrace ("\nUnifying:\n" ++ show t ++ "\nWith:\n" ++ show t') False = undefined
     unify (T.Var v) t                                               = bind v t
     unify t (T.Var v)                                               = bind v t
     unify (T.Singleton a) (T.Singleton b) | a == b                  = return nullSubst
@@ -175,7 +175,6 @@ instance Unification Type where
               T.Singleton lit -> Eff.tell $ Map.singleton a lit
               _               -> return ()
 
-            -- | TODO:ISSUE: #32 Generalize here?
             return . Map.singleton a $ case t of
                 T.Singleton (LInt _)    -> Lib.int
                 T.Singleton (LString _) -> Lib.string

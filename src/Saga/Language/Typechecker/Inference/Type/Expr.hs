@@ -99,7 +99,6 @@ infer' e = case e of
     e@(Literal literal) -> return $ Typed e (T.Singleton literal)
     Identifier x -> do
       ty@(_ :=> t) <- lookup' x
-      pTraceM $ "LOOKUP: " ++ x ++ ":\n" ++ show ty
       (skolems, assumptions, implied) <- contextualize ty
 
 
@@ -216,17 +215,23 @@ infer' e = case e of
         fn'@(Typed _ fnTy)   <- infer' fn
         arg'@(Typed _ argTy) <- infer' arg
 
-
-
         -- | TODO: How can we notify the constraint solver that there's a new unification variable
         -- | which stands for the result of this function application
-        -- inferred <- generalize $ argTy `T.Arrow` out
-        -- Eff.tell $ CST.Equality evidence (CST.Mono fnTy) (CST.Poly inferred)
-
+        -- | EDIT: Do we even need to do that?
+        inferred <- generalize' $ argTy `T.Arrow` out
         evidence <- Shared.mkEvidence
-        Eff.tell $ CST.Equality evidence (CST.Mono $ argTy `T.Arrow` out) (Shared.toItem CST.Unification fnTy)
+        Eff.tell $ CST.Equality evidence (Shared.toItem CST.Unification fnTy) (CST.Poly inferred)
+        --Eff.tell $ CST.Equality evidence (CST.Mono $ argTy `T.Arrow` out) (Shared.toItem CST.Unification fnTy)
 
         return $ Typed (FnApp fn' [arg']) out
+
+        where
+          generalize' e = do
+            count <- Eff.gets tvars
+            (inferred, count') <- Eff.runState count $ generalize e
+            Eff.modify $ \s -> s { tvars = count' }
+            return inferred
+
     FnApp fn (a : as) -> infer' curried
         where
           partial = FnApp fn [a]

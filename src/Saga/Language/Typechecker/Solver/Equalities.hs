@@ -51,16 +51,21 @@ solve' :: SolverEff es => Eq -> Eff es (Status, C.Constraint)
 --solve' eq | pTrace ("\nSOLVING EQ:\n" ++ show eq) False = undefined
 solve' (Eq _ it it') = case (it, it') of
     (Mono ty, Mono ty')                     -> ty `equals` ty'
-    (Mono ty, C.Unification tvar)           -> ty `equals` T.Var tvar
-    (Mono ty, C.Scoped tvar)                -> ty `equals` T.Var tvar
+    (Mono ty, Poly ty')                     -> instAndUnify ty' ty
+    (Mono ty, Unification tvar)           -> ty `equals` T.Var tvar
+    (Mono ty, Scoped tvar)                -> ty `equals` T.Var tvar
 
-    (C.Unification tvar, Mono ty)           -> ty `equals` T.Var tvar
-    (C.Unification tvar, C.Scoped tvar')    -> T.Var tvar `equals` T.Var tvar'
-    (C.Scoped tvar, C.Unification tvar')    -> T.Var tvar `equals` T.Var tvar'
-    (C.Scoped tvar, Mono ty)                -> ty `equals` T.Var tvar
+    (Poly ty, Mono ty')                     -> instAndUnify ty ty'
+    (Poly ty, Unification tvar)           -> instAndUnify ty (T.Var tvar)
 
-    (Mono ty, Poly ty')        -> instAndUnify ty' ty
-    (Poly ty', Mono ty)        -> instAndUnify ty' ty
+    (Unification tvar, Mono ty)           -> ty `equals` T.Var tvar
+    (Unification tvar, Poly ty)           -> instAndUnify ty (T.Var tvar)
+    (Unification tvar, C.Scoped tvar')    -> T.Var tvar `equals` T.Var tvar'
+
+    (Scoped tvar, Unification tvar')    -> T.Var tvar `equals` T.Var tvar'
+    (Scoped tvar, Mono ty)                -> ty `equals` T.Var tvar
+    (Scoped tvar, Poly ty)                -> instAndUnify ty (T.Var tvar)
+
     eq -> crash $ NotYetImplemented $ "Solving equality: " ++ show eq
 
     where
@@ -87,14 +92,13 @@ solve' (Eq _ it it') = case (it, it') of
         generate constraint tys (tvar:tvars) = do
             ty <- T.Var <$> Shared.fresh Shared.T
             ev <-   Shared.fresh Shared.E
-            -- | Potential HACK:
-            -- | QUESTION: Why wrap the fresh tvar in a Mono? Can we use the tvar directly in a Variable?
-            let eq = C.Equality ev (Mono $ T.Var tvar) (Mono ty)
+
+            let eq = C.Equality ev (Unification tvar) (Mono ty)
             generate (C.Conjunction constraint eq) (ty : tys) tvars
 
 
 
-simplify' (Eq ev (C.Mono (arg `T.Arrow`  out)) (C.Mono (arg' `T.Arrow`  out'))) = do
+simplify' (Eq ev (Mono (arg `T.Arrow`  out)) (Mono (arg' `T.Arrow`  out'))) = do
     ev1 <- Shared.fresh Shared.E
     ev2 <- Shared.fresh Shared.E
     return $ C.Conjunction (C.Equality ev1 (Mono arg) (Mono arg')) (C.Equality ev2 (Mono out) (Mono out'))
