@@ -269,7 +269,7 @@ infer' e = case e of
               (inferred, constraint) <- Eff.listen @Constraint $ infer expr
               ev <- Shared.mkEvidence
               -- QUESTION: Perhaps we should add another type of constraint here, to specifically prove a refinement rather than relying on equality
-              Eff.tell $ CST.Implication tvars [assume ev scrutineeType patTy] constraint
+              Eff.tell $ CST.Implication tvars [assume ev patTy scrutineeType] constraint
 
               return $ TypedCase pat patTy inferred
             where
