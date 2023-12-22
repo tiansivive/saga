@@ -80,6 +80,7 @@ op x = E.FnApp (E.Identifier "/") [E.Literal $ LInt 1, x]
 
 cases = E.Lambda ["x"] $
         E.Match (E.Identifier "x")
-            [ E.Case (E.Lit $ LInt 1) (op $ E.Identifier "x")
-            , E.Case (E.Lit $ LString "Hello") (E.Identifier "x")
+            [ E.Case (E.Lit $ LInt 1) (E.Identifier "x")
+            -- , E.Case (E.Lit $ LString "Hello") (E.Literal $ LString "Return")
             ]
+
