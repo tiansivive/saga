@@ -76,10 +76,12 @@ type TypeUnification es = UnificationEff es Type
 instance Unification Type where
     unify :: TypeUnification es => Type -> Type -> Eff es (Subst Type)
     --unify t t' | pTrace ("\nUnifying:\n" ++ show t ++ "\nWith:\n" ++ show t') False = undefined
-    unify (T.Var v) t                                               = bind v t
-    unify t (T.Var v)                                               = bind v t
-    unify (T.Singleton a) (T.Singleton b) | a == b                  = return nullSubst
-    unify (T.Data con K.Type) (T.Data con' K.Type) | con == con'    = return nullSubst
+    unify (T.Var v) t                                                   = bind v t
+    unify t (T.Var v)                                                   = bind v t
+    unify t@(T.Singleton a) t'@(T.Singleton b)  | a == b                = return nullSubst
+                                                | otherwise             = throwError $ UnificationFail t t'
+    unify t@(T.Data con K.Type) t'@(T.Data con' K.Type) | con == con'   = return nullSubst
+                                                        | otherwise     = throwError $ UnificationFail t t'
 
     unify (T.Tuple as) (T.Tuple bs) = do
           ss <- zipWithM unify as bs
@@ -132,6 +134,7 @@ instance Unification Type where
           (t1, t2@(T.Closure {})) -> do
             Forall tvars (cs :=> t2') <- eval t2
             unify t1 t2'
+          _ -> crash $ NotYetImplemented $ "Unifying types: " ++ show t ++ " and " ++ show t'
 
         where
           kinds :: KindInference es => Eff es (Kind, Kind)
@@ -175,7 +178,6 @@ instance Unification Type where
               T.Singleton lit -> Eff.tell $ Map.singleton a lit
               _               -> return ()
 
-            -- | TODO:ISSUE: #32 Generalize here?
             return . Map.singleton a $ case t of
                 T.Singleton (LInt _)    -> Lib.int
                 T.Singleton (LString _) -> Lib.string

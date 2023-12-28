@@ -25,9 +25,6 @@ import           Saga.Language.Typechecker.Type                  (Scheme (..),
 import qualified Saga.Language.Typechecker.Variables             as Var
 
 instance Generalize Type where
-  -- TODO This can probably be simplified, we probably don't need the full Shared.State
-  type Counter Type = Shared.State
-
   generalize (T.Tuple tys) = do
     ts <- mapM generalize tys
     let (bs, cs, tvars, ts') = foldl accumulate (Map.empty, [], [], []) ts

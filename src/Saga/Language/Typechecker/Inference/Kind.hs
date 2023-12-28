@@ -150,7 +150,6 @@ instance Instantiate Kind  where
       qt' = apply sub qt
 
 instance Generalize Kind where
-    type Counter Kind = ()
     generalize k = return $ Forall (Set.toList $ ftv k) (Q.none :=> k)
 
 class HasKind t where

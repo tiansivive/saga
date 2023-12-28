@@ -25,7 +25,6 @@ data CompilerState = Saga
   , kinds       :: Map.Map String (Polymorphic Kind)
 , dataTypes   :: Map.Map String DataType
   , tags        :: [Tag]
-  , assumptions :: [Assumption]
   } deriving (Show)
 
 

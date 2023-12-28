@@ -36,11 +36,12 @@ data State = IST
   { tvars  :: Int
   , evars  :: Int
   , levels :: Map.Map (Variable Type) Var.Level
+  , proofs :: Map.Map Type Type
   } deriving (Show)
 
 
 initialState :: State
-initialState = IST 0 0 Map.empty
+initialState = IST 0 0 Map.empty Map.empty
 
 
 fresh :: (Eff.Reader Var.Level :> es, Eff.State State :> es) => Eff es § Variable Type

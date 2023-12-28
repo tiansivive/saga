@@ -99,7 +99,6 @@ infer' e = case e of
     e@(Literal literal) -> return $ Typed e (T.Singleton literal)
     Identifier x -> do
       ty@(_ :=> t) <- lookup' x
-      pTraceM $ "LOOKUP: " ++ x ++ ":\n" ++ show ty
       (skolems, assumptions, implied) <- contextualize ty
 
 
@@ -187,6 +186,7 @@ infer' e = case e of
     Lambda ps@(param : rest) body -> do
 
         tvar <- T.Var <$> Shared.fresh
+        -- QUESTION: Should we mark type variables in the environment instead of of faking the quantification?
         let qt = Forall [] (Q.none :=> tvar)
         let scoped = Eff.local (\e -> e { types = Map.insert param qt $ types e })
         scoped $ do
@@ -216,17 +216,23 @@ infer' e = case e of
         fn'@(Typed _ fnTy)   <- infer' fn
         arg'@(Typed _ argTy) <- infer' arg
 
-
-
         -- | TODO: How can we notify the constraint solver that there's a new unification variable
         -- | which stands for the result of this function application
-        -- inferred <- generalize $ argTy `T.Arrow` out
-        -- Eff.tell $ CST.Equality evidence (CST.Mono fnTy) (CST.Poly inferred)
-
+        -- | EDIT: Do we even need to do that?
+        inferred <- generalize' $ argTy `T.Arrow` out
         evidence <- Shared.mkEvidence
-        Eff.tell $ CST.Equality evidence (CST.Mono $ argTy `T.Arrow` out) (Shared.toItem CST.Unification fnTy)
+        Eff.tell $ CST.Equality evidence (Shared.toItem CST.Unification fnTy) (CST.Poly inferred)
+        --Eff.tell $ CST.Equality evidence (CST.Mono $ argTy `T.Arrow` out) (Shared.toItem CST.Unification fnTy)
 
         return $ Typed (FnApp fn' [arg']) out
+
+        where
+          generalize' e = do
+            count <- Eff.gets tvars
+            (inferred, count') <- Eff.runState count $ generalize e
+            Eff.modify $ \s -> s { tvars = count' }
+            return inferred
+
     FnApp fn (a : as) -> infer' curried
         where
           partial = FnApp fn [a]
@@ -256,17 +262,23 @@ infer' e = case e of
           item = Shared.toItem CST.Unification
 
           inferCase scrutineeType (Case pat expr)  = Eff.local @Var.Level (+1) $ do
-
-            (patTy, tyvars) <- Eff.runWriter $ Pat.infer pat
+            (patty, tyvars) <- Eff.runWriter $ Pat.infer pat
             let (pairs, tvars) = unzip $ tyvars ||> fmap (\(id, tvar) -> ((id, Forall [tvar] (Q.none :=> T.Var tvar)), tvar))
+            narrowed <- T.Var <$> Shared.fresh
+            -- TODO:ENHANCEMENT Change to Reader effect
+            Eff.modify $ \s -> s { proofs = Map.insert scrutineeType narrowed $ proofs s }
             let scoped = Eff.local $ \env -> env { types = Map.fromList pairs <> types env }
             scoped $ do
+
               (inferred, constraint) <- Eff.listen @Constraint $ infer expr
               ev <- Shared.mkEvidence
+              -- TODO: Skolemize the scrutinee type and the inferred pattern tvars
               -- QUESTION: Perhaps we should add another type of constraint here, to specifically prove a refinement rather than relying on equality
-              Eff.tell $ CST.Implication tvars [assume ev scrutineeType patTy] constraint
 
-              return $ TypedCase pat patTy inferred
+              Eff.tell $ CST.Implication tvars [assume ev patty narrowed] constraint
+              Eff.modify $ \s -> s { proofs = Map.delete scrutineeType $ proofs s }
+              return $ TypedCase pat patty inferred
+
             where
               assume ev ty ty' = CST.Assume $ CST.Equality ev (item ty) (item ty')
 
@@ -319,9 +331,14 @@ lookup' :: Shared.TypeInference es => String -> Eff es (Qualified Type)
 lookup' x = do
   Saga { types } <- Eff.ask
 
-  case Map.lookup x types of
+  qt@(bs :| cs :=> t) <- case Map.lookup x types of
     Just scheme -> walk scheme
     Nothing     -> Eff.throwError $ UnboundVariable x
+
+  proofs' <- Eff.gets proofs
+  case Map.lookup t proofs' of
+    Just t' -> return $ bs :| cs :=> t'
+    Nothing -> return qt
 
   where
     walk scheme@(Forall [] qt) = return qt

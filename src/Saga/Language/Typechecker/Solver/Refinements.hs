@@ -23,7 +23,6 @@ import qualified Effectful                                     as Eff
 import qualified Effectful.Error.Static                        as Eff
 import qualified Effectful.State.Static.Local                  as Eff
 import           Saga.Language.Core.Literals                   (Literal (LBool, LInt))
-import           Saga.Language.Typechecker.Environment         (CompilerState (assumptions))
 import           Saga.Language.Typechecker.Errors              (SagaError (..))
 import qualified Saga.Language.Typechecker.Refinement.Liquid   as L
 import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid)
@@ -54,7 +53,6 @@ data Refinement = Refine Scope Item Liquid deriving (Show)
 instance Entails Refinement where
     entails :: SolverEff es => Refinement -> [Constraint] -> Eff es [Constraint]
     entails ref@(Refine scope it liquid) cs = do
-        pTraceM "\n\n---------------------------------------\nEntailment Refinement:"
         implications <- Eff.liftIO $ forM refinements mkImplication
         let entailments = [ i | i@(SatResult (SBV.Unsatisfiable {})) <- implications ]
         if null entailments then
@@ -82,11 +80,8 @@ instance Solve Refinement where
     simplify = simplify'
 
 
--- | QUESTION: #30 Generate proofs/witnesses by leveraging the evidence system. This is how to identify that a certain type has been refined/narrowed
 solve' :: SolverEff es => Refinement -> Eff es (Status, Constraint)
 solve' r@(Refine scope it liquid) = do
-    pTraceM "\n\n---------------------------------------\nSolving Refinement:"
-    pTraceM $ show r
     res <- Eff.liftIO . SBV.sat $ evalStateT (translate liquid) empty
     case res of
         SatResult (SBV.Satisfiable _ model) -> return $
@@ -98,7 +93,6 @@ solve' r@(Refine scope it liquid) = do
 
 simplify' :: SolverEff es => Refinement -> Eff es  Constraint
 simplify' (Refine scope it liquid) = do
-    pTraceM "\n\n---------------------------------------\nSimplifying Refinement:"
     proofs' <- Eff.gets proofs
     let subst = scope ||> Map.mapWithKey (convert proofs')
     return $ Refined scope it (apply subst liquid)

@@ -213,7 +213,6 @@ defaultEnv = Saga
   , kinds = Map.empty
   , dataTypes = Map.empty
   , tags = []
-  , assumptions = []
   , protocols =
       [ eqProtocol, numProtocol, isStringProtocol
       , functorProtocol, semigroupProtocol

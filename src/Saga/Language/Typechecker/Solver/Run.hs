@@ -62,8 +62,11 @@ import           Saga.Language.Typechecker.Zonking.Zonking       (Context (..),
 
 run :: TypeCheck es => (Constraint, Levels) -> Eff es Context
 run (constraint, levels) = do
-    pTraceM $ "\nCONTRAINTS:\n" ++ show constraint
+    pTraceM $ "\nCONSTRAINTS:\n" ++ show (Shared.flatten constraint)
     ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState [] . Eff.runReader (Var.Level 0) . Eff.runReader levels $ process (Shared.flatten constraint) []
+    pTraceM $ "\n-----------------------------\nCYCLES:\n" ++ show cycles
+    pTraceM $ "\n-----------------------------\nRESIDUALS:\n" ++ show residuals
+    pTraceM $ "\n-----------------------------\nSOLUTION:\n" ++ show solution
     types <- foldM collapse (tvars solution) cycles
 
 

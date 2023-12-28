@@ -8,7 +8,8 @@ import           Saga.Language.Typechecker.Inference.Inference           (Infere
 import           Saga.Language.Typechecker.Inference.Type.Generalization
 import           Saga.Language.Typechecker.Inference.Type.Instantiation
 
-import           Debug.Pretty.Simple                                     (pTraceM)
+import           Debug.Pretty.Simple                                     (pTrace,
+                                                                          pTraceM)
 import           Effectful                                               (Eff)
 import qualified Effectful                                               as Eff
 import qualified Effectful.Error.Static                                  as Eff
@@ -47,8 +48,7 @@ import           Saga.Utils.TypeLevel                                    (type (
 typecheck :: TypeCheck es => Expr -> Eff es (Expr, Polymorphic Type)
 typecheck expr  = do
     ((ast, st), constraint) <- Eff.runWriter @CST.Constraint . Eff.runState TI.initialState . Eff.runReader (Var.Level 0) $ infer expr
-    pTraceM $ "AST:\n" ++ show ast
-    pTraceM $ "State:\n" ++ show st
+    pTraceM $ "\nAST:\n" ++ show ast
     context <- Eff.inject $ Solver.run (constraint, levels st)
     (ast', ty) <- Zonking.run ast context
 
@@ -80,7 +80,9 @@ lte x y = E.FnApp (E.Identifier "<=") [x, y]
 
 op x = E.FnApp (E.Identifier "/") [E.Literal $ LInt 1, x]
 
-fn = E.Lambda ["x"] $
+cases = E.Lambda ["x"] $
         E.Match (E.Identifier "x")
-            [ E.Case (E.Lit $ LInt 1) (op $ E.Identifier "x")
+            [ E.Case (E.Lit $ LInt 1) (E.Identifier "x")
+            , E.Case (E.Lit $ LString "Hello") (E.Literal $ LString "World")
             ]
+
