@@ -37,7 +37,7 @@ data Constraint where
     Impl        :: Variable Evidence -> Item -> ProtocolID -> Constraint
     OneOf       :: Item -> Item -> Constraint
     Refined     :: Scope -> Item -> Liquid -> Constraint
-    --Proof       :: Item -> Literal -> Constraint
+    Proof       :: Item -> Type -> Constraint
     Resource    :: Item -> Multiplicity -> Constraint
     Consumed    :: Item -> Constraint
     Pure        :: Item -> Constraint

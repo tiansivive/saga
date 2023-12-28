@@ -186,6 +186,7 @@ infer' e = case e of
     Lambda ps@(param : rest) body -> do
 
         tvar <- T.Var <$> Shared.fresh
+        -- QUESTION: Should we mark type variables in the environment instead of of faking the quantification?
         let qt = Forall [] (Q.none :=> tvar)
         let scoped = Eff.local (\e -> e { types = Map.insert param qt $ types e })
         scoped $ do
@@ -261,17 +262,23 @@ infer' e = case e of
           item = Shared.toItem CST.Unification
 
           inferCase scrutineeType (Case pat expr)  = Eff.local @Var.Level (+1) $ do
-
-            (patTy, tyvars) <- Eff.runWriter $ Pat.infer pat
+            (patty, tyvars) <- Eff.runWriter $ Pat.infer pat
             let (pairs, tvars) = unzip $ tyvars ||> fmap (\(id, tvar) -> ((id, Forall [tvar] (Q.none :=> T.Var tvar)), tvar))
+            narrowed <- T.Var <$> Shared.fresh
+            -- TODO:ENHANCEMENT Change to Reader effect
+            Eff.modify $ \s -> s { proofs = Map.insert scrutineeType narrowed $ proofs s }
             let scoped = Eff.local $ \env -> env { types = Map.fromList pairs <> types env }
             scoped $ do
+
               (inferred, constraint) <- Eff.listen @Constraint $ infer expr
               ev <- Shared.mkEvidence
+              -- TODO: Skolemize the scrutinee type and the inferred pattern tvars
               -- QUESTION: Perhaps we should add another type of constraint here, to specifically prove a refinement rather than relying on equality
-              Eff.tell $ CST.Implication tvars [assume ev patTy scrutineeType] constraint
 
-              return $ TypedCase pat patTy inferred
+              Eff.tell $ CST.Implication tvars [assume ev patty narrowed] constraint
+              Eff.modify $ \s -> s { proofs = Map.delete scrutineeType $ proofs s }
+              return $ TypedCase pat patty inferred
+
             where
               assume ev ty ty' = CST.Assume $ CST.Equality ev (item ty) (item ty')
 
@@ -324,9 +331,14 @@ lookup' :: Shared.TypeInference es => String -> Eff es (Qualified Type)
 lookup' x = do
   Saga { types } <- Eff.ask
 
-  case Map.lookup x types of
+  qt@(bs :| cs :=> t) <- case Map.lookup x types of
     Just scheme -> walk scheme
     Nothing     -> Eff.throwError $ UnboundVariable x
+
+  proofs' <- Eff.gets proofs
+  case Map.lookup t proofs' of
+    Just t' -> return $ bs :| cs :=> t'
+    Nothing -> return qt
 
   where
     walk scheme@(Forall [] qt) = return qt
