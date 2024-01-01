@@ -15,9 +15,12 @@ import           Effectful.Reader.Static               (Reader)
 import qualified Effectful.Reader.Static               as Eff
 import           Effectful.Writer.Static.Local         (Writer)
 import qualified Effectful.Writer.Static.Local         as Eff
+
 import           Saga.Language.Typechecker.Environment hiding (Error)
 import           Saga.Language.Typechecker.Errors      (SagaError)
 import           Saga.Language.Typechecker.Lib         (defaultEnv)
+
+import           Saga.Utils.Operators                  ((|>))
 import           Saga.Utils.TypeLevel                  (type (§))
 
 
@@ -25,6 +28,5 @@ import           Saga.Utils.TypeLevel                  (type (§))
 type TypeCheck es = (IOE :> es, Reader CompilerState :> es, Writer Info :> es,  Error SagaError :> es, Fail :> es)
 
 
-
-run :: Eff '[Reader CompilerState, Writer Info, Error SagaError, Fail, IOE] a -> IO § Either String (Either (Eff.CallStack, SagaError) (a, Info))
-run s = Eff.runEff . Eff.runFail . Eff.runError . Eff.runWriter $ Eff.runReader defaultEnv s
+run :: Eff '[Eff.Reader CompilerState, Eff.Writer Info, Eff.Error SagaError, Eff.Fail, Eff.IOE] a -> IO § Either String (Either (Eff.CallStack, SagaError) (a, Info))
+run = Eff.runReader defaultEnv |> Eff.runWriter |> Eff.runError |> Eff.runFail |> Eff.runEff

@@ -1,8 +1,8 @@
-{-# LANGUAGE DataKinds              #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE LambdaCase             #-}
-{-# LANGUAGE MonadComprehensions    #-}
-{-# LANGUAGE TypeFamilies           #-}
+{-# LANGUAGE DataKinds           #-}
+
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE MonadComprehensions #-}
+{-# LANGUAGE TypeFamilies        #-}
 module Saga.Language.Typechecker.Evaluation where
 import           Control.Monad.RWS
 
@@ -62,10 +62,12 @@ import           Saga.Utils.Operators                          ((|>))
 type EvaluationEff es = TypeCheck es
 type EvaluationM a = forall es. (EvaluationEff es) => Eff es a
 
-class Evaluate a b | a -> b where
-    evaluate :: EvaluationEff es =>  a -> Eff es b
+class Evaluate a where
+    type Out a
+    evaluate :: EvaluationEff es =>  a -> Eff es (Out a)
 
-instance Evaluate TypeExpr (Polymorphic Type) where
+instance Evaluate TypeExpr where
+    type Out TypeExpr = Polymorphic Type
     evaluate (TE.Identifier id)  = lookup id
 
     evaluate (TE.Arrow t1 t2) = do
