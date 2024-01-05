@@ -98,11 +98,9 @@ simplify' (Refine scope it liquid) = do
     return $ Refined scope it (apply subst liquid)
 
     where
-        convert proofs _ (Scoped tvar)      | Just lit <- Map.lookup tvar proofs      = fromLit lit
-        convert proofs _ (Skolem tvar)      | Just lit <- Map.lookup tvar proofs      = fromLit lit
-        convert proofs _ (Unification tvar) | Just lit <- Map.lookup tvar proofs      = fromLit lit
-        convert proofs _ (Mono (T.Singleton lit))                                     = fromLit lit
-        convert proofs var _                                                          = L.Var var
+        convert proofs _ (Var tvar) | Just lit <- Map.lookup tvar proofs      = fromLit lit
+        convert proofs _ (Mono (T.Singleton lit))                             = fromLit lit
+        convert proofs var _                                                  = L.Var var
 
         fromLit (LInt n)  = L.Number n
         fromLit (LBool b) = L.Boolean b

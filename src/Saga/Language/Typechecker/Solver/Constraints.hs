@@ -47,20 +47,10 @@ deriving instance Show Constraint
 deriving instance Eq Constraint
 
 data Item
-    = Skolem (Variable Type)
-    | Scoped (Variable Type)
-    | Unification (Variable Type)
-    | Instantiation (Variable Type)
+    = Var (Variable Type)
     | Mono Type
     | Poly (Polymorphic Type)
     deriving (Show, Eq)
--- data instance Variable Item where
---     Skolem          :: Variable Type -> Variable Item
---     Scoped          :: Variable Type -> Variable Item
---     Unification     :: Variable Type -> Variable Item
---     Instantiation   :: Variable Type -> Variable Item
--- deriving instance Show (Variable Item)
--- deriving instance Eq (Variable Item)
 
 data Evidence
     = Protocol Implementation
@@ -104,19 +94,12 @@ instance Substitutable Constraint where
 
 instance Substitutable Item where
     type Target Item = Type
-    apply sub v@(Unification tvar)   = maybe v Mono $ Map.lookup tvar sub
-    apply sub v@(Instantiation tvar) = maybe v Mono $ Map.lookup tvar sub
-    apply sub v@(Skolem tvar)        = maybe v Mono $ Map.lookup tvar sub
-    apply sub v@(Scoped tvar)        = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Var tvar) = maybe v Mono $ Map.lookup tvar sub
+    apply sub v@(Mono ty)  = Mono $ apply sub ty
+    apply _ it             = it
 
-    apply sub v@(Mono ty)            = Mono $ apply sub ty
-    apply _ it                       = it
-
-    ftv (Unification  tvar)  = Set.singleton tvar
-    ftv (Skolem  tvar)       = Set.singleton tvar
-    ftv (Scoped tvar)        = Set.singleton tvar
-    ftv (Instantiation tvar) = Set.singleton tvar
-    ftv _                    = Set.empty
+    ftv (Var  tvar) = Set.singleton tvar
+    ftv _           = Set.empty
 
 
 

@@ -76,8 +76,35 @@ type TypeUnification es = UnificationEff es Type
 instance Unification Type where
     unify :: TypeUnification es => Type -> Type -> Eff es (Subst Type)
     --unify t t' | pTrace ("\nUnifying:\n" ++ show t ++ "\nWith:\n" ++ show t') False = undefined
-    unify (T.Var v) t                                                   = bind v t
-    unify t (T.Var v)                                                   = bind v t
+    unify (T.Var v) t
+      | T.Instantiation {} <- v   = throwError $ UnexpectedVariable v
+      | T.Unification {} <- v   = bind v t
+      | T.Scoped {} <- v        = bind v t
+      | T.Local {} <- v         = bind v t
+      | T.Poly {} <- v          = bind v t
+      | T.Skolem {} <- v
+      , T.Var v' <- t             = bind v' (T.Var v)
+      | T.Rigid {} <- v
+      , T.Var v' <- t             = bind v' (T.Var v)
+      | T.Skolem {} <- v = throwError $ RigidUnification v t
+      | T.Rigid {} <- v = throwError $ RigidUnification v t
+      | otherwise = crash $ NotYetImplemented $ "Binding avar:\n" ++ show v ++ "\nwith\n" ++ show t
+
+    unify t (T.Var v)
+      | T.Instantiation {} <- v  = throwError $ UnexpectedVariable v
+      | T.Unification {} <- v   = bind v t
+      | T.Scoped {} <- v        = bind v t
+      | T.Local {} <- v         = bind v t
+      | T.Poly {} <- v          = bind v t
+      | T.Skolem {} <- v
+      , T.Var v' <- t           = bind v' (T.Var v)
+      | T.Rigid {} <- v
+      , T.Var v' <- t           = bind v' (T.Var v)
+      | T.Skolem {} <- v    = throwError $ RigidUnification v t
+      | T.Rigid {} <- v     = throwError $ RigidUnification v t
+      | otherwise           = crash $ NotYetImplemented $ "Binding avar:\n" ++ show v ++ "\nwith\n" ++ show t
+
+
     unify t@(T.Singleton a) t'@(T.Singleton b)  | a == b                = return nullSubst
                                                 | otherwise             = throwError $ UnificationFail t t'
     unify t@(T.Data con K.Type) t'@(T.Data con' K.Type) | con == con'   = return nullSubst

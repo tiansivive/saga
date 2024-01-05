@@ -42,15 +42,25 @@ data instance Variable Type where
   Poly              :: Classifiable Type => String -> Classifier Type -> Variable Type
   Existential       :: Classifiable Type => String -> Classifier Type -> Variable Type
   Local             :: Classifiable Type => String -> Classifier Type -> Variable Type
+  Skolem            :: Classifiable Type => String -> Classifier Type -> Variable Type
+  Rigid             :: Classifiable Type => String -> Classifier Type -> Variable Type
+  Scoped            :: Classifiable Type => String -> Classifier Type -> Variable Type
+  Unification       :: Classifiable Type => String -> Classifier Type -> Variable Type
+  Instantiation     :: Classifiable Type => String -> Classifier Type -> Variable Type
 
 deriving instance Show (Variable Type)
 deriving instance Ord (Variable Type)
 deriving instance Eq (Variable Type)
 
 classifier :: Variable Type -> Classifier Type
-classifier (Poly _ c)        = c
-classifier (Existential _ c) = c
-classifier (Local _ c)       = c
+classifier (Poly _ c)          = c
+classifier (Existential _ c)   = c
+classifier (Local _ c)         = c
+classifier (Skolem _ c)        = c
+classifier (Rigid _ c)         = c
+classifier (Scoped _ c)        = c
+classifier (Unification _ c)   = c
+classifier (Instantiation _ c) = c
 
 data Scope = Scope
   { types :: Map.Map String (Polymorphic Type)

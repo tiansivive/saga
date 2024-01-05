@@ -90,7 +90,7 @@ instance Inference Expr where
 
     infer = infer'
     lookup = lookup'
-    fresh = Shared.fresh
+    fresh = Shared.fresh T.Unification
 
 type Bindings = Map (Variable Type) (Qualified Type)
 
@@ -99,54 +99,16 @@ infer' e = case e of
     e@(Literal literal) -> return $ Typed e (T.Singleton literal)
     Identifier x -> do
       ty@(_ :=> t) <- lookup' x
-      (skolems, assumptions, implied) <- contextualize ty
+      implication@(CST.Implication _ assumptions _) <- contextualize ty
+      Eff.tell implication
 
-
-      Eff.tell $ CST.Implication skolems (fmap CST.Assume assumptions) (foldl CST.Conjunction CST.Empty implied)
       let e' = foldl elaborate (Identifier x) assumptions
       return $ Typed e' t
 
       where
-
-        contextualize ty@(bs :| cs :=> t) = do
-          (cs', sub) <- Eff.runState @(Subst Type) nullSubst . Eff.runReader bs $ concat <$> forM (locals t) collect
-
-          assumptions <- forM cs (toCST CST.Unification)
-          implied <- forM cs' (toCST CST.Scoped )
-
-          eqs <- forM (Map.toList sub) (\(local, t) -> do
-            lvl <- Eff.asks @Var.Level (+1)
-            Eff.modify $ \s -> s { levels = Map.insert local lvl $ levels s }
-            ev <- Shared.mkEvidence
-            let it = Shared.toItem CST.Unification t
-            return $ CST.Equality ev (CST.Scoped local) it)
-
-          return (locals t, assumptions, implied <> eqs)
-
-
-
-        toCST constructor (ty `Q.Implements` protocol) = Shared.mkEvidence <&> \e -> CST.Impl e (Shared.toItem constructor ty) protocol
-        toCST constructor  (Q.Refinement binds liquid ty) = return $ CST.Refined (Shared.toItem constructor <$> binds) (Shared.toItem constructor ty) liquid
-
-        elaborate expr (CST.Impl e _ protocol) = FnApp expr [Identifier protocol]
-        elaborate expr _ = expr
-
-
-        locals :: Type -> [Variable Type]
-        locals t = [ v | v@(T.Local {}) <- Set.toList $ ftv t ]
-
-        collect :: (Eff.Reader Bindings :> es, Eff.State (Subst Type) :> es) => Variable Type -> Eff es [Q.Constraint Type]
-        collect v@(T.Local {}) = do
-          bs <- Eff.ask
-
-          case Map.lookup v bs of
-            Just (bs' :| cs :=> t) | null $ locals t -> do
-              Eff.modify $ \sub -> mkSubst (v, t) `compose` sub
-              return cs
-            Just (bs' :| cs :=> t) -> do
-              cs' <- concat <$> forM (locals t) collect
-              return $ cs <> cs'
-
+        elaborate expr (CST.Assume c)
+          | CST.Impl e _ protocol <- c = FnApp expr [Identifier protocol]
+          | otherwise                  = expr
 
     Typed expr ty -> do
         Typed expr' inferred <- infer expr
@@ -173,19 +135,19 @@ infer' e = case e of
         return $ Typed (Record pairs') (T.Record $ fmap extract <$> pairs')
 
     List elems -> do
-      tvar <- Shared.fresh
+      tvar <- Shared.fresh T.Unification
       elems' <-forM elems $ \e -> infer e
       let tys = fmap extract elems'
 
       forM_ tys $ \t -> do
         ev <- Shared.mkEvidence
-        Eff.tell $ Equality ev (CST.Unification tvar) (CST.Mono t)
+        Eff.tell $ Equality ev (CST.Var tvar) (CST.Mono t)
 
       return $ Typed (List elems') (T.Applied listConstructor $ T.Var tvar)
 
     Lambda ps@(param : rest) body -> do
 
-        tvar <- T.Var <$> Shared.fresh
+        tvar <- T.Var <$> Shared.fresh T.Unification
         -- QUESTION: Should we mark type variables in the environment instead of of faking the quantification?
         let qt = Forall [] (Q.none :=> tvar)
         let scoped = Eff.local (\e -> e { types = Map.insert param qt $ types e })
@@ -201,7 +163,7 @@ infer' e = case e of
               _  -> Lambda rest body
 
     FnApp dot@(Identifier ".") args@[recordExpr, Identifier field] -> do
-        fieldType <- T.Var <$> Shared.fresh
+        fieldType <- T.Var <$> Shared.fresh T.Unification
         evidence <- Shared.mkEvidence
         (Typed _ recordTy) <- infer' recordExpr
         -- | TODO: By adding row polymorphism, we'd use a different constraint type
@@ -212,7 +174,7 @@ infer' e = case e of
     FnApp (Identifier ".") args -> Eff.throwError $ Fail $ "Unrecognised expressions for property access:\n\t" ++ show args
 
     fapp'@(FnApp fn [arg]) -> do
-        out <- T.Var <$> Shared.fresh
+        out <- T.Var <$> Shared.fresh T.Unification
         fn'@(Typed _ fnTy)   <- infer' fn
         arg'@(Typed _ argTy) <- infer' arg
 
@@ -221,7 +183,7 @@ infer' e = case e of
         -- | EDIT: Do we even need to do that?
         inferred <- generalize' $ argTy `T.Arrow` out
         evidence <- Shared.mkEvidence
-        Eff.tell $ CST.Equality evidence (Shared.toItem CST.Unification fnTy) (CST.Poly inferred)
+        Eff.tell $ CST.Equality evidence (Shared.toItem fnTy) (CST.Poly inferred)
         --Eff.tell $ CST.Equality evidence (CST.Mono $ argTy `T.Arrow` out) (Shared.toItem CST.Unification fnTy)
 
         return $ Typed (FnApp fn' [arg']) out
@@ -248,23 +210,23 @@ infer' e = case e of
 
         for_ ty' $ \t -> do
           ev <- Shared.mkEvidence
-          Eff.tell $ CST.Equality ev (item ty) (item t)
+          Eff.tell $ CST.Equality ev (Shared.toItem ty) (Shared.toItem t)
 
         forM_ tvars $ \v -> do
           ev <- Shared.mkEvidence
-          Eff.tell $ CST.Equality ev (item v) (maybe (item ty) item ty')
+          Eff.tell $ CST.Equality ev (Shared.toItem v) (maybe (Shared.toItem ty) Shared.toItem ty')
 
         let out = T.Union $ fmap extractTy cases'
         return $ Typed (Match scrutinee' cases') out
 
         where
 
-          item = Shared.toItem CST.Unification
+
 
           inferCase scrutineeType (Case pat expr)  = Eff.local @Var.Level (+1) $ do
             (patty, tyvars) <- Eff.runWriter $ Pat.infer pat
             let (pairs, tvars) = unzip $ tyvars ||> fmap (\(id, tvar) -> ((id, Forall [tvar] (Q.none :=> T.Var tvar)), tvar))
-            narrowed <- T.Var <$> Shared.fresh
+            narrowed <- T.Var <$> Shared.fresh T.Unification
             -- TODO:ENHANCEMENT Change to Reader effect
             Eff.modify $ \s -> s { proofs = Map.insert scrutineeType narrowed $ proofs s }
             let scoped = Eff.local $ \env -> env { types = Map.fromList pairs <> types env }
@@ -280,7 +242,7 @@ infer' e = case e of
               return $ TypedCase pat patty inferred
 
             where
-              assume ev ty ty' = CST.Assume $ CST.Equality ev (item ty) (item ty')
+              assume ev ty ty' = CST.Assume $ CST.Equality ev (Shared.toItem ty) (Shared.toItem ty')
 
           extractTy (TypedCase _ _ (Typed _ ty)) = ty
           separate (tvars, tys) caseExpr = case caseExpr of
@@ -310,20 +272,62 @@ infer' e = case e of
               ty <- Eff.inject $ E.evaluate typeExp
               let scoped = Eff.local (\e -> e{ types = Map.insert id ty $ types e })
               scoped $ do
-                (Typed expr' _) <- infer expr
+                (Typed expr' inferred) <- infer expr
+                T.Forall _ qt@(_ :=> t) <- rigidify ty
+                CST.Implication vars as inner <- contextualize qt
+                ev <- Shared.mkEvidence
+                Eff.tell $ CST.Implication vars as $ CST.Conjunction inner $ CST.Equality ev (CST.Mono t) (CST.Mono inferred)
                 walk (Declaration (Let id (Just typeExp) k expr') : processed) rest
             Declaration (Let id Nothing k expr) -> do
 
-              tvar <- Shared.fresh
+              tvar <- Shared.fresh T.Unification
               let qt = Forall [] (Q.none :=> T.Var tvar)
               let scoped = Eff.local (\e -> e{ types = Map.insert id qt $ types e })
               scoped $ do
                 (Typed expr' ty) <- infer expr
                 ev <- Shared.mkEvidence
-                Eff.tell $ CST.Equality ev (CST.Unification tvar) (CST.Mono ty)
+                Eff.tell $ CST.Equality ev (CST.Var tvar) (CST.Mono ty)
                 walk processed rest
             d -> walk (d:processed) rest
+
+          rigidify ty@(T.Forall tvars qt) = instantiateWith ty (tvars ||> fmap (\(T.Poly v k) -> T.Var $ T.Rigid v k))
+
     where
+
+      contextualize ty@(bs :| cs :=> t) = do
+        (cs', sub) <- Eff.runState @(Subst Type) nullSubst . Eff.runReader bs $ concat <$> forM (locals t) collect
+
+        assumptions <- forM cs toCST
+        implied <- forM cs' toCST
+
+        eqs <- forM (Map.toList sub) (\(local, t) -> do
+          lvl <- Eff.asks @Var.Level (+1)
+          Eff.modify $ \s -> s { levels = Map.insert local lvl $ levels s }
+          ev <- Shared.mkEvidence
+          return $ CST.Equality ev (CST.Var local) (Shared.toItem t))
+
+        return $ CST.Implication (locals t) (fmap CST.Assume assumptions) (scoped $ implied <> eqs)
+        where
+          scoped = foldl CST.Conjunction CST.Empty
+
+      locals :: Type -> [Variable Type]
+      locals t = [ v | v@(T.Local {}) <- Set.toList $ ftv t ]
+
+      collect :: (Eff.Reader Bindings :> es, Eff.State (Subst Type) :> es) => Variable Type -> Eff es [Q.Constraint Type]
+      collect v@(T.Local {}) = do
+        bs <- Eff.ask
+
+        case Map.lookup v bs of
+          Just (bs' :| cs :=> t) | null $ locals t -> do
+            Eff.modify $ \sub -> mkSubst (v, t) `compose` sub
+            return cs
+          Just (bs' :| cs :=> t) -> do
+            cs' <- concat <$> forM (locals t) collect
+            return $ cs <> cs'
+
+      toCST (ty `Q.Implements` protocol) = Shared.mkEvidence <&> \e -> CST.Impl e (Shared.toItem ty) protocol
+      toCST (Q.Refinement binds liquid ty) = return $ CST.Refined (Shared.toItem <$> binds) (Shared.toItem ty) liquid
+
       extract (Typed _ ty) = ty
 
 
@@ -342,6 +346,6 @@ lookup' x = do
 
   where
     walk scheme@(Forall [] qt) = return qt
-    walk scheme@(Forall tvars _) = Shared.fresh >>= walk . instantiate scheme . T.Var
+    walk scheme@(Forall tvars _) = Shared.fresh T.Unification >>= walk . instantiate scheme . T.Var
 
 

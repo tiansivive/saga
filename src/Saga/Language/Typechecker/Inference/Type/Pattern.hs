@@ -65,10 +65,10 @@ type TypeVars = [(String, Variable Type)]
 
 infer :: (PatternInferenceEff es, Instantiate Type) => Pattern -> Eff es Type
 
-infer Wildcard = T.Var <$> Shared.fresh
+infer Wildcard = T.Var <$> Shared.fresh T.Unification
 
 infer (Id id) = do
-    tvar <- Shared.fresh
+    tvar <- Shared.fresh T.Unification
     emit (id, tvar)
     return $ T.Var tvar
 
@@ -77,16 +77,16 @@ infer (PatTuple pats rest) = T.Tuple <$> mapM infer pats
 
 infer (PatList pats rest) = do
     tys <- mapM infer pats
-    tvar <- Shared.fresh
+    tvar <- Shared.fresh T.Unification
 
     let result = T.Applied Lib.listConstructor $ choice (T.Var tvar) tys
 
     case rest of
       Nothing -> return result
       Just id -> do
-        tvar <- Shared.fresh
+        tvar <- Shared.fresh T.Unification
         ev   <- Shared.mkEvidence
-        Eff.tell $ Equality ev (CST.Mono result) (CST.Unification  tvar)
+        Eff.tell $ Equality ev (CST.Mono result) (CST.Var tvar)
         emit (id, tvar)
         return result
 
@@ -100,7 +100,7 @@ infer (PatRecord pairs rest) = do
     case rest of
       Nothing -> return result
       Just id -> do
-        tvar <- Shared.fresh
+        tvar <- Shared.fresh T.Unification
         emit (id, tvar)
         return result
 
@@ -109,7 +109,7 @@ infer (PatRecord pairs rest) = do
             ty <- infer pat
             return (id, ty)
       infer' (id, Nothing) = do
-            tvar <- Shared.fresh
+            tvar <- Shared.fresh T.Unification
             emit ( id, tvar)
             return (id, T.Var tvar)
 

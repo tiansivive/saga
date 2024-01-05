@@ -52,19 +52,15 @@ solve' :: SolverEff es => Eq -> Eff es (Status, C.Constraint)
 solve' (Eq _ it it') = case (it, it') of
     (Mono ty, Mono ty')                     -> ty `equals` ty'
     (Mono ty, Poly ty')                     -> instAndUnify ty' ty
-    (Mono ty, Unification tvar)           -> ty `equals` T.Var tvar
-    (Mono ty, Scoped tvar)                -> ty `equals` T.Var tvar
+    (Mono ty, Var tvar)           -> ty `equals` T.Var tvar
+
 
     (Poly ty, Mono ty')                     -> instAndUnify ty ty'
-    (Poly ty, Unification tvar)           -> instAndUnify ty (T.Var tvar)
+    (Poly ty, Var tvar)           -> instAndUnify ty (T.Var tvar)
 
-    (Unification tvar, Mono ty)           -> ty `equals` T.Var tvar
-    (Unification tvar, Poly ty)           -> instAndUnify ty (T.Var tvar)
-    (Unification tvar, C.Scoped tvar')    -> T.Var tvar `equals` T.Var tvar'
-
-    (Scoped tvar, Unification tvar')    -> T.Var tvar `equals` T.Var tvar'
-    (Scoped tvar, Mono ty)                -> ty `equals` T.Var tvar
-    (Scoped tvar, Poly ty)                -> instAndUnify ty (T.Var tvar)
+    (Var tvar, Mono ty)           -> ty `equals` T.Var tvar
+    (Var tvar, Poly ty)           -> instAndUnify ty (T.Var tvar)
+    (Var tvar, Var tvar')         -> T.Var tvar `equals` T.Var tvar'
 
     eq -> crash $ NotYetImplemented $ "Solving equality: " ++ show eq
 
@@ -93,7 +89,7 @@ solve' (Eq _ it it') = case (it, it') of
             ty <- T.Var <$> Shared.fresh Shared.T
             ev <-   Shared.fresh Shared.E
 
-            let eq = C.Equality ev (Unification tvar) (Mono ty)
+            let eq = C.Equality ev (Var tvar) (Mono ty)
             generate (C.Conjunction constraint eq) (ty : tys) tvars
 
 

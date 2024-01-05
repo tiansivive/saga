@@ -132,9 +132,13 @@ instance Normalisation (Variable Type) where
     normalise tvar = do
         mapping <- Eff.ask
         replaced <- sequence $ lookup tvar mapping <&> \id -> case tvar of
-                (T.Poly _ k)  -> return $ T.Poly id k
-                (T.Local _ k) -> return $ T.Local id k
-                v             -> Eff.throwError $ UnexpectedVariable v
+                (T.Poly _ k)        -> return $ T.Poly id k
+                (T.Unification _ k) -> return $ T.Poly id k
+                (T.Local _ k)       -> return $ T.Local id k
+                (T.Scoped _ k)      -> return $ T.Local id k
+                (T.Rigid _ k)       -> return $ T.Rigid id k
+                (T.Skolem _ k)      -> return $ T.Skolem id k
+                v                   -> Eff.throwError $ UnexpectedVariable v
 
         return $ fromMaybe tvar replaced
 
@@ -158,11 +162,9 @@ instance Normalisation Solver.Constraint where
 instance Normalisation Solver.Item where
     type Of Solver.Item = Type
 
-    normalise (Solver.Mono ty) = Solver.Mono <$> normalise ty
-    normalise (Solver.Poly ty) = Solver.Poly <$> normalise ty
-    normalise (Solver.Unification tvar) = Solver.Unification <$> normalise tvar
-    normalise (Solver.Scoped tvar) = Solver.Scoped <$> normalise tvar
-    normalise (Solver.Skolem tvar) = Solver.Skolem <$> normalise tvar
-    normalise (Solver.Instantiation tvar) = Solver.Instantiation <$> normalise tvar
+    normalise (Solver.Mono ty)  = Solver.Mono <$> normalise ty
+    normalise (Solver.Poly ty)  = Solver.Poly <$> normalise ty
+    normalise (Solver.Var tvar) = Solver.Var <$> normalise tvar
+
 
     -- normalise it = crash . NotYetImplemented $ "Normalisation for item: " ++ show it

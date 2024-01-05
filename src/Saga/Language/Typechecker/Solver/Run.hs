@@ -102,10 +102,8 @@ step cs = do
         propagate proofs (C.Conjunction left right) = propagate proofs left >> propagate proofs right
         propagate proofs (C.Equality ev it it') = let
             tvar = \case
-                C.Unification tv -> Just tv
-                C.Skolem tv      -> Just tv
-                C.Scoped tv      -> Just tv
-                _                -> Nothing
+                C.Var tv -> Just tv
+                _        -> Nothing
             in case (tvar it, tvar it') of
                 (Just tvar, Just tvar')
                     | Just proof <- Map.lookup tvar  proofs

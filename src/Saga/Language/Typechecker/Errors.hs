@@ -15,16 +15,16 @@ data SagaError where
   UnboundVariable     :: String -> SagaError
   UndefinedIdentifier :: String-> SagaError
 
-
-
   UnexpectedType                      :: Type -> String -> SagaError
   UnexpectedKind                      :: Kind -> String -> SagaError
   UnexpectedPolymorphicVariable       :: (Show a, Show (Variable a)) => Variable a -> SagaError
   UnexpectedInstantiationVariable     :: (Show a, Show (Variable a)) =>  Variable a -> SagaError
   UnexpectedVariable                  :: (Show a, Show (Variable a)) =>  Variable a -> SagaError
 
-
   UntypedInferredExpr :: Expr -> SagaError
+
+  -- | TYPECHECKING
+  PolymorphicToConcreteMismatch :: Polymorphic Type -> Polymorphic Type -> SagaError
 
   -- | REFINEMENTS
   UnexpectedLiquidNegation :: Liquid -> SagaError
@@ -45,6 +45,8 @@ data SagaError where
   InfiniteType :: (Show a, Show (Variable a)) => (Variable a) -> Type-> SagaError
   InfiniteKind :: (Show a, Show (Variable a)) => Variable a -> Kind -> SagaError
   CircularKind :: Kind -> Kind -> SagaError
+
+  RigidUnification :: (Show a, Show (Variable a)) => Variable a -> Type  -> SagaError
 
   -- | PROTOCOLS
   MissingProtocolImplementation :: ProtocolID -> Type -> SagaError

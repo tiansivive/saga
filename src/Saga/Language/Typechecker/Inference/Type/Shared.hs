@@ -43,13 +43,13 @@ data State = IST
 initialState :: State
 initialState = IST 0 0 Map.empty Map.empty
 
-
-fresh :: (Eff.Reader Var.Level :> es, Eff.State State :> es) => Eff es § Variable Type
-fresh = do
+type Constructor = String -> K.Kind -> Variable Type
+fresh :: (Eff.Reader Var.Level :> es, Eff.State State :> es) => Constructor -> Eff es § Variable Type
+fresh constructor = do
   i <- Eff.gets $ tvars |> (+1)
   Eff.modify $ \s -> s { tvars = i }
   let count = show ([1 ..] !! i)
-  let tvar = T.Poly ("t" ++ count) K.Type
+  let tvar = constructor ("t" ++ count) K.Type
   lvl <- Eff.ask @Var.Level
   Eff.modify $ \s -> s { levels = Map.insert tvar lvl $ levels s }
   return tvar
@@ -64,9 +64,9 @@ mkEvidence = do
 
 
 
-toItem :: (Variable Type -> CST.Item) -> Type -> CST.Item
-toItem constructor (T.Var tvar) = constructor tvar
-toItem _ t                      = CST.Mono t
+toItem :: Type -> CST.Item
+toItem (T.Var tvar) = CST.Var tvar
+toItem t            = CST.Mono t
 
 
 propagate :: TypeInference es => T.Constraint -> Eff es ()

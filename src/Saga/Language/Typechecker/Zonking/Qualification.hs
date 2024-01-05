@@ -54,10 +54,8 @@ qualify expr residuals = case expr of
                 )
 
         fromItem (Solver.Mono ty) = ty
-        fromItem (Solver.Unification tvar) = T.Var tvar
-        fromItem (Solver.Scoped tvar) = T.Var tvar
-        fromItem (Solver.Skolem tvar) = T.Var tvar
-        fromItem (Solver.Instantiation tvar) = T.Var tvar
+        fromItem (Solver.Var tvar) = T.Var tvar
+
         fromItem it =  crash . NotYetImplemented $ "Constraint qualification: fromItem " ++ show it
 
 

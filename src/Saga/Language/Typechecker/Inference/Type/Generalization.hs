@@ -4,6 +4,7 @@ module Saga.Language.Typechecker.Inference.Type.Generalization where
 
 import           Data.List                                       (nub)
 import qualified Data.Map                                        as Map
+import           Debug.Pretty.Simple                             (pTrace)
 import           Effectful                                       (Eff, (:>))
 import qualified Effectful.Reader.Static                         as Eff
 import qualified Effectful.State.Static.Local                    as Eff
@@ -25,6 +26,7 @@ import           Saga.Language.Typechecker.Type                  (Scheme (..),
 import qualified Saga.Language.Typechecker.Variables             as Var
 
 instance Generalize Type where
+  generalize e | pTrace ("Generalize:\n" ++ show e) False = undefined
   generalize (T.Tuple tys) = do
     ts <- mapM generalize tys
     let (bs, cs, tvars, ts') = foldl accumulate (Map.empty, [], [], []) ts
@@ -70,5 +72,5 @@ instance Generalize Type where
         i <- Eff.get
         Eff.modify @Int (+1)
         let count = show ([1 ..] !! i)
-        let tvar = T.Poly ("t" ++ count) K.Type
+        let tvar = T.Poly ("g" ++ count) K.Type
         return tvar
