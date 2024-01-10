@@ -3,7 +3,7 @@
 module Saga.Language.Typechecker.Inference.Type.Shared where
 
 
-import           Saga.Language.Core.Expr                       (Expr)
+import qualified Saga.Language.Core.Evaluated                  as TypeEvaluated
 import qualified Saga.Language.Typechecker.Inference.Inference as I hiding
                                                                     (State,
                                                                      fresh)
@@ -11,16 +11,22 @@ import           Saga.Language.Typechecker.Inference.Inference hiding (State,
                                                                 fresh)
 import qualified Saga.Language.Typechecker.Kind                as K
 import qualified Saga.Language.Typechecker.Solver.Constraints  as CST
-import           Saga.Language.Typechecker.Type                (Type)
+import           Saga.Language.Typechecker.Type                (Scheme (..),
+                                                                Type)
 
 import qualified Effectful.State.Static.Local                  as Eff
 
 import qualified Data.Map                                      as Map
 import           Effectful                                     (Eff, (:>))
+import qualified Effectful.Error.Static                        as Eff
 import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.Writer.Static.Local                 as Eff
+import           Saga.Language.Typechecker.Environment         (CompilerState (..))
+import           Saga.Language.Typechecker.Errors              (SagaError (UnboundVariable))
 import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import qualified Saga.Language.Typechecker.Qualification       as Q
+import           Saga.Language.Typechecker.Qualification       (Given (..),
+                                                                Qualified (..))
 import qualified Saga.Language.Typechecker.Type                as T
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables
@@ -53,6 +59,26 @@ fresh constructor = do
   lvl <- Eff.ask @Var.Level
   Eff.modify $ \s -> s { levels = Map.insert tvar lvl $ levels s }
   return tvar
+
+
+lookup :: (TypeInference es, Instantiate Type) => String -> Eff es (Qualified Type)
+lookup x = do
+  Saga { types } <- Eff.ask
+
+  qt@(bs :| cs :=> t) <- case Map.lookup x types of
+    Just scheme -> walk scheme
+    Nothing     -> Eff.throwError $ UnboundVariable x
+
+  proofs' <- Eff.gets proofs
+  case Map.lookup t proofs' of
+    Just t' -> return $ bs :| cs :=> t'
+    Nothing -> return qt
+
+  where
+    walk scheme@(Forall [] qt) = return qt
+    walk scheme@(Forall tvars _) = fresh T.Unification >>= walk . instantiate scheme . T.Var
+
+
 
 mkEvidence :: (Eff.State State :> es) => Eff es § Variable CST.Evidence
 mkEvidence = do

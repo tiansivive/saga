@@ -2,8 +2,11 @@
 {-# LANGUAGE LambdaCase   #-}
 {-# LANGUAGE TypeFamilies #-}
 module Saga.Language.Typechecker.Zonking.Zonking where
-import qualified Saga.Language.Core.Expr                       as AST
-import           Saga.Language.Core.Expr                       (Expr (..))
+
+
+import qualified Saga.Language.Core.Elaborated                 as Elaborated
+import qualified Saga.Language.Core.Zonked                     as Zonked
+
 import           Saga.Language.Typechecker.Solver.Monad        (Solution (..),
                                                                 SolverEff,
                                                                 Tag (..))

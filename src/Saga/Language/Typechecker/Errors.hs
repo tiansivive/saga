@@ -1,5 +1,5 @@
 module Saga.Language.Typechecker.Errors where
-import           Saga.Language.Core.Expr                      (Expr)
+
 import           Saga.Language.Core.Literals                  (Literal)
 import           Saga.Language.Typechecker.Kind               (Kind)
 import           Saga.Language.Typechecker.Protocols          (ProtocolID)

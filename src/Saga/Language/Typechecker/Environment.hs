@@ -4,13 +4,13 @@
 module Saga.Language.Typechecker.Environment where
 import           Control.Monad.RWS
 import qualified Data.Map                            as Map
-import qualified Saga.Language.Core.Expr           as Value
+
 import           Saga.Language.Typechecker.Kind      (Kind)
 import           Saga.Language.Typechecker.Protocols
 import           Saga.Language.Typechecker.Type      (Polymorphic, Type, DataType, Tag)
 
 import Saga.Language.Typechecker.Variables
-import Saga.Language.Core.Expr (Expr)
+
 import Saga.Language.Typechecker.TypeExpr (TypeExpr, Pattern, Case)
 import Saga.Language.Typechecker.Solver.Constraints (Assumption)
 import Saga.Language.Typechecker.Errors (SagaError)

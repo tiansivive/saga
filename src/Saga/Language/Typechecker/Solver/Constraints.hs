@@ -16,7 +16,7 @@ import           Saga.Language.Typechecker.Type                (Polymorphic,
 import           Control.Monad.RWS
 import qualified Data.Map                                      as Map
 import qualified Data.Set                                      as Set
-import           Saga.Language.Core.Expr                       (Expr)
+import qualified Saga.Language.Core.Evaluated                  as TypeEvaluated
 import qualified Saga.Language.Typechecker.Qualification       as Q
 
 import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid)

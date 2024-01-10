@@ -6,10 +6,7 @@
 
 module Saga.Language.Typechecker.Inference.Type.Expr where
 
-import           Saga.Language.Core.Expr                                 (Case (..),
-                                                                          Declaration (..),
-                                                                          Expr (..),
-                                                                          Statement (..))
+import qualified Saga.Language.Core.Evaluated                            as TypeEvaluated
 
 import qualified Saga.Language.Typechecker.Inference.Inference           as I
 
@@ -84,12 +81,13 @@ import qualified Saga.Language.Typechecker.Refinement.Liquid             as Liq
 
 run :: TypeCheck es => Expr -> Eff es ((Expr, State), CST.Constraint)
 run = Eff.runWriter @CST.Constraint . Eff.runState Shared.initialState . Eff.runReader (Var.Level 0) . infer
+
 instance Inference Expr where
 
     type instance Effects Expr es = Shared.TypeInference es
 
     infer = infer'
-    lookup = lookup'
+    lookup = Shared.lookup
     fresh = Shared.fresh T.Unification
 
 type Bindings = Map (Variable Type) (Qualified Type)
@@ -98,7 +96,7 @@ infer' :: Shared.TypeInference es => Expr -> Eff es Expr
 infer' e = case e of
     e@(Literal literal) -> return $ Typed e (T.Singleton literal)
     Identifier x -> do
-      ty@(_ :=> t) <- lookup' x
+      ty@(_ :=> t) <- Shared.lookup x
       implication@(CST.Implication _ assumptions _) <- contextualize ty
       Eff.tell implication
 
@@ -330,22 +328,5 @@ infer' e = case e of
 
       extract (Typed _ ty) = ty
 
-
-lookup' :: Shared.TypeInference es => String -> Eff es (Qualified Type)
-lookup' x = do
-  Saga { types } <- Eff.ask
-
-  qt@(bs :| cs :=> t) <- case Map.lookup x types of
-    Just scheme -> walk scheme
-    Nothing     -> Eff.throwError $ UnboundVariable x
-
-  proofs' <- Eff.gets proofs
-  case Map.lookup t proofs' of
-    Just t' -> return $ bs :| cs :=> t'
-    Nothing -> return qt
-
-  where
-    walk scheme@(Forall [] qt) = return qt
-    walk scheme@(Forall tvars _) = Shared.fresh T.Unification >>= walk . instantiate scheme . T.Var
 
 

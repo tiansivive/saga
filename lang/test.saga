@@ -107,3 +107,31 @@ let div
   = \a b -> a / b
 
 
+
+type ClosedStringIndexedStruct = { bar: Int, baz: String }
+type OpenStringIndexedStruct = \r => { bar: Int, baz: String | r }
+
+type OpenIntIndexedStruct = \r => { 1: String, 2: Int | r }
+
+
+type Foo = \r => { [0,0]: String, [0,1]: Int | r }
+
+type Sub1 = Foo Empty [0]  // { 0: String, 1: Int }  => all the values indexed by the first placed key 0
+type Sub2 = Foo Empty [,0] // String                 => the single field indexed by the second placed key 0
+
+type Table 
+  : Row Type Type -> Type
+  = \r => { | r }
+
+type Record 
+  : Row String Type -> Type
+  = \r => { | r }
+
+type Record = { | r } 
+  where r [String]
+
+type Bar = { [Int, String], "foo": Int } 
+
+let b = { [1, "foo"], [2, "bar"] }
+let b1 = b[1]
+let b_foo = b["foo"]

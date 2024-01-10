@@ -64,7 +64,7 @@ class Typecheck e where
 instance Typecheck Expr where
     type Out Expr = Polymorphic Type
     typecheck expr  = do
-        ((ast, st), constraint) <- infer' expr
+        ((ast, st), constraint) <- TI.run expr
         pTraceM $ "\nAST:\n" ++ show ast
 
         context <- Eff.inject $ Solver.run (constraint, levels st)
@@ -73,10 +73,10 @@ instance Typecheck Expr where
 
         return (ast', ty)
 
-instance Typecheck Script where
-    type Out Script = Polymorphic Type
-    typecheck (Script [decs]) = do
-        return _f
+-- instance Typecheck Script where
+--     type Out Script = Polymorphic Type
+--     typecheck (Script [decs]) = do
+--         return _f
 
 instance Typecheck Declaration where
 
@@ -98,12 +98,6 @@ instance Typecheck Declaration where
                 return (Let id tyExpr k ast, annotated)
 
 
-
-
-
-
-infer' :: (Eff.Reader CompilerState Eff.:> es, Eff.Writer Info Eff.:> es, Eff.Error SagaError Eff.:> es, Eff.IOE Eff.:> es, Eff.Fail Eff.:> es) => Expr -> Eff es ((Expr, State), CST.Constraint)
-infer' = Eff.runWriter @CST.Constraint . Eff.runState TI.initialState . Eff.runReader (Var.Level 0) . infer
 
 
 int = E.Literal . LInt
@@ -139,6 +133,5 @@ test e = run $ do
     Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState @[Cycle Type] [] . Eff.runReader (Var.Level 0) . Eff.runReader (levels st) $ simplified cs
         where
             simplified = mapM simplify . Shared.flatten
-
 
 

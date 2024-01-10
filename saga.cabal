@@ -18,8 +18,13 @@ library
       Main
       REPL.Repl
       Saga.Language.CodeGen.JS
-      Saga.Language.Core.Expr
+      Saga.Language.Core.AST
+      Saga.Language.Core.Desugared
+      Saga.Language.Core.Elaborated
+      Saga.Language.Core.Evaluated
       Saga.Language.Core.Literals
+      Saga.Language.Core.Source
+      Saga.Language.Core.Zonked
       Saga.Language.Evaluation
       Saga.Language.Typechecker.Environment
       Saga.Language.Typechecker.Errors
@@ -32,6 +37,7 @@ library
       Saga.Language.Typechecker.Inference.Type.Instantiation
       Saga.Language.Typechecker.Inference.Type.Pattern
       Saga.Language.Typechecker.Inference.Type.Shared
+      Saga.Language.Typechecker.Inference.Type.Statements
       Saga.Language.Typechecker.Kind
       Saga.Language.Typechecker.Lib
       Saga.Language.Typechecker.Monad

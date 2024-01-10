@@ -8,7 +8,7 @@ import           Control.Monad                                   (foldM, forM,
 import qualified Effectful                                       as Eff
 import qualified Effectful.State.Static.Local                    as Eff
 import qualified Effectful.Writer.Static.Local                   as Eff
-import           Saga.Language.Core.Expr                         (Expr)
+import qualified Saga.Language.Core.Evaluated                    as TypeEvaluated
 import           Saga.Language.Typechecker.Inference.Type.Shared (State (levels),
                                                                   TypeInference)
 import qualified Saga.Language.Typechecker.Solver.Constraints    as C

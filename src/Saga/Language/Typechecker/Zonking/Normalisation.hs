@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies          #-}
 
 module Saga.Language.Typechecker.Zonking.Normalisation where
-import           Saga.Language.Core.Expr                         (Expr)
+
 import           Saga.Language.Typechecker.Solver.Substitution   (Substitutable (..))
 
 
@@ -16,7 +16,7 @@ import qualified Data.Set                                        as Set
 import           Effectful                                       (Eff, (:>))
 import qualified Effectful.Reader.Static                         as Eff
 
-import qualified Saga.Language.Core.Expr                         as AST
+import qualified Saga.Language.Core.Zonked                       as AST
 import qualified Saga.Language.Typechecker.Kind                  as K
 import           Saga.Language.Typechecker.Monad                 (TypeCheck)
 import qualified Saga.Language.Typechecker.Type                  as T

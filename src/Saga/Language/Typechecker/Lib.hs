@@ -3,7 +3,7 @@
 
 module Saga.Language.Typechecker.Lib where
 
-import qualified Saga.Language.Core.Expr                     as E
+
 import qualified Saga.Language.Typechecker.Kind              as K
 import qualified Saga.Language.Typechecker.Protocols         as P
 import           Saga.Language.Typechecker.Protocols         (Protocol (..))

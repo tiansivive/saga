@@ -4,8 +4,7 @@
 
 
 module Saga.Language.Typechecker.Inference.Type.Pattern where
-import           Saga.Language.Core.Expr                         (Expr,
-                                                                  Pattern (..))
+import qualified Saga.Language.Core.Evaluated                    as TypeEvaluated
 import qualified Saga.Language.Typechecker.Inference.Inference   as I hiding
                                                                       (emit,
                                                                        fresh,
@@ -44,7 +43,7 @@ import           Effectful.Reader.Static                         (Reader)
 import qualified Effectful.Reader.Static                         as Eff
 import qualified Effectful.State.Static.Local                    as Eff
 import qualified Effectful.Writer.Static.Local                   as Eff
-import qualified Saga.Language.Core.Expr                         as E
+
 import qualified Saga.Language.Typechecker.Type                  as T
 import           Saga.Language.Typechecker.Type                  (DataType (..),
                                                                   Scheme (..),
