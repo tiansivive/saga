@@ -6,7 +6,7 @@
 
 module Saga.Language.Typechecker.Inference.Type.Expr where
 
-import qualified Saga.Language.Core.Evaluated                            as TypeEvaluated
+import qualified Saga.Language.Syntax.Evaluated                          as TypeEvaluated
 
 import qualified Saga.Language.Typechecker.Inference.Inference           as I
 
@@ -33,7 +33,7 @@ import           Control.Applicative                                     ((<|>))
 import           Data.List                                               hiding
                                                                          (lookup)
 import qualified Data.Set                                                as Set
-import           Saga.Language.Core.Literals                             (Literal (..))
+import           Saga.Language.Syntax.Literals                           (Literal (..))
 import           Saga.Language.Typechecker.Environment                   (CompilerState (..))
 import           Saga.Language.Typechecker.Inference.Inference           hiding
                                                                          (lookup)

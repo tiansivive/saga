@@ -2,8 +2,8 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 {-# LANGUAGE TypeFamilies       #-}
 module Saga.Language.Typechecker.Run where
-import qualified Saga.Language.Core.Expr                                 as E
-import           Saga.Language.Core.Expr                                 (Declaration (..),
+import qualified Saga.Language.Syntax.Expr                               as E
+import           Saga.Language.Syntax.Expr                               (Declaration (..),
                                                                           Expr,
                                                                           Script (..))
 import           Saga.Language.Typechecker.Inference.Inference           (Inference (Effects, infer))
@@ -20,7 +20,7 @@ import qualified Effectful.Fail                                          as Eff
 import qualified Effectful.Reader.Static                                 as Eff
 import qualified Effectful.State.Static.Local                            as Eff
 import qualified Effectful.Writer.Static.Local                           as Eff
-import           Saga.Language.Core.Literals                             (Literal (..))
+import           Saga.Language.Syntax.Literals                           (Literal (..))
 import           Saga.Language.Typechecker.Environment                   (CompilerState,
                                                                           Info)
 import           Saga.Language.Typechecker.Errors                        (SagaError (PolymorphicToConcreteMismatch))

@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 module Saga.Language.Typechecker.Zonking.Substitutions where
 import qualified Data.Set                                      as Set
-import qualified Saga.Language.Core.Elaborated
+import qualified Saga.Language.Syntax.Elaborated
 
 
 import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))

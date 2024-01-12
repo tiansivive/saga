@@ -1,5 +1,5 @@
 module Saga.Language.Typechecker.TypeExpr where
-import           Saga.Language.Core.Literals             (Literal)
+import           Saga.Language.Syntax.Literals           (Literal)
 import           Saga.Language.Typechecker.Kind          (Kind)
 import qualified Saga.Language.Typechecker.Qualification as Q
 import           Saga.Language.Typechecker.Variables     (Variable)

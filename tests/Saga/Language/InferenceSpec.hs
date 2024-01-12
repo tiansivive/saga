@@ -1,20 +1,20 @@
 module Saga.Language.InferenceSpec where
 
-import qualified Data.Map                                      as Map
-import qualified Data.Set                                      as Set
-import qualified Saga.Language.TypeSystem.Inference   
+import qualified Data.Map                             as Map
+import qualified Data.Set                             as Set
+import qualified Saga.Language.TypeSystem.Inference
 
 
-import qualified Saga.Language.Core.Expr as E
-import qualified Saga.Language.Core.Literals as L
+import qualified Saga.Language.Syntax.Expr            as E
+import qualified Saga.Language.Syntax.Literals        as L
 
 
 import           Test.Hspec
 
 import           Control.Monad.State.Lazy
 import           Saga.Language.TypeSystem.Environment (Scheme (Scheme))
-import           Saga.Language.TypeSystem.Types       
-import           Saga.Language.TypeSystem.Inference (simplify)       
+import           Saga.Language.TypeSystem.Inference   (simplify)
+import           Saga.Language.TypeSystem.Types
 
 
 
@@ -26,12 +26,12 @@ import           Saga.Language.TypeSystem.Inference (simplify)
 
 spec :: Spec
 spec = do
- 
+
   describe "Inference" $ do
     it "simplifies types:" $ do
       let unit = TVoid
       let pair = [TPrimitive TString, TPrimitive TInt]
-      
+
       let singleton  = TUnion $ Set.fromList [unit]
       let simple = TUnion $ Set.fromList pair
       let repeated = TUnion $ Set.fromList [unit, unit]

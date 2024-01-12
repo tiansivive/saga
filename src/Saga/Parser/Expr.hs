@@ -3,9 +3,9 @@
 
 module Saga.Parser.Expr where
 
-import           Saga.Language.Core.Literals (Literal)
-import qualified Saga.Parser.Types           as T
-import           Saga.Parser.Types           hiding (Binding)
+import           Saga.Language.Syntax.Literals (Literal)
+import qualified Saga.Parser.Types             as T
+import           Saga.Parser.Types             hiding (Binding)
 
 
 data Expr where

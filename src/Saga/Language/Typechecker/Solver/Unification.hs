@@ -13,7 +13,7 @@ import           Saga.Language.Typechecker.Variables           (Variable (..))
 import           Control.Monad.RWS
 import           Data.Functor                                  ((<&>))
 import           Data.Maybe                                    (catMaybes)
-import           Saga.Language.Core.Literals                   (Literal (..))
+import           Saga.Language.Syntax.Literals                 (Literal (..))
 import           Saga.Language.Typechecker.Environment
 import           Saga.Language.Typechecker.Errors              (Exception (NotYetImplemented),
                                                                 SagaError (..),

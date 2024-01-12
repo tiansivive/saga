@@ -28,7 +28,7 @@ import           Effectful                                     (Eff, (:>))
 import qualified Effectful                                     as Eff
 import qualified Effectful.Reader.Static                       as Eff
 import           GHC.Stack.Types                               (CallStack)
-import           Saga.Language.Core.Literals
+import           Saga.Language.Syntax.Literals
 import qualified Saga.Language.Typechecker.Monad               as TC
 import           Saga.Language.Typechecker.Solver.Cycles       (Cycle)
 import           Saga.Language.Typechecker.Type                (Type)

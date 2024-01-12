@@ -2,8 +2,8 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
 module Saga.Parser.Types where
-import           Data.Map                    (Map)
-import           Saga.Language.Core.Literals (Literal)
+import           Data.Map                      (Map)
+import           Saga.Language.Syntax.Literals (Literal)
 
 
 

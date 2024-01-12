@@ -4,8 +4,8 @@
 module Saga.Language.Typechecker.Zonking.Zonking where
 
 
-import qualified Saga.Language.Core.Elaborated                 as Elaborated
-import qualified Saga.Language.Core.Zonked                     as Zonked
+import qualified Saga.Language.Syntax.Elaborated               as Elaborated
+import qualified Saga.Language.Syntax.Zonked                   as Zonked
 
 import           Saga.Language.Typechecker.Solver.Monad        (Solution (..),
                                                                 SolverEff,

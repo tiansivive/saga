@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds  #-}
 {-# LANGUAGE LambdaCase #-}
 module Saga.Language.Typechecker.Zonking.Qualification where
-import qualified Saga.Language.Core.Zonked                               as AST
+import qualified Saga.Language.Syntax.Zonked                             as AST
 import qualified Saga.Language.Typechecker.Solver.Constraints            as Solver
 import           Saga.Language.Typechecker.Type                          (Polymorphic,
                                                                           Scheme (..),

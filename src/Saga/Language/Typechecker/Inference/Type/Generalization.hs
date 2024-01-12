@@ -9,7 +9,7 @@ import           Effectful                                       (Eff, (:>))
 import qualified Effectful.Reader.Static                         as Eff
 import qualified Effectful.State.Static.Local                    as Eff
 import qualified Effectful.Writer.Static.Local                   as Eff
-import           Saga.Language.Core.Literals
+import           Saga.Language.Syntax.Literals
 import           Saga.Language.Typechecker.Inference.Inference
 import qualified Saga.Language.Typechecker.Inference.Type.Shared as Shared
 import qualified Saga.Language.Typechecker.Kind                  as K

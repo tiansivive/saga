@@ -4,7 +4,7 @@ import qualified Data.Map                                        as Map
 import           Effectful                                       (Eff)
 import qualified Effectful.Reader.Static                         as Eff
 import qualified Effectful.Writer.Static.Local                   as Eff
-import qualified Saga.Language.Core.Evaluated                    as TypeEvaluated
+import qualified Saga.Language.Syntax.Evaluated                  as TypeEvaluated
 import           Saga.Language.Typechecker.Inference.Inference   (Inference (..))
 import qualified Saga.Language.Typechecker.Inference.Type.Shared as Shared
 import           Saga.Language.Typechecker.Monad                 (TypeCheck)

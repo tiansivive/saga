@@ -16,7 +16,7 @@ import           Saga.Language.Typechecker.Type                (Polymorphic,
 import           Control.Monad.RWS
 import qualified Data.Map                                      as Map
 import qualified Data.Set                                      as Set
-import qualified Saga.Language.Core.Evaluated                  as TypeEvaluated
+import qualified Saga.Language.Syntax.Evaluated                as TypeEvaluated
 import qualified Saga.Language.Typechecker.Qualification       as Q
 
 import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid)
@@ -25,7 +25,7 @@ import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (.
 import qualified Saga.Language.Typechecker.Type                as T
 
 import           Data.Array                                    (elems)
-import           Saga.Language.Core.Literals                   (Literal)
+import           Saga.Language.Syntax.Literals                 (Literal)
 import           Saga.Language.Typechecker.Variables           (Variable)
 import           Saga.Utils.Operators                          ((|>), (||>))
 

@@ -4,7 +4,7 @@
 
 module Saga.Language.Typechecker.Type where
 import           Data.Typeable                                 (Typeable)
-import           Saga.Language.Core.Literals
+import           Saga.Language.Syntax.Literals
 import           Saga.Language.Typechecker.Kind                (Kind)
 import qualified Saga.Language.Typechecker.Qualification       as Q
 import qualified Saga.Language.Typechecker.Refinement.Liquid   as Liquid

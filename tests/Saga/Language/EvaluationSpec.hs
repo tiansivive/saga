@@ -2,15 +2,15 @@
 
 module Saga.Language.EvaluationSpec where
 
-import Test.Hspec
-import qualified Saga.Language.Evaluation as E
+import qualified Saga.Language.Evaluation      as E
+import           Test.Hspec
 
-import qualified Saga.Language.Core.Expr as Expr
-import qualified Saga.Language.Core.Literals as L
+import qualified Saga.Language.Syntax.Expr     as Expr
+import qualified Saga.Language.Syntax.Literals as L
 
-import qualified Data.Map as Map
+import qualified Data.Map                      as Map
 
-import   Control.Monad.State.Lazy
+import           Control.Monad.State.Lazy
 
 
 -- run mval = case E.run Nothing mval of
@@ -19,7 +19,7 @@ import   Control.Monad.State.Lazy
 
 spec :: Spec
 spec = do
-  it "skipping evaluation" $ 
+  it "skipping evaluation" $
     1 `shouldBe` 1
 -- spec :: Spec
 -- spec = do

@@ -11,7 +11,7 @@ import           Saga.Language.Typechecker.Type                (Polymorphic,
                                                                 Type)
 import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 
-import qualified Saga.Language.Core.AST                        as AST
+import qualified Saga.Language.Syntax.AST                      as AST
 
 data Protocol = Protocol
   { id              :: ProtocolID

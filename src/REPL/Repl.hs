@@ -11,7 +11,7 @@ import qualified Data.Map                      as Map
 import           Control.Monad.Except          (ExceptT)
 import           Control.Monad.State           (StateT)
 import           Debug.Trace                   (traceM)
-import           Saga.Language.Core.Expr       (Expr)
+import           Saga.Language.Syntax.Expr     (Expr)
 
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import qualified Effectful                     as Eff

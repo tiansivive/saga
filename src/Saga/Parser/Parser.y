@@ -6,7 +6,7 @@ import qualified Saga.Lexer.Lexer as L
 import qualified Saga.Lexer.Tokens as T
 
 
-import qualified Saga.Language.Core.Literals as PL
+import qualified Saga.Language.Syntax.Literals as PL
 
 import qualified Saga.Parser.Expr as PE
 import qualified Saga.Parser.Types as PT

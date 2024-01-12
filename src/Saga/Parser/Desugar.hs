@@ -4,8 +4,8 @@ import           Debug.Trace                             (trace)
 import           Unsafe.Coerce                           (unsafeCoerce)
 
 import           Data.Functor                            ((<&>))
-import qualified Saga.Language.Core.Expr                 as Core
-import qualified Saga.Language.Core.Literals             as Core
+import qualified Saga.Language.Syntax.Expr               as Core
+import qualified Saga.Language.Syntax.Literals           as Core
 
 
 

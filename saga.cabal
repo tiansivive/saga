@@ -18,14 +18,33 @@ library
       Main
       REPL.Repl
       Saga.Language.CodeGen.JS
-      Saga.Language.Core.AST
-      Saga.Language.Core.Desugared
-      Saga.Language.Core.Elaborated
-      Saga.Language.Core.Evaluated
-      Saga.Language.Core.Literals
-      Saga.Language.Core.Source
-      Saga.Language.Core.Zonked
       Saga.Language.Evaluation
+      Saga.Language.Syntax.AST
+      Saga.Language.Syntax.Desugared
+      Saga.Language.Syntax.Desugared.AST
+      Saga.Language.Syntax.Desugared.Kinds
+      Saga.Language.Syntax.Desugared.Types
+      Saga.Language.Syntax.Desugared.Values
+      Saga.Language.Syntax.Elaborated
+      Saga.Language.Syntax.Elaborated.AST
+      Saga.Language.Syntax.Elaborated.Kinds
+      Saga.Language.Syntax.Elaborated.Types
+      Saga.Language.Syntax.Elaborated.Values
+      Saga.Language.Syntax.Evaluated
+      Saga.Language.Syntax.Evaluated.AST
+      Saga.Language.Syntax.Evaluated.Kinds
+      Saga.Language.Syntax.Evaluated.Polymorphism
+      Saga.Language.Syntax.Evaluated.Types
+      Saga.Language.Syntax.Evaluated.Values
+      Saga.Language.Syntax.Liquids
+      Saga.Language.Syntax.Literals
+      Saga.Language.Syntax.Source
+      Saga.Language.Syntax.Source.Values
+      Saga.Language.Syntax.Zonked
+      Saga.Language.Syntax.Zonked.AST
+      Saga.Language.Syntax.Zonked.Kinds
+      Saga.Language.Syntax.Zonked.Types
+      Saga.Language.Syntax.Zonked.Values
       Saga.Language.Typechecker.Environment
       Saga.Language.Typechecker.Errors
       Saga.Language.Typechecker.Evaluation

@@ -3,7 +3,7 @@
 module Saga.Language.Typechecker.Inference.Type.Shared where
 
 
-import qualified Saga.Language.Core.Evaluated                  as TypeEvaluated
+import qualified Saga.Language.Syntax.Evaluated                as TypeEvaluated
 import qualified Saga.Language.Typechecker.Inference.Inference as I hiding
                                                                     (State,
                                                                      fresh)

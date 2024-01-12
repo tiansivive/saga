@@ -5,24 +5,25 @@
 module Saga.Language.Evaluation where
 
 
-import           Data.ByteString.Lazy.Char8  (ByteString)
-import qualified Data.ByteString.Lazy.Char8  as BS
-import qualified Data.Map                    as Map
+import           Data.ByteString.Lazy.Char8    (ByteString)
+import qualified Data.ByteString.Lazy.Char8    as BS
+import qualified Data.Map                      as Map
 
-import           Control.Monad.Except        (ExceptT, MonadError (throwError),
-                                              runExcept)
-import           Control.Monad.Reader        (MonadReader (ask),
-                                              ReaderT (runReaderT), asks)
+import           Control.Monad.Except          (ExceptT,
+                                                MonadError (throwError),
+                                                runExcept)
+import           Control.Monad.Reader          (MonadReader (ask),
+                                                ReaderT (runReaderT), asks)
 import           Control.Monad.State.Lazy
-import           Control.Monad.Trans.Except  (Except)
-import           Data.List                   (find, findIndex)
-import           Data.Maybe                  (fromJust, fromMaybe)
-import           Debug.Trace                 (traceM)
+import           Control.Monad.Trans.Except    (Except)
+import           Data.List                     (find, findIndex)
+import           Data.Maybe                    (fromJust, fromMaybe)
+import           Debug.Trace                   (traceM)
 
-import           Saga.Language.Core.Expr     (Binding (Bind), Declaration (..),
-                                              Expr (..))
-import           Saga.Language.Core.Literals (Literal (..))
-import           Saga.Utils.Common           hiding (fromMaybe)
+import           Saga.Language.Syntax.Expr     (Binding (Bind),
+                                                Declaration (..), Expr (..))
+import           Saga.Language.Syntax.Literals (Literal (..))
+import           Saga.Utils.Common             hiding (fromMaybe)
 
 
 

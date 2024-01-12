@@ -27,7 +27,7 @@ import           Data.SBV                                    (SBool, SInteger,
 import qualified Effectful.Dispatch.Static                   as Eff
 import qualified Effectful.Reader.Static                     as Eff
 import           Prelude                                     hiding (GT, LT)
-import           Saga.Language.Core.Literals                 (Literal (..))
+import           Saga.Language.Syntax.Literals               (Literal (..))
 import           Saga.Language.Typechecker.Monad             (TypeCheck)
 import qualified Saga.Language.Typechecker.Refinement.Liquid as L
 import           Saga.Language.Typechecker.Refinement.Liquid (Liquid (..),

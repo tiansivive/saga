@@ -4,8 +4,8 @@ import qualified Data.Set                                        as Set
 import           Effectful                                       (Eff)
 import qualified Effectful                                       as Eff
 import qualified Effectful.Reader.Static                         as Eff
-import qualified Saga.Language.Core.Elaborated                   as Elaborated
-import qualified Saga.Language.Core.Zonked                       as Zonked
+import qualified Saga.Language.Syntax.Elaborated                 as Elaborated
+import qualified Saga.Language.Syntax.Zonked                     as Zonked
 
 import           Debug.Pretty.Simple                             (pTrace,
                                                                   pTraceM)

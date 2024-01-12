@@ -22,7 +22,7 @@ import           Effectful                                     (Eff)
 import qualified Effectful                                     as Eff
 import qualified Effectful.Error.Static                        as Eff
 import qualified Effectful.State.Static.Local                  as Eff
-import           Saga.Language.Core.Literals                   (Literal (LBool, LInt))
+import           Saga.Language.Syntax.Literals                 (Literal (LBool, LInt))
 import           Saga.Language.Typechecker.Errors              (SagaError (..))
 import qualified Saga.Language.Typechecker.Refinement.Liquid   as L
 import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid)

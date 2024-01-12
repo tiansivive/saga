@@ -2,7 +2,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
 
-module Saga.Language.Core.Literals where
+module Saga.Language.Syntax.Literals where
 
 data Literal where
   LInt :: Int -> Literal

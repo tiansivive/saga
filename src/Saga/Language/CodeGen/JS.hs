@@ -4,10 +4,10 @@ module Saga.Language.CodeGen.JS where
 
 
 import           Control.Monad.State
-import           Data.List                   (intercalate)
-import           Data.Maybe                  (fromMaybe)
-import           Saga.Language.Core.Expr     hiding (Binding)
-import           Saga.Language.Core.Literals (Literal (..))
+import           Data.List                     (intercalate)
+import           Data.Maybe                    (fromMaybe)
+import           Saga.Language.Syntax.Expr     hiding (Binding)
+import           Saga.Language.Syntax.Literals (Literal (..))
 
 
 class Generator a where
