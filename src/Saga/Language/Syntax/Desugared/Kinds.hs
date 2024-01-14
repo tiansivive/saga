@@ -9,7 +9,7 @@ module Saga.Language.Syntax.Desugared.Kinds where
 import qualified Saga.Language.Syntax.AST            as NT (NodeType (..))
 import           Saga.Language.Syntax.AST
 
-import           Saga.Language.Syntax.Evaluated.AST
+import           Saga.Language.Syntax.Desugared.AST
 import           Saga.Language.Syntax.Liquids
 import           Saga.Language.Syntax.Literals
 
@@ -26,4 +26,4 @@ data instance Node Desugared NT.Kind where
     Arrow       :: KindExpr ->  KindExpr    -> KindExpr
     Application :: KindExpr -> [KindExpr]   -> KindExpr
 deriving instance Show KindExpr
---deriving instance Show (AST Desugared NT.Kind)
+deriving instance Show (AST Desugared NT.Kind)

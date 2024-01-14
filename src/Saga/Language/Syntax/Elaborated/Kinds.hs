@@ -7,7 +7,7 @@ module Saga.Language.Syntax.Elaborated.Kinds where
 
 import qualified Saga.Language.Syntax.AST            as NT (NodeType (..))
 import           Saga.Language.Syntax.AST
-import           Saga.Language.Syntax.Desugared.AST
+import           Saga.Language.Syntax.Elaborated.AST
 import           Saga.Language.Syntax.Liquids
 
 import           Data.Map                            (Map)
@@ -27,7 +27,13 @@ data instance Node Elaborated NT.Kind where
     Arrow       :: Kind -> Kind   -> Kind
     Application :: Kind -> [Kind] -> Kind
 deriving instance Show Kind
+deriving instance Eq Kind
+deriving instance Ord Kind
+
+deriving instance Show (AST Elaborated NT.Kind)
 
 data instance Variable Kind where
     Poly        :: String -> Kind -> Variable Kind
 deriving instance Show (Variable Kind)
+deriving instance Eq (Variable Kind)
+deriving instance Ord (Variable Kind)

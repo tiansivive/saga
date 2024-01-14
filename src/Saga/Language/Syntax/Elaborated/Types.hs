@@ -7,6 +7,8 @@ module Saga.Language.Syntax.Elaborated.Types where
 import           Data.Map                              (Map)
 import qualified Saga.Language.Syntax.AST              as NT (NodeType (..))
 import           Saga.Language.Syntax.AST
+import           Saga.Language.Syntax.Elaborated.AST
+import           Saga.Language.Syntax.Polymorphism
 
 import           Saga.Language.Syntax.Literals
 
@@ -17,17 +19,20 @@ import           Saga.Utils.TypeLevel                  (type (§))
 
 type Type = Node Elaborated NT.Type
 data instance Node Elaborated NT.Type where
-    Singleton   :: Literal -> Type
-    Tuple       :: [Type] -> Type
-    Record      :: [(String, Type)] -> Type
-    Union       :: [Type] -> Type
-    Arrow       :: Type -> Type -> Type
-    Data        :: String -> Kind -> Type
-    Applied     :: Type -> Type -> Type
-    Var         :: Variable Type -> Type
+    Singleton   :: Literal                                -> Type
+    Tuple       :: [Type]                                 -> Type
+    Record      :: [(String, Type)]                       -> Type
+    Union       :: [Type]                                 -> Type
+    Arrow       :: Type -> Type                           -> Type
+    Data        :: String -> Kind                         -> Type
+    Applied     :: Type -> Type                           -> Type
+    Var         :: Variable Type                          -> Type
+    Polymorphic :: Polymorphic Type                       -> Type
+    --Closure     :: [Variable Type] -> TypeExpr -> Scope   -> Type
     Void        :: Type
     Any         :: Type
 deriving instance Show Type
+deriving instance Show (AST Elaborated NT.Type)
 
 data instance Variable Type where
   Poly              :: String -> Kind -> Variable Type
@@ -39,7 +44,13 @@ data instance Variable Type where
   Unification       :: String -> Kind -> Variable Type
   Instantiation     :: String -> Kind -> Variable Type
 deriving instance Show (Variable Type)
+deriving instance Eq (Variable Type)
+deriving instance Ord (Variable Type)
 
 
+type TypeConstraint = Node Elaborated NT.Constraint
+data instance Node Elaborated NT.Constraint where
+deriving instance Show TypeConstraint
 
+type instance Qualifier Type = TypeConstraint
 

@@ -10,7 +10,6 @@ module Saga.Language.Syntax.Elaborated.Values where
 import qualified Saga.Language.Syntax.AST              as NT (NodeType (..))
 import           Saga.Language.Syntax.AST
 
-
 import           Saga.Language.Syntax.Elaborated.AST
 import           Saga.Language.Syntax.Elaborated.Kinds
 import           Saga.Language.Syntax.Elaborated.Types
@@ -30,6 +29,8 @@ data instance Node Elaborated Expression where
   Lambda      :: [String] ->   AST Elaborated Expression ->  Node Elaborated Expression
   Application ::  AST Elaborated Expression -> [AST Elaborated Expression] -> Node Elaborated Expression
   Block       :: [AST Elaborated Statement] -> Node Elaborated Expression
+
+  FieldAccess :: AST Elaborated Expression -> String -> Node Elaborated Expression
 deriving instance Show (Node Elaborated NT.Expression)
 deriving instance Show (AST Elaborated NT.Expression)
 
@@ -37,17 +38,16 @@ deriving instance Show (AST Elaborated NT.Expression)
 data instance Node Elaborated Statement where
   Return       :: AST Elaborated Expression ->  Node Elaborated Statement
   Procedure    :: AST Elaborated Expression ->  Node Elaborated Statement
-  Declaration  :: AST Elaborated NT.Declaration ->  Node Elaborated Statement
+  Declaration  :: Node Elaborated NT.Declaration ->  Node Elaborated Statement
 deriving instance Show (Node Elaborated NT.Statement)
 deriving instance Show (AST Elaborated NT.Statement)
 
 
 data instance Node Elaborated NT.Declaration where
-  Let  :: String -> Node Elaborated Expression    -> Node Elaborated NT.Declaration
-  Type :: String -> Node Elaborated NT.Type -> Node Elaborated NT.Declaration
-  Kind :: String -> Node Elaborated NT.Kind -> Node Elaborated NT.Declaration
+  Let  :: String -> AST Elaborated Expression    -> Node Elaborated NT.Declaration
+  Type :: String -> AST Elaborated NT.Type -> Node Elaborated NT.Declaration
+  Kind :: String -> AST Elaborated NT.Kind -> Node Elaborated NT.Declaration
 deriving instance Show (Node Elaborated NT.Declaration)
-deriving instance Show (AST Elaborated NT.Declaration)
 
 
 data instance Node Elaborated (NT.Case Expression) where

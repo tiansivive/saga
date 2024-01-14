@@ -20,7 +20,7 @@ data Phase = Parsed | Desugared | Evaluated | Elaborated | Zonked | TypeChecked
     deriving (Show, Eq, Ord)
 type family Annotation (n :: NodeType) where
     Annotation Expression           = Type
-    Annotation Declaration          = Type
+    Annotation Declaration          = TypeError ('Text "Declarations must not have an Annotation")
     Annotation Statement            = Type
     Annotation Type                 = Kind
     Annotation Kind                 = Kind

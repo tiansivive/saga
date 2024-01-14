@@ -37,17 +37,16 @@ deriving instance Show (AST Zonked NT.Expression)
 data instance Node Zonked Statement where
   Return       :: AST Zonked Expression ->  Node Zonked Statement
   Procedure    :: AST Zonked Expression ->  Node Zonked Statement
-  Declaration  :: AST Zonked NT.Declaration ->  Node Zonked Statement
+  Declaration  :: Node Zonked NT.Declaration ->  Node Zonked Statement
 deriving instance Show (Node Zonked NT.Statement)
 deriving instance Show (AST Zonked NT.Statement)
 
 
 data instance Node Zonked NT.Declaration where
-  Let  :: String -> Node Zonked Expression    -> Node Zonked NT.Declaration
-  Type :: String -> Node Zonked NT.Type -> Node Zonked NT.Declaration
-  Kind :: String -> Node Zonked NT.Kind -> Node Zonked NT.Declaration
+  Let  :: String -> AST Zonked Expression    -> Node Zonked NT.Declaration
+  Type :: String -> AST Zonked NT.Type -> Node Zonked NT.Declaration
+  Kind :: String -> AST Zonked NT.Kind -> Node Zonked NT.Declaration
 deriving instance Show (Node Zonked NT.Declaration)
-deriving instance Show (AST Zonked NT.Declaration)
 
 
 data instance Node Zonked (NT.Case Expression) where

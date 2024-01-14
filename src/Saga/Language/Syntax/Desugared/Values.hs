@@ -34,17 +34,16 @@ deriving instance Show (AST Desugared NT.Expression)
 data instance Node Desugared Statement where
   Return       :: AST Desugared Expression ->  Node Desugared Statement
   Procedure    :: AST Desugared Expression ->  Node Desugared Statement
-  Declaration  :: AST Desugared NT.Declaration ->  Node Desugared Statement
+  Declaration  :: Node Desugared NT.Declaration ->  Node Desugared Statement
 deriving instance Show (Node Desugared NT.Statement)
 deriving instance Show (AST Desugared NT.Statement)
 
 
 data instance Node Desugared NT.Declaration where
-  Let  :: String -> Node Desugared Expression    -> Node Desugared NT.Declaration
-  Type :: String -> Node Desugared NT.Type -> Node Desugared NT.Declaration
-  Kind :: String -> Node Desugared NT.Kind -> Node Desugared NT.Declaration
+  Let  :: String -> AST Desugared Expression    -> Node Desugared NT.Declaration
+  Type :: String -> AST Desugared NT.Type -> Node Desugared NT.Declaration
+  Kind :: String -> AST Desugared NT.Kind -> Node Desugared NT.Declaration
 deriving instance Show (Node Desugared NT.Declaration)
-deriving instance Show (AST Desugared NT.Declaration)
 
 
 data instance Node Desugared (NT.Case Expression) where

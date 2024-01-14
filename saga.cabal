@@ -32,16 +32,21 @@ library
       Saga.Language.Syntax.Elaborated.Values
       Saga.Language.Syntax.Evaluated.AST
       Saga.Language.Syntax.Evaluated.Kinds
-      Saga.Language.Syntax.Evaluated.Polymorphism
       Saga.Language.Syntax.Evaluated.Types
       Saga.Language.Syntax.Evaluated.Values
       Saga.Language.Syntax.Liquids
       Saga.Language.Syntax.Literals
+      Saga.Language.Syntax.Polymorphism
       Saga.Language.Syntax.Source.Values
       Saga.Language.Syntax.Zonked.AST
       Saga.Language.Syntax.Zonked.Kinds
       Saga.Language.Syntax.Zonked.Types
       Saga.Language.Syntax.Zonked.Values
+      Saga.Language.Typechecker.Elaboration.Monad
+      Saga.Language.Typechecker.Elaboration.Types
+      Saga.Language.Typechecker.Elaboration.Values.Effects
+      Saga.Language.Typechecker.Elaboration.Values.Expressions
+      Saga.Language.Typechecker.Elaboration.Values.Shared
       Saga.Language.Typechecker.Environment
       Saga.Language.Typechecker.Errors
       Saga.Language.Typechecker.Evaluation

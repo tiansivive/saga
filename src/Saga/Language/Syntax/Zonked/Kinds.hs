@@ -7,8 +7,8 @@ module Saga.Language.Syntax.Zonked.Kinds where
 
 import qualified Saga.Language.Syntax.AST            as NT (NodeType (..))
 import           Saga.Language.Syntax.AST
-import           Saga.Language.Syntax.Desugared.AST
 import           Saga.Language.Syntax.Liquids
+import           Saga.Language.Syntax.Zonked.AST
 
 import           Data.Map                            (Map)
 import           Saga.Language.Syntax.Literals
@@ -27,6 +27,7 @@ data instance Node Zonked NT.Kind where
     Arrow       :: Kind -> Kind   -> Kind
     Application :: Kind -> [Kind] -> Kind
 deriving instance Show Kind
+deriving instance Show (AST Zonked NT.Kind)
 
 data instance Variable Kind where
     Poly        :: String -> Kind -> Variable Kind

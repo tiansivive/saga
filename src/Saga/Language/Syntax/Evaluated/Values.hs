@@ -34,17 +34,17 @@ deriving instance Show (AST Evaluated NT.Expression)
 data instance Node Evaluated Statement where
   Return       :: AST Evaluated Expression ->  Node Evaluated Statement
   Procedure    :: AST Evaluated Expression ->  Node Evaluated Statement
-  Declaration  :: AST Evaluated NT.Declaration ->  Node Evaluated Statement
+  -- TODO:SUGGESTION turn declarations into Let bindings (Let .. in) expressions, which would require a new data constructor for expressions
+  Declaration  :: Node Evaluated NT.Declaration ->  Node Evaluated Statement
 deriving instance Show (Node Evaluated NT.Statement)
 deriving instance Show (AST Evaluated NT.Statement)
 
 
 data instance Node Evaluated NT.Declaration where
-  Let  :: String -> Node Evaluated Expression    -> Node Evaluated NT.Declaration
-  Type :: String -> Node Evaluated NT.Type -> Node Evaluated NT.Declaration
-  Kind :: String -> Node Evaluated NT.Kind -> Node Evaluated NT.Declaration
+  Let  :: String -> AST Evaluated Expression    -> Node Evaluated NT.Declaration
+  Type :: String -> AST Evaluated NT.Type -> Node Evaluated NT.Declaration
+  Kind :: String -> AST Evaluated NT.Kind -> Node Evaluated NT.Declaration
 deriving instance Show (Node Evaluated NT.Declaration)
-deriving instance Show (AST Evaluated NT.Declaration)
 
 
 data instance Node Evaluated (NT.Case Expression) where

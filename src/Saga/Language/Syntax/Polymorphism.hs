@@ -1,9 +1,11 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Saga.Language.Syntax.Evaluated.Polymorphism where
+module Saga.Language.Syntax.Polymorphism where
 
 import Data.Map (Map)
+import qualified Data.Map as Map
+
 import Saga.Language.Typechecker.Variables (Variable)
 
 
@@ -28,4 +30,8 @@ infixl 1 :|
 
 
 type family Qualifier t 
-  
+
+
+
+none :: Given t
+none = Map.empty :| []
