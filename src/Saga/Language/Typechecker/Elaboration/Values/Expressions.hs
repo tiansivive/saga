@@ -49,15 +49,15 @@ instance Elaboration Expression where
 
         EV.Tuple elems ->  do
             elems' <- forM elems elaborate
-            return $ EL.Annotated (EL.Tuple elems') (ET.Tuple $ fmap extract elems')
+            return $ EL.Annotated (EL.Tuple elems') (ET.Tuple $ fmap Shared.extract elems')
         EV.Record pairs ->  do
             pairs' <- forM pairs $ mapM elaborate
-            return $ EL.Annotated (EL.Record pairs') (ET.Record $ fmap extract <$> pairs')
+            return $ EL.Annotated (EL.Record pairs') (ET.Record $ fmap Shared.extract <$> pairs')
 
         EV.List elems -> do
             tvar <- Shared.fresh ET.Unification
             elems' <-forM elems elaborate
-            let tys = fmap extract elems'
+            let tys = fmap Shared.extract elems'
 
             forM_ tys $ \t -> do
                 ev <- Shared.mkEvidence
@@ -134,12 +134,12 @@ instance Elaboration Expression where
                 ev <- Shared.mkEvidence
                 Eff.tell $ CST.Equality ev (Shared.toItem v) (maybe (Shared.toItem ty) Shared.toItem ty')
 
-            let out = ET.Union $ fmap extract cases'
+            let out = ET.Union $ fmap Shared.extract cases'
             return $ EL.Annotated (EL.Match scrutinee' cases') out
 
             where
                 elaborateCase scrutineeType (EV.Raw (EV.Case pat expr))  = Eff.local @Var.Level (+1) $ do
-                    (patty, tyvars) <- Eff.runWriter $ _patelaborate pat
+                    (pat', tyvars) <- Eff.runWriter $ elaborate pat
                     let (pairs, tvars) = unzip $ tyvars ||> fmap (\(id, tvar) -> ((id, Q.Forall [tvar] (Q.none :=> ET.Var tvar)), tvar))
                     narrowed <- ET.Var <$> Shared.fresh ET.Unification
                     -- TODO:ENHANCEMENT Change to Reader effect
@@ -147,17 +147,17 @@ instance Elaboration Expression where
                     let scoped = Eff.local $ \env -> env { types = Map.fromList _pairs <> types env }
                     scoped $ do
 
-                        (inferred, constraint) <- Eff.listen @CST.Constraint $ elaborate expr
+                        (expr'@(EL.Annotated _ ty), constraint) <- Eff.listen @CST.Constraint $ elaborate expr
                         ev <- Shared.mkEvidence
                         -- TODO: Skolemize the scrutinee type and the inferred pattern tvars
                         -- QUESTION: Perhaps we should add another type of constraint here, to specifically prove a refinement rather than relying on equality
 
-                        Eff.tell $ CST.Implication _tvars [assume ev patty narrowed] constraint
+                        Eff.tell $ CST.Implication _tvars [assume ev pat' narrowed] constraint
                         Eff.modify $ \s -> s { proofs = Map.delete scrutineeType $ proofs s }
-                        return $ EL.Annotated (_dummy pat inferred) _patty
+                        return $ EL.Annotated (EL.Case pat' expr') ty
 
                         where
-                        assume ev ty ty' = CST.Assume $ CST.Equality ev (Shared.toItem ty) (Shared.toItem ty')
+                            assume ev ty ty' = CST.Assume $ CST.Equality ev (Shared.toItem ty) (Shared.toItem ty')
 
 
                 separate (tvars, tys) caseExpr = case caseExpr of
@@ -173,11 +173,11 @@ instance Elaboration Expression where
                 walk processed ((EV.Raw stmt) : rest) = case stmt of
 
                     EV.Return expr                 -> do
-                        annotated <- elaborate expr
-                        walk (EL.Annotated (EL.Return annotated) (extract annotated) : processed) []
+                        annotated@(EL.Annotated _ ty) <- elaborate expr
+                        walk (EL.Annotated (EL.Return annotated) ty : processed) []
 
                     EV.Declaration (EV.Type id ty) -> do
-                        ty' <- _elaborate ty
+                        ty' <- elaborate ty
                         Eff.local (\e -> e{ types = Map.insert id _ty' $ types e }) $ do
                             walk (EL.Raw (EL.Declaration $ EL.Type id ty') : processed) rest
 
@@ -187,7 +187,7 @@ instance Elaboration Expression where
                         Eff.local (\e -> e{ types = Map.insert id _qt $ types e }) $ do
                             expr' <- elaborate expr
                             ev <- Shared.mkEvidence
-                            Eff.tell $ CST.Equality ev (CST.Var _tvar) (CST.Mono $ _extract expr')
+                            Eff.tell $ CST.Equality ev (CST.Var tvar) (CST.Mono $ Shared.extract expr')
                             walk processed rest
                     EV.Procedure expr -> do
                         expr' <- elaborate expr
@@ -213,8 +213,7 @@ instance Elaboration Expression where
                     --         walk processed rest
                     --d -> walk (d:processed) rest
 
-        where
-            extract (EL.Annotated _ node) = node
+
 
 
 

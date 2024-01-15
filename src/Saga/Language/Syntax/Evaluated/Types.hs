@@ -23,16 +23,16 @@ import           Saga.Utils.TypeLevel                 (type (§))
 
 type Type = Node Evaluated NT.Type
 data instance Node Evaluated NT.Type where
-    Singleton   :: Literal                                -> Type
-    Tuple       :: [Type]                                 -> Type
-    Record      :: [(String, Type)]                       -> Type
-    Union       :: [Type]                                 -> Type
-    Arrow       :: Type -> Type                           -> Type
-    Data        :: String -> Kind                         -> Type
-    Applied     :: Type -> Type                           -> Type
-    Var         :: Variable Type                          -> Type
-    Polymorphic :: Polymorphic Type                       -> Type
-    Closure     :: [Variable Type] -> TypeExpr -> Scope   -> Type
+    Singleton   :: Literal                                            -> Type
+    Tuple       :: [AST Evaluated NT.Type]                            -> Type
+    Record      :: [(String, AST Evaluated NT.Type)]                  -> Type
+    Union       :: [AST Evaluated NT.Type]                            -> Type
+    Data        :: String -> Kind                                     -> Type
+    Applied     :: AST Evaluated NT.Type -> AST Evaluated NT.Type     -> Type
+    Arrow       :: Type -> Type                                       -> Type
+    Var         :: Variable Type                                      -> Type
+    Polymorphic :: Polymorphic Type                                   -> Type
+    Closure     :: [Variable Type] -> TypeExpr -> Scope               -> Type
     Void        :: Type
     Any         :: Type
 deriving instance Show Type

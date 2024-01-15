@@ -62,7 +62,7 @@ data instance Node Elaborated (Pattern Expression) where
   PatLit    :: Literal  -> Node Elaborated (Pattern Expression)
   PatTuple  :: [AST Elaborated (Pattern Expression)] -> Maybe String  -> Node Elaborated (Pattern Expression)
   PatList   :: [AST Elaborated (Pattern Expression)] -> Maybe String  -> Node Elaborated (Pattern Expression)
-  PatRecord :: [(String, Maybe § AST Elaborated (Pattern Expression))] -> Maybe String  -> Node Elaborated (Pattern Expression)
+  PatRecord :: [(String, AST Elaborated (Pattern Expression))] -> Maybe String  -> Node Elaborated (Pattern Expression)
   PatData   :: String -> [AST Elaborated (Pattern Expression)]  -> Node Elaborated (Pattern Expression)
 deriving instance Show (Node Elaborated (NT.Pattern Expression))
 deriving instance Show (AST Elaborated (NT.Pattern Expression))

@@ -46,6 +46,7 @@ library
       Saga.Language.Typechecker.Elaboration.Types
       Saga.Language.Typechecker.Elaboration.Values.Effects
       Saga.Language.Typechecker.Elaboration.Values.Expressions
+      Saga.Language.Typechecker.Elaboration.Values.Patterns
       Saga.Language.Typechecker.Elaboration.Values.Shared
       Saga.Language.Typechecker.Environment
       Saga.Language.Typechecker.Errors

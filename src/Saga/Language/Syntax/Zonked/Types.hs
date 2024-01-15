@@ -20,15 +20,15 @@ import           Saga.Utils.TypeLevel                (type (§))
 
 type Type = Node Zonked NT.Type
 data instance Node Zonked NT.Type where
-    Singleton   :: Literal                                -> Type
-    Tuple       :: [Type]                                 -> Type
-    Record      :: [(String, Type)]                       -> Type
-    Union       :: [Type]                                 -> Type
-    Arrow       :: Type -> Type                           -> Type
-    Data        :: String -> Kind                         -> Type
-    Applied     :: Type -> Type                           -> Type
-    Var         :: Variable Type                          -> Type
-    Polymorphic :: Polymorphic Type                       -> Type
+    Singleton   :: Literal                                      -> Type
+    Tuple       :: [AST Zonked NT.Type]                         -> Type
+    Record      :: [(String, AST Zonked NT.Type)]               -> Type
+    Union       :: [AST Zonked NT.Type]                         -> Type
+    Arrow       :: Type -> Type                                 -> Type
+    Data        :: String -> Kind                               -> Type
+    Applied     :: AST Zonked NT.Type -> AST Zonked NT.Type     -> Type
+    Var         :: Variable Type                                -> Type
+    Polymorphic :: Polymorphic Type                             -> Type
     --Closure     :: [Variable Type] -> TypeExpr -> Scope   -> Type
     Void        :: Type
     Any         :: Type

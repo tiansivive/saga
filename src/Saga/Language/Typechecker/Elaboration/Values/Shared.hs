@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds          #-}
 {-# LANGUAGE ExplicitNamespaces #-}
 
 module Saga.Language.Typechecker.Elaboration.Values.Shared where
@@ -14,6 +15,8 @@ import qualified Saga.Language.Typechecker.Variables                  as Var
 
 import qualified Data.Map                                             as Map
 
+import           Saga.Language.Syntax.AST
+import qualified Saga.Language.Syntax.Elaborated.AST                  as EL
 import qualified Saga.Language.Syntax.Elaborated.Kinds                as K
 import qualified Saga.Language.Syntax.Elaborated.Types                as T
 import           Saga.Language.Syntax.Elaborated.Types                (Type)
@@ -49,5 +52,8 @@ toItem (T.Var tvar) = CST.Var _tvar
 toItem t            = CST.Mono _t
 
 
+
+extract :: AST 'Elaborated e -> AST 'Elaborated (Annotation e)
+extract (EL.Annotated _ node) = EL.Raw node
 
 
