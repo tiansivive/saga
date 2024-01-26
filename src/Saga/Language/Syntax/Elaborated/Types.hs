@@ -13,6 +13,7 @@ import           Saga.Language.Syntax.Polymorphism
 import           Saga.Language.Syntax.Literals
 
 import           Saga.Language.Syntax.Elaborated.Kinds
+import           Saga.Language.Syntax.Liquids
 import           Saga.Language.Typechecker.Variables   (Variable)
 
 import           Saga.Utils.TypeLevel                  (type (§))
@@ -32,7 +33,13 @@ data instance Node Elaborated NT.Type where
     Void        :: Type
     Any         :: Type
 deriving instance Show Type
+deriving instance Eq Type
+deriving instance Ord Type
+
 deriving instance Show (AST Elaborated NT.Type)
+deriving instance Eq (AST Elaborated NT.Type)
+deriving instance Ord (AST Elaborated NT.Type)
+
 
 data instance Variable Type where
   Poly              :: String -> Kind -> Variable Type
@@ -50,7 +57,18 @@ deriving instance Ord (Variable Type)
 
 type TypeConstraint = Node Elaborated NT.Constraint
 data instance Node Elaborated NT.Constraint where
+  Implements :: Type -> ProtocolID -> Node Elaborated NT.Constraint
+  Refinement :: Bindings -> Liquid  -> Type -> Node Elaborated NT.Constraint
+
+
+type Bindings = Map (Variable Liquid) Type
+type ProtocolID = String
+
 deriving instance Show TypeConstraint
+deriving instance Eq TypeConstraint
+deriving instance Ord TypeConstraint
+
+deriving instance Show (AST Elaborated NT.Constraint)
 
 type instance Qualifier Type = TypeConstraint
 

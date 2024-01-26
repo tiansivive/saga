@@ -19,6 +19,7 @@ import           Saga.Utils.TypeLevel                 (type (§))
 
 
 type TypeExpr = Node Desugared NT.Type
+type ExprAST = AST Desugared NT.Type
 
 data instance Node Desugared NT.Type where
     Singleton     :: Literal -> TypeExpr
@@ -65,6 +66,7 @@ data Binding
   | Constraint (Node Desugared NT.Constraint)
     deriving (Show)
 
+type TypeConstraint = Node Desugared NT.Constraint
 data instance Node Desugared NT.Constraint where
     Implements :: TypeExpr -> ProtocolID -> Node Desugared NT.Constraint
     Refinement :: Bindings -> Liquid  -> TypeExpr -> Node Desugared NT.Constraint

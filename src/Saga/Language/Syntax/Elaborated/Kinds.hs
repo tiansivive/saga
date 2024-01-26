@@ -13,6 +13,7 @@ import           Saga.Language.Syntax.Liquids
 import           Data.Map                            (Map)
 import           Saga.Language.Syntax.Literals
 
+import           Saga.Language.Syntax.Polymorphism   (Qualifier)
 import           Saga.Language.Typechecker.Variables (Variable)
 import           Saga.Utils.TypeLevel                (type (§))
 
@@ -31,9 +32,15 @@ deriving instance Eq Kind
 deriving instance Ord Kind
 
 deriving instance Show (AST Elaborated NT.Kind)
+deriving instance Eq (AST Elaborated NT.Kind)
+deriving instance Ord (AST Elaborated NT.Kind)
 
 data instance Variable Kind where
-    Poly        :: String -> Kind -> Variable Kind
+    Poly        :: String -> Variable Kind
+    Unification :: String -> Variable Kind
 deriving instance Show (Variable Kind)
 deriving instance Eq (Variable Kind)
 deriving instance Ord (Variable Kind)
+
+type instance Qualifier Kind = ()
+

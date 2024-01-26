@@ -25,10 +25,18 @@ data instance Node Evaluated NT.Kind where
     Var         :: Variable Kind    -> Kind
     Polymorphic :: Polymorphic Kind -> Kind
 deriving instance Show Kind
+deriving instance Eq Kind
+deriving instance Ord Kind
+
 deriving instance Show (AST Evaluated NT.Kind)
+deriving instance Eq (AST Evaluated NT.Kind)
+deriving instance Ord (AST Evaluated NT.Kind)
 
 data instance Variable Kind where
     Poly        :: String -> Kind -> Variable Kind
 deriving instance Show (Variable Kind)
+deriving instance Eq (Variable Kind)
+deriving instance Ord (Variable Kind)
+
 
 type instance Qualifier Kind = ()

@@ -17,7 +17,7 @@ import           Saga.Language.Syntax.Elaborated.Types
 import           Saga.Language.Syntax.Literals
 import           Saga.Utils.TypeLevel                  (type (§))
 
-
+type Expr = Node Elaborated NT.Expression
 data instance Node Elaborated Expression where
   Var         :: (Variable § Node Elaborated Expression) -> Node Elaborated Expression
   Hole        :: String -> Node Elaborated Expression
@@ -51,7 +51,7 @@ deriving instance Show (Node Elaborated NT.Declaration)
 
 
 data instance Node Elaborated (NT.Case Expression) where
-  Case :: AST Elaborated (Pattern NT.Expression) -> AST Elaborated (NT.Case Expression) -> Node Elaborated (NT.Case NT.Expression)
+  Case :: AST Elaborated (Pattern NT.Expression) -> AST Elaborated NT.Expression -> Node Elaborated (NT.Case NT.Expression)
 deriving instance Show (Node Elaborated (NT.Case Expression))
 deriving instance Show (AST Elaborated (NT.Case Expression))
 

@@ -32,6 +32,7 @@ data instance Node Evaluated NT.Type where
     Arrow       :: Type -> Type                                       -> Type
     Var         :: Variable Type                                      -> Type
     Polymorphic :: Polymorphic Type                                   -> Type
+    Qualified   :: Qualified Type                                     -> Type
     Closure     :: [Variable Type] -> TypeExpr -> Scope               -> Type
     Void        :: Type
     Any         :: Type
@@ -39,8 +40,8 @@ deriving instance Show Type
 deriving instance Show (AST Evaluated NT.Type)
 
 data Scope = Scope
-  { types :: Map String (Polymorphic Type)
-  , kinds :: Map String (Polymorphic Kind)
+  { types :: Map String (AST Evaluated NT.Type)
+  , kinds :: Map String (AST Evaluated NT.Kind)
   } deriving (Show)
 
 
@@ -49,10 +50,20 @@ data instance Variable Type where
   Existential       :: String -> Kind -> Variable Type
   Local             :: String -> Kind -> Variable Type
 deriving instance Show (Variable Type)
+deriving instance Eq (Variable Type)
+deriving instance Ord (Variable Type)
 
 type TypeConstraint = Node Evaluated NT.Constraint
 data instance Node Evaluated NT.Constraint where
+  Implements :: Type -> ProtocolID -> Node Evaluated NT.Constraint
+  Refinement :: Bindings -> Liquid  -> Type -> Node Evaluated NT.Constraint
+
+
+type Bindings = Map (Variable Liquid) TypeExpr
+type ProtocolID = String
+
 deriving instance Show TypeConstraint
+deriving instance Show (AST Evaluated NT.Constraint)
 
 type instance Qualifier Type = TypeConstraint
 

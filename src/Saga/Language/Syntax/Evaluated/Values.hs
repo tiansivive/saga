@@ -15,7 +15,7 @@ import           Saga.Language.Syntax.Evaluated.Types
 import           Saga.Language.Syntax.Literals
 import           Saga.Utils.TypeLevel                 (type (§))
 
-
+type Expr = Node Evaluated NT.Expression
 data instance Node Evaluated Expression where
   Var         :: String -> Node Evaluated Expression
   Hole        :: String -> Node Evaluated Expression
@@ -48,7 +48,7 @@ deriving instance Show (Node Evaluated NT.Declaration)
 
 
 data instance Node Evaluated (NT.Case Expression) where
-  Case :: AST Evaluated (Pattern NT.Expression) -> AST Evaluated (NT.Case Expression) -> Node Evaluated (NT.Case NT.Expression)
+  Case :: AST Evaluated (Pattern NT.Expression) -> AST Evaluated NT.Expression -> Node Evaluated (NT.Case NT.Expression)
 deriving instance Show (Node Evaluated (NT.Case Expression))
 deriving instance Show (AST Evaluated (NT.Case Expression))
 

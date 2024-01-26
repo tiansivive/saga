@@ -50,7 +50,7 @@ deriving instance Show (Node Zonked NT.Declaration)
 
 
 data instance Node Zonked (NT.Case Expression) where
-  Case :: AST Zonked (Pattern NT.Expression) -> AST Zonked (NT.Case Expression) -> Node Zonked (NT.Case NT.Expression)
+  Case :: AST Zonked (Pattern NT.Expression) -> AST Zonked NT.Expression -> Node Zonked (NT.Case NT.Expression)
 deriving instance Show (Node Zonked (NT.Case Expression))
 deriving instance Show (AST Zonked (NT.Case Expression))
 

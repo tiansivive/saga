@@ -11,11 +11,14 @@ import           Saga.Language.Typechecker.Type               (Polymorphic,
 import           Saga.Language.Typechecker.TypeExpr           (TypeExpr)
 import           Saga.Language.Typechecker.Variables          (Variable)
 
+import qualified Saga.Language.Syntax.Desugared.Types         as DS
+import qualified Saga.Language.Syntax.Evaluated.Types         as EV
+
 data SagaError where
   UnboundVariable     :: String -> SagaError
   UndefinedIdentifier :: String-> SagaError
 
-  UnexpectedType                      :: Type -> String -> SagaError
+  UnexpectedType                      :: EV.Type -> String -> SagaError
   UnexpectedKind                      :: Kind -> String -> SagaError
   UnexpectedPolymorphicVariable       :: (Show a, Show (Variable a)) => Variable a -> SagaError
   UnexpectedInstantiationVariable     :: (Show a, Show (Variable a)) =>  Variable a -> SagaError
@@ -59,7 +62,7 @@ data SagaError where
 
   -- | EVALUATION
   UnexpectedLocalPolymorphicType :: Polymorphic Type -> SagaError
-  TooManyArguments :: TypeExpr-> [TypeExpr]-> SagaError
+  TooManyArguments :: DS.TypeExpr-> [DS.TypeExpr]-> SagaError
 
   SubtypeFailure  :: Type ->Type-> SagaError
   Fail            :: String-> SagaError

@@ -28,7 +28,9 @@ library:
   source-dirs: 
     - src
   ghc-options:
-    - -fdefer-typed-holes
+    - -Wwarn-typed-holes
+    - -fprint-potential-instances
+
 
   build-tools:
   - alex

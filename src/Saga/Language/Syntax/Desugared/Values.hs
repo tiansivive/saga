@@ -47,7 +47,7 @@ deriving instance Show (Node Desugared NT.Declaration)
 
 
 data instance Node Desugared (NT.Case Expression) where
-  Case :: AST Desugared (Pattern NT.Expression) -> AST Desugared (NT.Case Expression) -> Node Desugared (NT.Case NT.Expression)
+  Case :: AST Desugared (Pattern NT.Expression) -> AST Desugared NT.Expression -> Node Desugared (NT.Case NT.Expression)
 deriving instance Show (Node Desugared (NT.Case Expression))
 deriving instance Show (AST Desugared (NT.Case Expression))
 
