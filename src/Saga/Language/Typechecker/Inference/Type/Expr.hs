@@ -86,6 +86,7 @@ run :: TypeCheck es => Expr -> Eff es ((Expr, State), CST.Constraint)
 run = Eff.runWriter @CST.Constraint . Eff.runState Shared.initialState . Eff.runReader (Var.Level 0) . infer
 instance Inference Expr where
 
+
     type instance Effects Expr es = Shared.TypeInference es
 
     infer = infer'

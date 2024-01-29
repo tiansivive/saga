@@ -13,7 +13,8 @@ import qualified Effectful.State.Static.Local                         as Eff
 import qualified Effectful.Writer.Static.Local                        as Eff
 
 import qualified Saga.Language.Syntax.AST                             as NT (NodeType (..))
-import           Saga.Language.Syntax.AST
+import           Saga.Language.Syntax.AST                             hiding
+                                                                      (NodeType (..))
 import qualified Saga.Language.Syntax.Elaborated.AST                  as EL
 
 import qualified Saga.Language.Syntax.Elaborated.Kinds                as K
@@ -58,8 +59,8 @@ import           Saga.Language.Typechecker.Elaboration.Traversals
 
 
 lookup ::
-  (Eff.Reader (CompilerState 'Elaborated) :> es, Eff.Reader Var.Level :> es, Eff.State State :> es, Eff.Error SagaError :> es)
-  => String -> Eff es (AST 'Elaborated 'Type)
+  (Eff.Reader (CompilerState Elaborated) :> es, Eff.Reader Var.Level :> es, Eff.State State :> es, Eff.Error SagaError :> es)
+  => String -> Eff es (AST Elaborated NT.Type)
 lookup x = do
   Saga { types, extra } <- Eff.ask
 
@@ -102,7 +103,7 @@ locals :: Type -> [Variable Type]
 locals t = [ v | v@(T.Local {}) <- Set.toList $ ftv t ]
 
 
-collect :: (Eff.Reader Bindings :> es, Eff.State (Subst Type) :> es) => Variable Type -> Eff es [Node 'Elaborated 'Constraint]
+collect :: (Eff.Reader Bindings :> es, Eff.State (Subst Type) :> es) => Variable Type -> Eff es [Node Elaborated NT.Constraint]
 collect v@(T.Local {}) = do
   bs <- Eff.ask
   case Map.lookup v bs of
@@ -149,11 +150,11 @@ toItem (T.Var tvar) = CST.Var tvar
 toItem t            = CST.Mono t
 
 
-extract :: Show (Node 'Elaborated e) => AST 'Elaborated e -> Node 'Elaborated (Annotation e)
+extract :: Show (Node Elaborated e) => AST Elaborated e -> Node Elaborated (Annotation e)
 extract = EL.annotation |> EL.node
 
 -- QUESTION: Do singletons have a different kind?
-decorate :: Node 'Elaborated 'Type -> AST 'Elaborated 'Type
+decorate :: Node Elaborated NT.Type -> AST Elaborated NT.Type
 decorate ty@(T.Singleton {})              = EL.Annotated ty $ EL.Raw K.Type
 decorate ty@(T.Tuple {})                  = EL.Annotated ty $ EL.Raw K.Type
 decorate ty@(T.Record {})                 = EL.Annotated ty $ EL.Raw K.Type

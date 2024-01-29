@@ -6,7 +6,8 @@ import           Prelude                                       hiding (id)
 
 import qualified Data.Set                                      as Set
 import qualified Saga.Language.Syntax.AST                      as NT (NodeType (..))
-import           Saga.Language.Syntax.AST
+import           Saga.Language.Syntax.AST                      hiding
+                                                               (NodeType (..))
 import           Saga.Language.Syntax.Desugared.Types          (TypeExpr)
 import           Saga.Language.Syntax.Evaluated.Types          (Type)
 import           Saga.Language.Syntax.Evaluated.Values         (Expr)

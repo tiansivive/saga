@@ -116,7 +116,7 @@ instance Elaboration Expression where
             -- | TODO: How can we notify the constraint solver that there's a new unification variable
             -- | which stands for the result of this function application
             -- | EDIT: Do we even need to do that?
-            inferred <- generalize' $ Shared.extract arg' `ET.Arrow` out
+            inferred <- generalize' $ EL.annotation arg' `ET.Arrow` Shared.decorate out
             evidence <- Shared.mkEvidence
             Eff.tell $ CST.Equality evidence (Shared.toItem $ Shared.extract fn') (CST.Poly inferred)
 
@@ -138,7 +138,7 @@ instance Elaboration Expression where
             scrutinee' <- elaborate scrutinee
             let ty = Shared.extract scrutinee'
 
-            Eff.local @(CompilerState 'Elaborated) (\e -> let extra' = extra e in e { extra = extra' { scrutinee = ty } }) $ do
+            Eff.local @(CompilerState Elaborated) (\e -> let extra' = extra e in e { extra = extra' { scrutinee = ty } }) $ do
                 cases' <- forM cases elaborate
                 let (tvars, tys) = foldl separate ([], []) cases'
                 let ty' = case length tys of
@@ -217,7 +217,7 @@ instance Elaboration (Case Expression) where
         let (pairs, tvars) = unzip $ tyvars ||> fmap (\(id, tvar) -> ((id, Shared.decorate $ ET.Polymorphic (Forall [tvar] (ET.Var tvar))), tvar))
         narrowed <- ET.Var <$> Shared.fresh ET.Unification
 
-        Eff.local @(CompilerState 'Elaborated) (\e -> let extra' = extra e in e {
+        Eff.local @(CompilerState Elaborated) (\e -> let extra' = extra e in e {
             types = Map.fromList pairs <> types e,
             extra = extra' { narrowings = Map.insert (scrutinee extra') narrowed $ narrowings extra' }
         }) $ do

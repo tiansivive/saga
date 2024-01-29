@@ -28,8 +28,8 @@ data instance Node Elaborated NT.Type where
     Tuple       :: [AST Elaborated NT.Type]                             -> Type
     Record      :: [(String, AST Elaborated NT.Type)]                   -> Type
     Union       :: [AST Elaborated NT.Type]                             -> Type
-    Arrow       :: Type -> Type                                         -> Type
-    Data        :: String -> Kind                                       -> Type
+    Arrow       :: AST Elaborated NT.Type -> AST Elaborated NT.Type     -> Type
+    Data        :: String                                                -> Type
     Applied     :: AST Elaborated NT.Type -> AST Elaborated NT.Type     -> Type
     Var         :: Variable Type                                        -> Type
     Polymorphic :: Polymorphic Type                                     -> Type
@@ -85,7 +85,7 @@ instance Monad m => Visitor m NT.Type where
     Union elems      -> Tuple <$> mapM f' elems
     Record elems     -> Record <$> mapM2 f' elems
     Applied cons arg -> Applied <$> visit' cons <*> visit' arg
-    Arrow in' out    -> Arrow <$> visit f in' <*> visit f out
+    Arrow in' out    -> Arrow <$> visit' in' <*> visit' out
 
     ty               -> f ty
 

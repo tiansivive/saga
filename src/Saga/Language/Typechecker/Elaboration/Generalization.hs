@@ -61,7 +61,7 @@ instance Generalize Type where
       LString _ -> "IsString"
       LBool _   -> "IsBool"
       LInt _    -> "Num"
-    T.Data prim _ -> implement $ case prim of
+    T.Data prim -> implement $ case prim of
       "Int"    -> "Num"
       "String" -> "IsString"
       "Bool"   -> "IsBool"

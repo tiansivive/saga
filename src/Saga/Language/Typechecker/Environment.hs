@@ -18,7 +18,7 @@ import Saga.Language.Typechecker.Errors (SagaError)
 import Saga.Language.Syntax.Polymorphism (Polymorphic)
 import Saga.Language.Syntax.Evaluated.Types (Type)
 
-import Saga.Language.Syntax.AST 
+import Saga.Language.Syntax.AST hiding (NodeType (..)) 
 import qualified Saga.Language.Syntax.AST as NT (NodeType (..))
 import           Saga.Language.Syntax.Evaluated.Kinds (Kind)
 import qualified Saga.Language.Syntax.Desugared.Values as Desugared

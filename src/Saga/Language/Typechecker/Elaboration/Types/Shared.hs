@@ -35,8 +35,8 @@ fresh = do
   return $ K.Unification ("k" ++ count)
 
 lookup ::
-  (Eff.Reader (CompilerState 'Elaborated) :> es, Eff.Reader Var.Level :> es, Eff.State State :> es, Eff.Error SagaError :> es)
-  => String -> Eff es (AST 'Elaborated 'Kind)
+  (Eff.Reader (CompilerState Elaborated) :> es, Eff.Reader Var.Level :> es, Eff.State State :> es, Eff.Error SagaError :> es)
+  => String -> Eff es (AST Elaborated Kind)
 lookup x = do
   Saga { kinds, extra } <- Eff.ask
 

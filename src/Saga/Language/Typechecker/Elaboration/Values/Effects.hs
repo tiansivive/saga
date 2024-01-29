@@ -20,7 +20,7 @@ import qualified Saga.Language.Typechecker.Solving.Constraints as CST
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables           (Variable)
 
-type Elaboration es = (Eff.Reader (CompilerState 'Elaborated) :> es, Eff.Writer Info :> es, Eff.Error SagaError :> es, Eff.Fail :> es, Eff.Reader Var.Level :> es, Eff.State State :> es, Eff.Writer CST.Constraint :> es)
+type Elaboration es = (Eff.Reader (CompilerState Elaborated) :> es, Eff.Writer Info :> es, Eff.Error SagaError :> es, Eff.Fail :> es, Eff.Reader Var.Level :> es, Eff.State State :> es, Eff.Writer CST.Constraint :> es)
 
 
 data State = IST
