@@ -6,7 +6,7 @@ module Saga.Language.Syntax.Zonked.Kinds where
 
 
 import qualified Saga.Language.Syntax.AST            as NT (NodeType (..))
-import           Saga.Language.Syntax.AST
+import           Saga.Language.Syntax.AST            hiding (NodeType (..))
 import           Saga.Language.Syntax.Liquids
 import           Saga.Language.Syntax.Zonked.AST
 

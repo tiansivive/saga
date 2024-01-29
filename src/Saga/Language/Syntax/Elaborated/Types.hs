@@ -1,12 +1,10 @@
-{-# LANGUAGE DataKinds    #-}
-{-# LANGUAGE GADTs        #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Saga.Language.Syntax.Elaborated.Types where
 
 import           Data.Map                              (Map)
 import qualified Saga.Language.Syntax.AST              as NT (NodeType (..))
-import           Saga.Language.Syntax.AST
+import           Saga.Language.Syntax.AST              hiding (NodeType (..))
 import           Saga.Language.Syntax.Elaborated.AST
 import           Saga.Language.Syntax.Polymorphism
 

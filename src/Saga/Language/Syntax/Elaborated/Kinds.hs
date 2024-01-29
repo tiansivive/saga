@@ -1,12 +1,10 @@
-{-# LANGUAGE DataKinds    #-}
-{-# LANGUAGE GADTs        #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Saga.Language.Syntax.Elaborated.Kinds where
 
 
 import qualified Saga.Language.Syntax.AST            as NT (NodeType (..))
-import           Saga.Language.Syntax.AST
+import           Saga.Language.Syntax.AST            hiding (NodeType (..))
 import           Saga.Language.Syntax.Elaborated.AST
 import           Saga.Language.Syntax.Liquids
 

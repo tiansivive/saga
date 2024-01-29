@@ -1,11 +1,9 @@
-{-# LANGUAGE DataKinds    #-}
-{-# LANGUAGE GADTs        #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Saga.Language.Syntax.Desugared.Types where
 
 import qualified Saga.Language.Syntax.AST             as NT (NodeType (..))
-import           Saga.Language.Syntax.AST
+import           Saga.Language.Syntax.AST             hiding (NodeType (..))
 
 import           Saga.Language.Syntax.Desugared.AST
 import           Saga.Language.Syntax.Desugared.Kinds
@@ -42,19 +40,19 @@ deriving instance Show TypeExpr
 deriving instance Show (AST Desugared NT.Type)
 
 data instance Node Desugared (NT.Case NT.Type) where
-  Case :: AST Desugared (Pattern NT.Type) -> AST Desugared (NT.Case NT.Type) -> Node Desugared (NT.Case NT.Type)
+  Case :: AST Desugared (NT.Pattern NT.Type) -> AST Desugared (NT.Case NT.Type) -> Node Desugared (NT.Case NT.Type)
 deriving instance Show (Node Desugared (NT.Case NT.Type))
 deriving instance Show (AST Desugared (NT.Case NT.Type))
 
-data instance Node Desugared (Pattern NT.Type) where
-  Wildcard  :: Node Desugared (Pattern NT.Type)
-  Id        :: String                                                               -> Node Desugared (Pattern NT.Type)
-  PatHole   :: String                                                               -> Node Desugared (Pattern NT.Type)
-  PatLit    :: Literal                                                              -> Node Desugared (Pattern NT.Type)
-  PatArrow  :: [AST Desugared (Pattern NT.Type)]                                    -> Node Desugared (Pattern NT.Type)
-  PatTuple  :: [AST Desugared (Pattern NT.Type)]                   -> Maybe String  -> Node Desugared (Pattern NT.Type)
-  PatList   :: [AST Desugared (Pattern NT.Type)]                   -> Maybe String  -> Node Desugared (Pattern NT.Type)
-  PatRecord :: [(String, Maybe § AST Desugared (Pattern NT.Type))] -> Maybe String  -> Node Desugared (Pattern NT.Type)
+data instance Node Desugared (NT.Pattern NT.Type) where
+  Wildcard  :: Node Desugared (NT.Pattern NT.Type)
+  Id        :: String                                                               -> Node Desugared (NT.Pattern NT.Type)
+  PatHole   :: String                                                               -> Node Desugared (NT.Pattern NT.Type)
+  PatLit    :: Literal                                                              -> Node Desugared (NT.Pattern NT.Type)
+  PatArrow  :: [AST Desugared (NT.Pattern NT.Type)]                                    -> Node Desugared (NT.Pattern NT.Type)
+  PatTuple  :: [AST Desugared (NT.Pattern NT.Type)]                   -> Maybe String  -> Node Desugared (NT.Pattern NT.Type)
+  PatList   :: [AST Desugared (NT.Pattern NT.Type)]                   -> Maybe String  -> Node Desugared (NT.Pattern NT.Type)
+  PatRecord :: [(String, Maybe § AST Desugared (NT.Pattern NT.Type))] -> Maybe String  -> Node Desugared (NT.Pattern NT.Type)
 deriving instance Show (Node Desugared (NT.Pattern NT.Type))
 deriving instance Show (AST Desugared (NT.Pattern NT.Type))
 

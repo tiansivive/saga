@@ -6,7 +6,7 @@ module Saga.Language.Syntax.Zonked.Types where
 
 import           Data.Map                            (Map)
 import qualified Saga.Language.Syntax.AST            as NT (NodeType (..))
-import           Saga.Language.Syntax.AST
+import           Saga.Language.Syntax.AST            hiding (NodeType (..))
 
 import           Saga.Language.Syntax.Polymorphism
 import           Saga.Language.Syntax.Zonked.AST

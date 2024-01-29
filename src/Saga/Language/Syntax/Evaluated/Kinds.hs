@@ -5,7 +5,7 @@
 module Saga.Language.Syntax.Evaluated.Kinds where
 
 import qualified Saga.Language.Syntax.AST            as NT (NodeType (..))
-import           Saga.Language.Syntax.AST
+import           Saga.Language.Syntax.AST            hiding (NodeType (..))
 import           Saga.Language.Syntax.Evaluated.AST
 
 

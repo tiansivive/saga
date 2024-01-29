@@ -6,10 +6,6 @@ module Saga.Language.Syntax.Liquids where
 
 
 import qualified Saga.Language.Syntax.AST            as NT (NodeType (..))
-import           Saga.Language.Syntax.AST
-
-import           Saga.Language.Syntax.Desugared.AST
-
 
 import           Data.Map                            (Map)
 import           Saga.Language.Syntax.Literals

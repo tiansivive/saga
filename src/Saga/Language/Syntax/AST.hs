@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds              #-}
-{-# LANGUAGE GADTs                  #-}
+{-# LANGUAGE TypeData               #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
-{-# LANGUAGE UndecidableInstances   #-}
+
 
 module Saga.Language.Syntax.AST where
 import qualified Data.Kind    as GHC
@@ -11,14 +11,14 @@ import           GHC.TypeLits (ErrorMessage (Text), TypeError)
 
 data family AST (p :: Phase) (e :: NodeType)
 data family Node (p :: Phase) (t:: NodeType)
-data NodeType
+type data NodeType
     = Expression | Declaration | Statement
     | Type | Kind
     | Case NodeType | Pattern NodeType
     | Constraint | Liquid
-    deriving (Show, Eq, Ord)
-data Phase = Parsed | Desugared | Evaluated | Elaborated | Zonked | TypeChecked
-    deriving (Show, Eq, Ord)
+
+type data Phase = Parsed | Desugared | Evaluated | Elaborated | Zonked | TypeChecked
+
 type family Annotation (n :: NodeType) where
     Annotation Expression           = Type
     Annotation Declaration          = TypeError ('Text "Declarations must not have an Annotation")

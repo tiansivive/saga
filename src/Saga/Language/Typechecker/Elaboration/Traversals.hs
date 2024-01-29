@@ -12,7 +12,6 @@ import qualified Data.Set                                      as Set
 
 import           Control.Monad.Identity                        (Identity (runIdentity))
 import           Saga.Language.Syntax.AST                      (Node,
-                                                                NodeType (..),
                                                                 Visitor (..))
 import qualified Saga.Language.Syntax.Elaborated.Kinds         as K
 import           Saga.Language.Syntax.Elaborated.Kinds         (Kind)
