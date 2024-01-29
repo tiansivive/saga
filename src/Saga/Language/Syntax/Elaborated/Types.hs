@@ -12,10 +12,16 @@ import           Saga.Language.Syntax.Polymorphism
 
 import           Saga.Language.Syntax.Literals
 
-import           Saga.Language.Syntax.Elaborated.Kinds
-import           Saga.Language.Syntax.Liquids
+import           Saga.Language.Syntax.Elaborated.Kinds hiding (Arrow,
+                                                        Polymorphic, Qualified,
+                                                        Var)
+import           Saga.Language.Syntax.Liquids          hiding (Var)
 import           Saga.Language.Typechecker.Variables   (Variable)
 
+import           Control.Monad.Identity                (Identity)
+import qualified Data.Kind                             as GHC
+import           Prelude                               hiding (map, traverse)
+import           Saga.Utils.Common                     (fmap2, mapM2)
 import           Saga.Utils.TypeLevel                  (type (§))
 
 type Type = Node Elaborated NT.Type
@@ -29,6 +35,7 @@ data instance Node Elaborated NT.Type where
     Applied     :: AST Elaborated NT.Type -> AST Elaborated NT.Type     -> Type
     Var         :: Variable Type                                        -> Type
     Polymorphic :: Polymorphic Type                                     -> Type
+    Qualified   :: Qualified Type                                       -> Type
     --Closure     :: [Variable Type] -> TypeExpr -> Scope   -> Type
     Void        :: Type
     Any         :: Type
@@ -71,4 +78,23 @@ deriving instance Ord TypeConstraint
 deriving instance Show (AST Elaborated NT.Constraint)
 
 type instance Qualifier Type = TypeConstraint
+
+
+instance Monad m => Visitor m NT.Type where
+  type Pass NT.Type = Elaborated
+  visit f node      = case node of
+    Tuple elems      -> Tuple <$> mapM f' elems
+    Union elems      -> Tuple <$> mapM f' elems
+    Record elems     -> Record <$> mapM2 f' elems
+    Applied cons arg -> Applied <$> visit' cons <*> visit' arg
+    Arrow in' out    -> Arrow <$> visit f in' <*> visit f out
+
+    ty               -> f ty
+
+    where
+      f' = map f
+      visit' = map $ visit f
+
+      map f (Raw node)           = Raw <$> f node
+      map f (Annotated node ann) = Annotated <$> f node <*> pure ann
 

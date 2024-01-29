@@ -1,9 +1,10 @@
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE GADTs                #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DataKinds              #-}
+{-# LANGUAGE GADTs                  #-}
+{-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE UndecidableInstances   #-}
 
 module Saga.Language.Syntax.AST where
+import qualified Data.Kind    as GHC
 import           GHC.TypeLits (ErrorMessage (Text), TypeError)
 
 
@@ -37,3 +38,6 @@ type family Annotation (n :: NodeType) where
 
 
 
+class Monad m => Visitor m (node :: NodeType) where
+  type Pass node :: Phase
+  visit :: (Node (Pass node) node -> m (Node (Pass node) node)) -> Node (Pass node) node -> m (Node (Pass node) node)

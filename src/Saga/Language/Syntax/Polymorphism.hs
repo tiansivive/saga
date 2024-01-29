@@ -10,10 +10,10 @@ import Saga.Language.Typechecker.Variables (Variable)
 
 
 
-data Polymorphic t = Forall [Variable t] (Qualified t)
-deriving instance (Show t, Show (Variable t), Show (Qualified t)) => Show (Polymorphic t)
-deriving instance (Eq t, Eq (Variable t), Eq (Qualified t)) => Eq (Polymorphic t)
-deriving instance (Ord t, Ord (Variable t), Ord (Qualified t)) => Ord (Polymorphic t)
+data Polymorphic t = Forall [Variable t] t
+deriving instance (Show t, Show (Variable t)) => Show (Polymorphic t)
+deriving instance (Eq t, Eq (Variable t))     => Eq (Polymorphic t)
+deriving instance (Ord t, Ord (Variable t))   => Ord (Polymorphic t)
 
 data Qualified t = (:=>)
     { given :: Given t
@@ -34,9 +34,7 @@ deriving instance (Eq t, Eq (Variable t), Eq (Qualifier t)) => Eq (Given t)
 deriving instance (Ord t, Ord (Variable t), Ord (Qualifier t)) => Ord (Given t)
 infixl 1 :|
 
-
 type family Qualifier t 
-
 
 
 none :: Given t

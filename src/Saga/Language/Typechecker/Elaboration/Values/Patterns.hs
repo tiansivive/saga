@@ -24,7 +24,8 @@ import qualified Saga.Language.Typechecker.Lib                        as Lib
 import qualified Saga.Language.Typechecker.Solving.Constraints        as CST
 import           Saga.Language.Typechecker.Variables                  (Variable)
 
-import           Saga.Language.Typechecker.Elaboration.Types
+import           Saga.Language.Typechecker.Elaboration.Types.Types
+
 import           Saga.Utils.Common                                    (fmap2)
 
 

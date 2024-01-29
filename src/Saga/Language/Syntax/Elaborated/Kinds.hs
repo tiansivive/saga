@@ -13,7 +13,9 @@ import           Saga.Language.Syntax.Liquids
 import           Data.Map                            (Map)
 import           Saga.Language.Syntax.Literals
 
-import           Saga.Language.Syntax.Polymorphism   (Qualifier)
+import           Control.Monad                       (forM)
+import           Saga.Language.Syntax.Polymorphism   (Polymorphic, Qualified,
+                                                      Qualifier)
 import           Saga.Language.Typechecker.Variables (Variable)
 import           Saga.Utils.TypeLevel                (type (§))
 
@@ -27,6 +29,8 @@ data instance Node Elaborated NT.Kind where
     Var         :: Variable Kind  -> Kind
     Arrow       :: Kind -> Kind   -> Kind
     Application :: Kind -> [Kind] -> Kind
+    Polymorphic :: Polymorphic Kind -> Kind
+    Qualified   :: Qualified Kind -> Kind
 deriving instance Show Kind
 deriving instance Eq Kind
 deriving instance Ord Kind
@@ -38,9 +42,23 @@ deriving instance Ord (AST Elaborated NT.Kind)
 data instance Variable Kind where
     Poly        :: String -> Variable Kind
     Unification :: String -> Variable Kind
+    Rigid       :: String -> Variable Kind
 deriving instance Show (Variable Kind)
 deriving instance Eq (Variable Kind)
 deriving instance Ord (Variable Kind)
 
 type instance Qualifier Kind = ()
+
+
+instance Monad m => Visitor m NT.Kind where
+  type Pass NT.Kind = Elaborated
+  visit f node      = case node of
+    Application cons args -> Application <$> visit f cons <*> forM args (visit f)
+    Arrow in' out         -> Arrow <$> visit f in' <*> visit f out
+
+    k                    -> f k
+
+
+
+
 

@@ -44,8 +44,11 @@ library
       Saga.Language.Syntax.Zonked.Values
       Saga.Language.Typechecker.Elaboration.Annotations
       Saga.Language.Typechecker.Elaboration.Generalization
+      Saga.Language.Typechecker.Elaboration.Instantiation
       Saga.Language.Typechecker.Elaboration.Monad
-      Saga.Language.Typechecker.Elaboration.Types
+      Saga.Language.Typechecker.Elaboration.Traversals
+      Saga.Language.Typechecker.Elaboration.Types.Shared
+      Saga.Language.Typechecker.Elaboration.Types.Types
       Saga.Language.Typechecker.Elaboration.Values.Effects
       Saga.Language.Typechecker.Elaboration.Values.Expressions
       Saga.Language.Typechecker.Elaboration.Values.Patterns

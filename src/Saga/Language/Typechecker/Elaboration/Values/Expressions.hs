@@ -36,7 +36,7 @@ import qualified Saga.Language.Syntax.Polymorphism                     as Q
 import           Saga.Language.Syntax.Polymorphism                     (Polymorphic (..),
                                                                         Qualified (..))
 import           Saga.Language.Typechecker.Elaboration.Generalization
-import           Saga.Language.Typechecker.Elaboration.Types
+import           Saga.Language.Typechecker.Elaboration.Types.Types
 import qualified Saga.Language.Typechecker.Elaboration.Values.Effects  as Effs
 import           Saga.Language.Typechecker.Elaboration.Values.Effects  (State (..))
 import           Saga.Language.Typechecker.Elaboration.Values.Patterns
@@ -138,8 +138,6 @@ instance Elaboration Expression where
             scrutinee' <- elaborate scrutinee
             let ty = Shared.extract scrutinee'
 
-
-
             Eff.local @(CompilerState 'Elaborated) (\e -> let extra' = extra e in e { extra = extra' { scrutinee = ty } }) $ do
                 cases' <- forM cases elaborate
                 let (tvars, tys) = foldl separate ([], []) cases'
@@ -196,13 +194,27 @@ instance Elaboration Expression where
 
                     d -> crash $ NotYetImplemented $ "Elaboration of block statement: " ++ show d
 
+        EV.Var name -> do
+            ty <- Shared.lookup name
+            implication@(CST.Implication _ assumptions _) <- Shared.contextualize $ EL.node ty
+            Eff.tell implication
+
+            let e' = foldl elaborate' (EL.Var $ EL.Identifier name) assumptions
+            return $ EL.Annotated e' ty
+
+            where
+                elaborate' expr (CST.Assume c)
+                    -- | QUESTION: Do we need to also annotate types here or de we expand it during Zonking?
+                    | CST.Impl (CST.Evidence e) _ protocol <- c = EL.Application (EL.Raw expr) [EL.Raw (EL.Var $ EL.Evidence e)]
+                    | otherwise                                 = expr
+
 
 instance Elaboration (Case Expression) where
     type Effects (Case Expression) es = Effs.Elaboration es
     elaborate (EV.Raw (EV.Case pat expr))  = Eff.local @Var.Level (+1) $ do
         (pat', tyvars) <- Eff.runWriter @TypeVars $ elaborate pat
 
-        let (pairs, tvars) = unzip $ tyvars ||> fmap (\(id, tvar) -> ((id, Shared.decorate $ ET.Polymorphic (Forall [tvar] (Q.none :=> ET.Var tvar))), tvar))
+        let (pairs, tvars) = unzip $ tyvars ||> fmap (\(id, tvar) -> ((id, Shared.decorate $ ET.Polymorphic (Forall [tvar] (ET.Var tvar))), tvar))
         narrowed <- ET.Var <$> Shared.fresh ET.Unification
 
         Eff.local @(CompilerState 'Elaborated) (\e -> let extra' = extra e in e {
@@ -217,8 +229,6 @@ instance Elaboration (Case Expression) where
             return $ EL.Annotated (EL.Case pat' expr') (EL.annotation expr')
             where
                 assume ev ty ty' = CST.Assume $ CST.Equality ev (Shared.toItem ty) (Shared.toItem ty')
-
-
 
 
 pattern FieldAccess record field <- EV.Application (EV.Raw (EV.Var ".")) [record, EV.Raw (EV.Var field)]

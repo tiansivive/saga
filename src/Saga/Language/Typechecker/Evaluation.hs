@@ -74,7 +74,7 @@ class Evaluate a where
 
 instance Evaluate NT.Type where
 
-    evaluate (TE.Identifier id)  = lookup id
+    evaluate (TE.Identifier id)  = T.node <$> lookup id
 
     evaluate (TE.Arrow t1 t2) = do
         t1' <- evaluate t1
