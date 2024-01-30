@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds    #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Saga.Language.Typechecker.Elaboration.Types.Types where
 
@@ -10,6 +11,7 @@ import qualified Saga.Language.Syntax.Elaborated.AST                  as EL
 import qualified Saga.Language.Syntax.Elaborated.Kinds                as EK
 import qualified Saga.Language.Syntax.Elaborated.Types                as ET
 import qualified Saga.Language.Syntax.Evaluated.AST                   as AST
+
 import qualified Saga.Language.Syntax.Evaluated.Types                 as EV
 import           Saga.Language.Syntax.Evaluated.Types                 (Type)
 import qualified Saga.Language.Typechecker.Elaboration.Effects        as Effs
@@ -21,6 +23,11 @@ import qualified Saga.Language.Typechecker.Elaboration.Types.Shared   as Shared
 import           Saga.Utils.Common                                    (forM2)
 
 import           Saga.Language.Typechecker.Elaboration.Generalization
+import           Saga.Language.Typechecker.Variables                  (Variable)
+
+import           Saga.Language.Typechecker.Elaboration.Types.Kinds
+import           Saga.Language.Typechecker.Errors                     (Exception (NotYetImplemented),
+                                                                       crash)
 
 -- TODO: This is kind inference via elaboration of types.
 instance Elaboration NT.Type where
@@ -60,6 +67,26 @@ instance Elaboration NT.Type where
           Eff.modify $ \s -> s { kvars = count' }
           return inferred
 
-    EV.Var name -> return $ EL.Annotated (ET.Var name) k
+    EV.Var kvar -> do
+      (kvar', ann) <- elaborateVar kvar
+      return $ EL.Annotated (ET.Var kvar') (EL.Raw ann)
+
+    EV.Polymorphic poly -> crash $ NotYetImplemented "Elaborating Polymorphic types is not supported yet."
+    EV.Qualified ty -> crash $ NotYetImplemented "Elaborating Qualified types is not supported yet."
 
   elaborate t = undefined
+
+
+
+
+
+elaborateVar v        = case v of
+  EV.Poly name node        -> elaborate' ET.Poly name node
+  EV.Existential name node -> elaborate' ET.Existential name node
+  EV.Local name node       -> elaborate' ET.Local name node
+  where
+    elaborate' cons name (AST.Raw -> k) = do
+      k' <- elaborate k
+      return (ET.Poly name (EL.node k'), EL.node k')
+
+

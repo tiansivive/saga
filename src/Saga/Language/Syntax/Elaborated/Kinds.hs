@@ -22,7 +22,7 @@ data instance Node Elaborated NT.Kind where
     Type        :: Kind
     Kind        :: Kind
     Constraint  :: Kind
-    Protocol    :: Kind -> Kind
+    Protocol    :: AST Elaborated NT.Kind -> Kind
     Var         :: Variable Kind  -> Kind
     Arrow       :: AST Elaborated NT.Kind -> AST Elaborated NT.Kind   -> Kind
     Application :: AST Elaborated NT.Kind -> [AST Elaborated NT.Kind] -> Kind
