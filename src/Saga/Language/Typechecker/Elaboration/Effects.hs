@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
-module Saga.Language.Typechecker.Elaboration.Values.Effects where
+
+module Saga.Language.Typechecker.Elaboration.Effects where
 import           Data.Map                                      (Map)
 import qualified Data.Map                                      as Map
 

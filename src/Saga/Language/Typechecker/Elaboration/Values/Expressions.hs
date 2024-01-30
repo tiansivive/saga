@@ -35,10 +35,10 @@ import qualified Effectful.Writer.Static.Local                         as Eff
 import qualified Saga.Language.Syntax.Polymorphism                     as Q
 import           Saga.Language.Syntax.Polymorphism                     (Polymorphic (..),
                                                                         Qualified (..))
+import qualified Saga.Language.Typechecker.Elaboration.Effects         as Effs
+import           Saga.Language.Typechecker.Elaboration.Effects         (State (..))
 import           Saga.Language.Typechecker.Elaboration.Generalization
 import           Saga.Language.Typechecker.Elaboration.Types.Types
-import qualified Saga.Language.Typechecker.Elaboration.Values.Effects  as Effs
-import           Saga.Language.Typechecker.Elaboration.Values.Effects  (State (..))
 import           Saga.Language.Typechecker.Elaboration.Values.Patterns
 import qualified Saga.Language.Typechecker.Elaboration.Values.Shared   as Shared
 
@@ -90,7 +90,7 @@ instance Elaboration Expression where
             scoped $ do
                 out' <- elaborate out
 
-                let ty = tvar `ET.Arrow` Shared.extract out'
+                let ty = Shared.decorate tvar `ET.Arrow` EL.annotation out'
                 let expr = EL.Lambda ps out'
                 return $ EL.Annotated expr (Shared.decorate ty)
 

@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.2.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -43,13 +43,13 @@ library
       Saga.Language.Syntax.Zonked.Types
       Saga.Language.Syntax.Zonked.Values
       Saga.Language.Typechecker.Elaboration.Annotations
+      Saga.Language.Typechecker.Elaboration.Effects
       Saga.Language.Typechecker.Elaboration.Generalization
       Saga.Language.Typechecker.Elaboration.Instantiation
       Saga.Language.Typechecker.Elaboration.Monad
       Saga.Language.Typechecker.Elaboration.Traversals
       Saga.Language.Typechecker.Elaboration.Types.Shared
       Saga.Language.Typechecker.Elaboration.Types.Types
-      Saga.Language.Typechecker.Elaboration.Values.Effects
       Saga.Language.Typechecker.Elaboration.Values.Expressions
       Saga.Language.Typechecker.Elaboration.Values.Patterns
       Saga.Language.Typechecker.Elaboration.Values.Shared

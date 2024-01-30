@@ -3,30 +3,29 @@
 
 module Saga.Language.Typechecker.Elaboration.Values.Patterns where
 
-import           Saga.Language.Typechecker.Elaboration.Monad          (Effects,
-                                                                       Elaboration (..))
+import           Saga.Language.Typechecker.Elaboration.Monad         (Effects,
+                                                                      Elaboration (..))
 
 import           Saga.Language.Syntax.AST
-import qualified Saga.Language.Syntax.Elaborated.AST                  as EL
+import qualified Saga.Language.Syntax.Elaborated.AST                 as EL
 
-import qualified Saga.Language.Syntax.Elaborated.Types                as ET
-import qualified Saga.Language.Syntax.Elaborated.Values               as EL
+import qualified Saga.Language.Syntax.Elaborated.Types               as ET
+import qualified Saga.Language.Syntax.Elaborated.Values              as EL
 
-import           Control.Monad                                        (forM)
-import           Effectful                                            (Eff,
-                                                                       (:>))
-import qualified Effectful.Writer.Static.Local                        as Eff
-import qualified Saga.Language.Syntax.Evaluated.AST                   as EV
-import qualified Saga.Language.Syntax.Evaluated.Values                as EV
-import qualified Saga.Language.Typechecker.Elaboration.Values.Effects as Effs
-import qualified Saga.Language.Typechecker.Elaboration.Values.Shared  as Shared
-import qualified Saga.Language.Typechecker.Lib                        as Lib
-import qualified Saga.Language.Typechecker.Solving.Constraints        as CST
-import           Saga.Language.Typechecker.Variables                  (Variable)
+import           Control.Monad                                       (forM)
+import           Effectful                                           (Eff, (:>))
+import qualified Effectful.Writer.Static.Local                       as Eff
+import qualified Saga.Language.Syntax.Evaluated.AST                  as EV
+import qualified Saga.Language.Syntax.Evaluated.Values               as EV
+import qualified Saga.Language.Typechecker.Elaboration.Effects       as Effs
+import qualified Saga.Language.Typechecker.Elaboration.Values.Shared as Shared
+import qualified Saga.Language.Typechecker.Lib                       as Lib
+import qualified Saga.Language.Typechecker.Solving.Constraints       as CST
+import           Saga.Language.Typechecker.Variables                 (Variable)
 
 import           Saga.Language.Typechecker.Elaboration.Types.Types
 
-import           Saga.Utils.Common                                    (fmap2)
+import           Saga.Utils.Common                                   (fmap2)
 
 
 type PatternEff es = (Effs.Elaboration es, Eff.Writer TypeVars :> es)

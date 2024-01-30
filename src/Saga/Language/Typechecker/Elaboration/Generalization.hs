@@ -20,6 +20,7 @@ import           Control.Monad                                     (forM)
 import           Data.List                                         (nub)
 import           Debug.Pretty.Simple                               (pTrace)
 import qualified Saga.Language.Syntax.Elaborated.Kinds             as K
+import           Saga.Language.Syntax.Elaborated.Kinds             (Kind)
 import qualified Saga.Language.Typechecker.Elaboration.Annotations as Ann
 import           Saga.Language.Typechecker.Variables               (Variable)
 import           Saga.Utils.Common                                 (fmap2,
@@ -29,7 +30,7 @@ import           Saga.Utils.Operators                              ((<$$>),
 
 
 instance Generalize Type where
-  generalize e | pTrace ("Generalize:\n" ++ show e) False = undefined
+  generalize e | pTrace ("Generalize Type:\n" ++ show e) False = undefined
   generalize (T.Tuple tys) = do
     tys <- forM tys (AST.node |> generalize)
     let (bs, cs, tvars) = foldl accumulate (Map.empty, [], []) (fmap T.Polymorphic tys)
@@ -47,14 +48,17 @@ instance Generalize Type where
     return $ Forall tvars (T.Qualified $ bs :| cs :=> T.Union (Ann.decorate . T.Polymorphic <$> tys'))
 
   generalize (T.Arrow arg out) = do
-    Forall tvars arg' <- generalize arg
-    return $ Forall tvars (arg' `T.Arrow` out)
+    Forall tvars arg' <- generalize $ AST.node arg
+    let astArg = AST.Annotated arg' (AST.annotation arg)
+    return $ Forall tvars (astArg `T.Arrow` out)
 
   generalize (T.Var tvar) = return $ Forall [tvar] (T.Var tvar)
 
   generalize (T.Qualified (bs :| cs :=> t)) = do
     let (bs, cs, tvars) = accumulate (Map.empty, [], []) t
     return $ Forall tvars (T.Qualified $ bs <> bs :| cs <> cs :=> t)
+
+  generalize (T.Polymorphic t) = return t
 
   generalize ty = case ty of
     T.Singleton lit -> implement $ case lit of
@@ -82,11 +86,35 @@ instance Generalize Type where
         return tvar
 
 
+instance Generalize Kind where
+  generalize e | pTrace ("Generalize Kind:\n" ++ show e) False = undefined
+
+  generalize (K.Protocol k) = do
+    Forall tvars k' <- generalize k
+    return $ Forall tvars (K.Protocol k')
+
+  generalize (K.Arrow arg out) = do
+    Forall tvars arg' <- generalize $ AST.node arg
+    return $ Forall tvars (AST.Raw arg' `K.Arrow` out)
+
+  generalize (K.Application cons args) = do
+    Forall kvars cons' <- generalize $ AST.node cons
+    args' <- forM args (generalize . AST.node)
+    let (kvars', fmap AST.Raw -> ks) = unzip $ fmap (\(Forall vars k) -> (vars, k)) args'
+    return $ Forall (nub $ kvars ++ concat kvars') (K.Application (AST.Raw cons') ks)
+
+  generalize (K.Var kvar) = return $ Forall [kvar] (K.Var kvar)
+  generalize (K.Polymorphic k) = return k
+
+  generalize k = return $ Forall [] k
+
+
+
 accumulate (bs, cs, tvars) (T.Polymorphic (Forall tvars' t)) = accumulate (bs, cs, nub $ tvars ++ tvars') t
 accumulate (bs, cs, tvars) (T.Qualified (bs' :| cs' :=> t)) = accumulate (bs <> bs', nub $ cs ++ cs',  tvars) t
 accumulate (bs, cs, tvars) (T.Tuple (fmap AST.node -> tys)) = foldl accumulate (bs, cs, tvars) tys
 accumulate (bs, cs, tvars) (T.Union (fmap AST.node -> tys)) = foldl accumulate (bs, cs, tvars) tys
 accumulate (bs, cs, tvars) (T.Record (fmap (snd |> AST.node) -> tys)) = foldl accumulate (bs, cs, tvars) tys
 accumulate (bs, cs, tvars) (T.Applied (AST.node -> t1) (AST.node -> t2)) = foldl accumulate (bs, cs, tvars) [t1, t2]
-accumulate (bs, cs, tvars) (T.Arrow t1 t2) = foldl accumulate (bs, cs, tvars) [t1, t2]
+accumulate (bs, cs, tvars) (T.Arrow (AST.node -> t1) (AST.node -> t2)) = foldl accumulate (bs, cs, tvars) [t1, t2]
 accumulate result _ = result

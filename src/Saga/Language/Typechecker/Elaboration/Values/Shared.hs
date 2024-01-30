@@ -5,56 +5,55 @@ module Saga.Language.Typechecker.Elaboration.Values.Shared where
 
 
 
-import           Effectful                                            (Eff,
-                                                                       (:>))
-import qualified Effectful.Error.Static                               as Eff
-import qualified Effectful.Reader.Static                              as Eff
-import qualified Effectful.State.Static.Local                         as Eff
-import qualified Effectful.Writer.Static.Local                        as Eff
+import           Effectful                                           (Eff, (:>))
+import qualified Effectful.Error.Static                              as Eff
+import qualified Effectful.Reader.Static                             as Eff
+import qualified Effectful.State.Static.Local                        as Eff
+import qualified Effectful.Writer.Static.Local                       as Eff
 
-import qualified Saga.Language.Syntax.AST                             as NT (NodeType (..))
-import           Saga.Language.Syntax.AST                             hiding
-                                                                      (NodeType (..))
-import qualified Saga.Language.Syntax.Elaborated.AST                  as EL
+import qualified Saga.Language.Syntax.AST                            as NT (NodeType (..))
+import           Saga.Language.Syntax.AST                            hiding
+                                                                     (NodeType (..))
+import qualified Saga.Language.Syntax.Elaborated.AST                 as EL
 
-import qualified Saga.Language.Syntax.Elaborated.Kinds                as K
-import qualified Saga.Language.Syntax.Elaborated.Types                as T
-import           Saga.Language.Syntax.Elaborated.Types                (Type (..))
-import           Saga.Language.Syntax.Polymorphism                    (Given (..),
-                                                                       Polymorphic (..),
-                                                                       Qualified (..))
+import qualified Saga.Language.Syntax.Elaborated.Kinds               as K
+import qualified Saga.Language.Syntax.Elaborated.Types               as T
+import           Saga.Language.Syntax.Elaborated.Types               (Type (..))
+import           Saga.Language.Syntax.Polymorphism                   (Given (..),
+                                                                      Polymorphic (..),
+                                                                      Qualified (..))
 
-import           Saga.Language.Typechecker.Elaboration.Monad          (Instantiate (..))
-import           Saga.Language.Typechecker.Elaboration.Values.Effects (State (..))
+import           Saga.Language.Typechecker.Elaboration.Effects       (State (..))
+import           Saga.Language.Typechecker.Elaboration.Monad         (Instantiate (..))
 
-import           Saga.Language.Typechecker.Env                        (CompilerState (..),
-                                                                       Proofs (..))
-import           Saga.Language.Typechecker.Errors                     (SagaError (UnboundVariable))
+import           Saga.Language.Typechecker.Env                       (CompilerState (..),
+                                                                      Proofs (..))
+import           Saga.Language.Typechecker.Errors                    (SagaError (UnboundVariable))
 
-import qualified Saga.Language.Typechecker.Solving.Constraints        as CST
-import           Saga.Language.Typechecker.Solving.Constraints        (Evidence)
+import qualified Saga.Language.Typechecker.Solving.Constraints       as CST
+import           Saga.Language.Typechecker.Solving.Constraints       (Evidence)
 
-import qualified Saga.Language.Typechecker.Variables                  as Var
-import           Saga.Language.Typechecker.Variables                  (Variable)
+import qualified Saga.Language.Typechecker.Variables                 as Var
+import           Saga.Language.Typechecker.Variables                 (Variable)
 
-import           Saga.Utils.Operators                                 ((|>),
-                                                                       (||>))
-import           Saga.Utils.TypeLevel                                 (type (§))
+import           Saga.Utils.Operators                                ((|>),
+                                                                      (||>))
+import           Saga.Utils.TypeLevel                                (type (§))
 
-import qualified Data.Map                                             as Map
+import qualified Data.Map                                            as Map
 
-import           Control.Monad                                        (forM)
-import           Data.Functor                                         ((<&>))
-import           Data.Map                                             (Map)
-import qualified Data.Set                                             as Set
+import           Control.Monad                                       (forM)
+import           Data.Functor                                        ((<&>))
+import           Data.Map                                            (Map)
+import qualified Data.Set                                            as Set
 import           Saga.Language.Typechecker.Elaboration.Instantiation
-import           Saga.Language.Typechecker.Solver.Substitution        (Subst,
-                                                                       Substitutable (..),
-                                                                       compose,
-                                                                       mkSubst,
-                                                                       nullSubst)
+import           Saga.Language.Typechecker.Solver.Substitution       (Subst,
+                                                                      Substitutable (..),
+                                                                      compose,
+                                                                      mkSubst,
+                                                                      nullSubst)
 
-import qualified Saga.Language.Typechecker.Elaboration.Traversals     as Traverse
+import qualified Saga.Language.Typechecker.Elaboration.Traversals    as Traverse
 import           Saga.Language.Typechecker.Elaboration.Traversals
 
 

@@ -16,7 +16,7 @@ import qualified Saga.Language.Syntax.Elaborated.AST                  as EL
 import qualified Saga.Language.Syntax.Elaborated.Kinds                as K
 import           Saga.Language.Typechecker.Elaboration.Instantiation
 import           Saga.Language.Typechecker.Elaboration.Monad          (Instantiate (..))
-import           Saga.Language.Typechecker.Elaboration.Values.Effects (State (..))
+import           Saga.Language.Typechecker.Elaboration.Effects (State (..))
 import           Saga.Language.Typechecker.Env                        (CompilerState (..))
 import           Saga.Language.Typechecker.Errors                     (Exception (NotYetImplemented),
                                                                        SagaError (UnboundVariable),

@@ -73,9 +73,6 @@ instance Substitutable Kind where
     apply sub t@(K.Var v)                      = Map.findWithDefault t v sub
     apply sub ty = runIdentity $ case ty of
         K.Polymorphic (Forall tvars ty') -> K.Polymorphic . Forall tvars <$> visit substitute ty'
-        K.Qualified (bs :| cs :=> ty') -> do
-            t <- visit substitute ty'
-            return . K.Qualified $ (apply sub <$> bs) :| cs :=> t
         _ -> visit substitute ty
         where
             substitute = return . apply sub
@@ -85,7 +82,6 @@ instance Substitutable Kind where
         K.Polymorphic (Forall tvars ty) -> do
             tell $ Set.fromList tvars
             visit ftv' ty
-        K.Qualified (_ :=> ty) -> visit ftv' ty
         ty -> visit ftv' ty
 
         where

@@ -4,6 +4,7 @@
 module Saga.Language.Typechecker.Elaboration.Types.Types where
 
 import           Control.Monad                                        (forM)
+import qualified Effectful.State.Static.Local                         as Eff
 import qualified Saga.Language.Syntax.AST                             as NT (NodeType (..))
 import qualified Saga.Language.Syntax.Elaborated.AST                  as EL
 import qualified Saga.Language.Syntax.Elaborated.Kinds                as EK
@@ -11,11 +12,15 @@ import qualified Saga.Language.Syntax.Elaborated.Types                as ET
 import qualified Saga.Language.Syntax.Evaluated.AST                   as AST
 import qualified Saga.Language.Syntax.Evaluated.Types                 as EV
 import           Saga.Language.Syntax.Evaluated.Types                 (Type)
+import qualified Saga.Language.Typechecker.Elaboration.Effects        as Effs
+import           Saga.Language.Typechecker.Elaboration.Effects        (State (..))
 import           Saga.Language.Typechecker.Elaboration.Monad          (Effects,
-                                                                       Elaboration (..))
+                                                                       Elaboration (..),
+                                                                       Generalize (..))
 import qualified Saga.Language.Typechecker.Elaboration.Types.Shared   as Shared
-import qualified Saga.Language.Typechecker.Elaboration.Values.Effects as Effs
 import           Saga.Utils.Common                                    (forM2)
+
+import           Saga.Language.Typechecker.Elaboration.Generalization
 
 -- TODO: This is kind inference via elaboration of types.
 instance Elaboration NT.Type where
@@ -46,7 +51,15 @@ instance Elaboration NT.Type where
       cons' <- elaborate cons
       arg' <- elaborate arg
 
-      inferred <- _generalize' $ annotation arg' `EK.Arrow` out
+      inferred <- generalize' $ EL.annotation arg' `EK.Arrow` EL.Raw out
       return $ EL.Annotated (ET.Applied cons' arg') (EL.Raw EK.Type)
+      where
+        generalize' ty = do
+          count <- Eff.gets kvars
+          (inferred, count') <- Eff.runState count $ generalize ty
+          Eff.modify $ \s -> s { kvars = count' }
+          return inferred
+
+    EV.Var name -> return $ EL.Annotated (ET.Var name) k
 
   elaborate t = undefined
