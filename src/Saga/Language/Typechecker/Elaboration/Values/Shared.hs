@@ -98,6 +98,8 @@ contextualize ty@(T.Qualified (bs :| cs :=> t)) = do
     toCST (ty `T.Implements` protocol) = mkEvidence <&> \e -> CST.Impl e (toItem ty) protocol
     toCST (T.Refinement binds liquid ty) = return $ CST.Refined (toItem <$> binds) (toItem ty) liquid
 
+contextualize ty = return CST.Empty
+
 locals :: Type -> [Variable Type]
 locals t = [ v | v@(T.Local {}) <- Set.toList $ ftv t ]
 
@@ -157,6 +159,7 @@ decorate :: Node Elaborated NT.Type -> AST Elaborated NT.Type
 decorate ty@(T.Singleton {})              = EL.Annotated ty $ EL.Raw K.Type
 decorate ty@(T.Tuple {})                  = EL.Annotated ty $ EL.Raw K.Type
 decorate ty@(T.Record {})                 = EL.Annotated ty $ EL.Raw K.Type
+decorate ty@(T.Arrow {})                  = EL.Annotated ty $ EL.Raw K.Type
 
 decorate ty@(T.Var (T.Unification t k))   = EL.Annotated ty $ EL.Raw k
 decorate ty@(T.Var (T.Instantiation t k)) = EL.Annotated ty $ EL.Raw k
@@ -166,7 +169,8 @@ decorate ty@(T.Var (T.Rigid t k))         = EL.Annotated ty $ EL.Raw k
 decorate ty@(T.Var (T.Scoped t k))        = EL.Annotated ty $ EL.Raw k
 decorate ty@(T.Var (T.Skolem t k))        = EL.Annotated ty $ EL.Raw k
 
---pattern Raw
+decorate ty                               = error $ "decorate: " ++ show ty
+
 
 type Bindings = Map (Variable Type) Type
 type Constructor = String -> K.Kind -> Variable Type

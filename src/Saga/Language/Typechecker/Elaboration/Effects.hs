@@ -16,7 +16,6 @@ import qualified Saga.Language.Syntax.Elaborated.Types         as Elaborated
 import           Saga.Language.Typechecker.Env                 (CompilerState,
                                                                 Info)
 import           Saga.Language.Typechecker.Errors              (SagaError)
-import           Saga.Language.Typechecker.Monad               (TypeCheck)
 import qualified Saga.Language.Typechecker.Solving.Constraints as CST
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables           (Variable)

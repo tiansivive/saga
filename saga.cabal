@@ -47,6 +47,7 @@ library
       Saga.Language.Typechecker.Elaboration.Generalization
       Saga.Language.Typechecker.Elaboration.Instantiation
       Saga.Language.Typechecker.Elaboration.Monad
+      Saga.Language.Typechecker.Elaboration.Test
       Saga.Language.Typechecker.Elaboration.Traversals
       Saga.Language.Typechecker.Elaboration.Types.Kinds
       Saga.Language.Typechecker.Elaboration.Types.Shared

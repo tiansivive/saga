@@ -49,8 +49,11 @@ instance Generalize Type where
 
   generalize (T.Arrow arg out) = do
     Forall tvars arg' <- generalize $ AST.node arg
-    let astArg = AST.Annotated arg' (AST.annotation arg)
-    return $ Forall tvars (astArg `T.Arrow` out)
+    return $ case arg' of
+      T.Qualified (bs :| cs :=> qt) -> Forall tvars (T.Qualified $ bs :| cs :=> annotate qt `T.Arrow` out)
+      _ -> Forall tvars (annotate arg' `T.Arrow` out)
+    where
+      annotate t = AST.Annotated t (AST.annotation arg)
 
   generalize (T.Var tvar) = return $ Forall [tvar] (T.Var tvar)
 
@@ -79,8 +82,8 @@ instance Generalize Type where
 
       fresh :: (Eff.State Int :> es) => Eff es (Variable Type)
       fresh = do
-        i <- Eff.get
         Eff.modify @Int (+1)
+        i <- Eff.get
         let count = show ([1 ..] !! i)
         let tvar = T.Poly ("g" ++ count) K.Type
         return tvar
@@ -90,8 +93,8 @@ instance Generalize Kind where
   generalize e | pTrace ("Generalize Kind:\n" ++ show e) False = undefined
 
   generalize (K.Protocol k) = do
-    Forall tvars k' <- generalize k
-    return $ Forall tvars (K.Protocol k')
+    Forall kvars k' <- generalize $ AST.node k
+    return $ Forall kvars (K.Protocol $ AST.Raw k')
 
   generalize (K.Arrow arg out) = do
     Forall tvars arg' <- generalize $ AST.node arg

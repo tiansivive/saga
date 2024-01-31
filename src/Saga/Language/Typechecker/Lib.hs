@@ -27,29 +27,29 @@ import qualified Saga.Language.Typechecker.Refinement.Liquid as L
 
 
 listConstructor, fnConstructor :: Type
-listConstructor = T.Data "List" (K.Arrow K.Type K.Type)
-fnConstructor = T.Data "->" (K.Arrow K.Type (K.Arrow K.Type K.Type))
+listConstructor = T.Data "List"
+fnConstructor = T.Data "->"
 
-int, bool, string :: Type
-int = T.Data "Int" K.Type
-bool = T.Data "Bool" K.Type
-string = T.Data "String" K.Type
+-- int, bool, string :: Type
+-- int = T.Data "Int" K.Type
+-- bool = T.Data "Bool" K.Type
+-- string = T.Data "String" K.Type
 
 
-eqProtocol :: Protocol
-eqProtocol = Protocol
-    { P.id = "Eq"
-    , spec = _spec --T.Polymorphic $ Forall [] (Q.none :=> protocol)
-    , implementations =
-        [ P.Implementation (eqID, int,    E.Record [("==", AST.Raw $ E.Var "$int_$eq_$equals")])
-        , P.Implementation (eqID, string, E.Record [("==", AST.Raw $ E.Var "$string_$eq_$equals")])
-        , P.Implementation (eqID, bool,   E.Record [("==", AST.Raw $ E.Var "$bool_$eq_$equals")])
-        ]
-    }
-    where
-      tvar = T.Var $  T.Poly "a" K.Type
-      protocol = T.Record [("==", AST.Annotated (tvar `T.Arrow` (tvar `T.Arrow` T.Data "Bool" K.Type)) K.Type)
-                          ]
+-- eqProtocol :: Protocol
+-- eqProtocol = Protocol
+--     { P.id = "Eq"
+--     , spec = _spec --T.Polymorphic $ Forall [] (Q.none :=> protocol)
+--     , implementations =
+--         [ P.Implementation (eqID, int,    E.Record [("==", AST.Raw $ E.Var "$int_$eq_$equals")])
+--         , P.Implementation (eqID, string, E.Record [("==", AST.Raw $ E.Var "$string_$eq_$equals")])
+--         , P.Implementation (eqID, bool,   E.Record [("==", AST.Raw $ E.Var "$bool_$eq_$equals")])
+--         ]
+--     }
+--     where
+--       tvar = T.Var $  T.Poly "a" K.Type
+--       protocol = T.Record [("==", AST.Annotated (tvar `T.Arrow` (tvar `T.Arrow` T.Data "Bool" K.Type)) K.Type)
+--                           ]
 
 -- numProtocol :: Protocol
 -- numProtocol =
@@ -206,18 +206,18 @@ semigroupID = P.Name "__core.semigroup"
 
 
 
-defaultEnv :: CompilerState
-defaultEnv = Saga
-  { values = Map.empty
-  , types = _builtInTypes <> builtInFns
-  , kinds = Map.empty
-  , protocols =
-      [ eqProtocol, _numProtocol, _isStringProtocol
-      , _functorProtocol, _semigroupProtocol
-      ]
-  , dataTypes = Map.empty
-  , tags = []
-  }
+-- defaultEnv :: CompilerState
+-- defaultEnv = Saga
+--   { values = Map.empty
+--   , types = _builtInTypes <> builtInFns
+--   , kinds = Map.empty
+--   , protocols =
+--       [ eqProtocol, _numProtocol, _isStringProtocol
+--       , _functorProtocol, _semigroupProtocol
+--       ]
+--   , dataTypes = Map.empty
+--   , tags = []
+--   }
 
 
 

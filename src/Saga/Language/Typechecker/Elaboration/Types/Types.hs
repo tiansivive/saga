@@ -4,7 +4,8 @@
 
 module Saga.Language.Typechecker.Elaboration.Types.Types where
 
-import           Control.Monad                                        (forM)
+import           Control.Monad                                        (foldM,
+                                                                       forM)
 import qualified Effectful.State.Static.Local                         as Eff
 import qualified Saga.Language.Syntax.AST                             as NT (NodeType (..))
 import qualified Saga.Language.Syntax.Elaborated.AST                  as EL
@@ -15,7 +16,7 @@ import qualified Saga.Language.Syntax.Evaluated.AST                   as AST
 import qualified Saga.Language.Syntax.Evaluated.Types                 as EV
 import           Saga.Language.Syntax.Evaluated.Types                 (Type)
 import qualified Saga.Language.Typechecker.Elaboration.Effects        as Effs
-import           Saga.Language.Typechecker.Elaboration.Effects        (State (..))
+
 import           Saga.Language.Typechecker.Elaboration.Monad          (Effects,
                                                                        Elaboration (..),
                                                                        Generalize (..))
@@ -25,11 +26,18 @@ import           Saga.Utils.Common                                    (forM2)
 import           Saga.Language.Typechecker.Elaboration.Generalization
 import           Saga.Language.Typechecker.Variables                  (Variable)
 
+import           Data.Functor                                         ((<&>))
+import qualified Data.Map                                             as Map
+import qualified Effectful.Reader.Static                              as Eff
+import           Saga.Language.Syntax.Polymorphism                    (Polymorphic (..))
+import           Saga.Language.Typechecker.Elaboration.Effects        (State (..))
 import           Saga.Language.Typechecker.Elaboration.Types.Kinds
+import           Saga.Language.Typechecker.Env                        (CompilerState (..))
 import           Saga.Language.Typechecker.Errors                     (Exception (NotYetImplemented),
                                                                        crash)
-
+import           Saga.Utils.Operators                                 ((||>))
 -- TODO: This is kind inference via elaboration of types.
+
 instance Elaboration NT.Type where
   type Effects NT.Type es = Effs.Elaboration es
 
@@ -71,7 +79,13 @@ instance Elaboration NT.Type where
       (kvar', ann) <- elaborateVar kvar
       return $ EL.Annotated (ET.Var kvar') (EL.Raw ann)
 
-    EV.Polymorphic poly -> crash $ NotYetImplemented "Elaborating Polymorphic types is not supported yet."
+    EV.Polymorphic (Forall tvars (AST.Raw -> t)) -> do
+      tvars' <- forM tvars elaborateVar
+      t' <- elaborate t
+      let poly = ET.Polymorphic $ Forall (fmap fst tvars') (EL.node t')
+      return $ EL.Annotated poly (EL.annotation t')
+      where
+        fresh' map tvar = Shared.fresh <&> \kvar -> map ||> Map.insert tvar (EL.Raw $ EK.Var kvar)
     EV.Qualified ty -> crash $ NotYetImplemented "Elaborating Qualified types is not supported yet."
 
   elaborate t = undefined

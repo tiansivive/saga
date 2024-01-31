@@ -196,11 +196,14 @@ instance Elaboration Expression where
 
         EV.Var name -> do
             ty <- Shared.lookup name
-            implication@(CST.Implication _ assumptions _) <- Shared.contextualize $ EL.node ty
-            Eff.tell implication
+            constraint <- Shared.contextualize $ EL.node ty
+            case constraint of
+                implication@(CST.Implication _ assumptions _)          -> do
+                    Eff.tell implication
+                    let e' = foldl elaborate' (EL.Var $ EL.Identifier name) assumptions
+                    return $ EL.Annotated e' ty
 
-            let e' = foldl elaborate' (EL.Var $ EL.Identifier name) assumptions
-            return $ EL.Annotated e' ty
+                _ -> return $ EL.Annotated (EL.Var $ EL.Identifier name) (Shared.decorate $ EL.node ty)
 
             where
                 elaborate' expr (CST.Assume c)
