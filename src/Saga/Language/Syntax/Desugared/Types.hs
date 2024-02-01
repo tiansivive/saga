@@ -38,11 +38,19 @@ data instance Node Desugared NT.Type where
     Implementation   :: ProtocolID -> TypeExpr -> TypeExpr
 deriving instance Show TypeExpr
 deriving instance Show (AST Desugared NT.Type)
+deriving instance Eq TypeExpr
+deriving instance Eq (AST Desugared NT.Type)
+deriving instance Ord TypeExpr
+deriving instance Ord (AST Desugared NT.Type)
 
 data instance Node Desugared (NT.Case NT.Type) where
   Case :: AST Desugared (NT.Pattern NT.Type) -> AST Desugared (NT.Case NT.Type) -> Node Desugared (NT.Case NT.Type)
 deriving instance Show (Node Desugared (NT.Case NT.Type))
 deriving instance Show (AST Desugared (NT.Case NT.Type))
+deriving instance Eq (Node Desugared (NT.Case NT.Type))
+deriving instance Eq (AST Desugared (NT.Case NT.Type))
+deriving instance Ord (Node Desugared (NT.Case NT.Type))
+deriving instance Ord (AST Desugared (NT.Case NT.Type))
 
 data instance Node Desugared (NT.Pattern NT.Type) where
   Wildcard  :: Node Desugared (NT.Pattern NT.Type)
@@ -55,6 +63,10 @@ data instance Node Desugared (NT.Pattern NT.Type) where
   PatRecord :: [(String, Maybe § AST Desugared (NT.Pattern NT.Type))] -> Maybe String  -> Node Desugared (NT.Pattern NT.Type)
 deriving instance Show (Node Desugared (NT.Pattern NT.Type))
 deriving instance Show (AST Desugared (NT.Pattern NT.Type))
+deriving instance Eq (Node Desugared (NT.Pattern NT.Type))
+deriving instance Eq (AST Desugared (NT.Pattern NT.Type))
+deriving instance Ord (Node Desugared (NT.Pattern NT.Type))
+deriving instance Ord (AST Desugared (NT.Pattern NT.Type))
 
 
 
@@ -62,7 +74,7 @@ deriving instance Show (AST Desugared (NT.Pattern NT.Type))
 data Binding
   = Bind String TypeExpr
   | Constraint (Node Desugared NT.Constraint)
-    deriving (Show)
+    deriving (Show, Eq, Ord)
 
 type TypeConstraint = Node Desugared NT.Constraint
 data instance Node Desugared NT.Constraint where
@@ -70,6 +82,10 @@ data instance Node Desugared NT.Constraint where
     Refinement :: Bindings -> Liquid  -> TypeExpr -> Node Desugared NT.Constraint
 deriving instance Show (Node Desugared NT.Constraint)
 deriving instance Show (AST Desugared NT.Constraint)
+deriving instance Eq (Node Desugared NT.Constraint)
+deriving instance Eq (AST Desugared NT.Constraint)
+deriving instance Ord (Node Desugared NT.Constraint)
+deriving instance Ord (AST Desugared NT.Constraint)
 
 type Bindings = Map (Variable Liquid) TypeExpr
 type ProtocolID = String

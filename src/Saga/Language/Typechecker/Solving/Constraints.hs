@@ -5,6 +5,7 @@ import           Saga.Language.Syntax.Liquids          (Liquid)
 import           Saga.Language.Typechecker.Protocols   (Implementation,
                                                         ProtocolID)
 
+import qualified Saga.Language.Syntax.Elaborated.Kinds as K
 import           Saga.Language.Syntax.Elaborated.Types (Type)
 import           Saga.Language.Syntax.Polymorphism     (Polymorphic)
 import           Saga.Language.Typechecker.Variables   (Variable)
@@ -12,8 +13,8 @@ import           Saga.Language.Typechecker.Variables   (Variable)
 data Constraint where
     Empty       :: Constraint
     Conjunction :: Constraint -> Constraint -> Constraint
-    Equality    :: Variable Evidence -> Item -> Item -> Constraint
-    Impl        :: Variable Evidence -> Item -> ProtocolID -> Constraint
+    Equality    :: Variable Constraint -> Item -> Item -> Constraint
+    Impl        :: Variable Constraint -> Item -> ProtocolID -> Constraint
     OneOf       :: Item -> Item -> Constraint
     Refined     :: Scope -> Item -> Liquid -> Constraint
     Proof       :: Item -> Type -> Constraint
@@ -28,14 +29,15 @@ deriving instance Show Constraint
 data Item
     = Var (Variable Type)
     | Mono Type
-    | Poly (Polymorphic Type)
+    | Poly Type
+    | K K.Kind
     deriving (Show)
 
-data instance Variable Evidence where
-    Evidence :: String -> Variable Evidence
-deriving instance Show (Variable Evidence)
-deriving instance Eq (Variable Evidence)
-deriving instance Ord (Variable Evidence)
+data instance Variable Constraint where
+    Evidence :: String -> Variable Constraint
+deriving instance Show (Variable Constraint)
+deriving instance Eq (Variable Constraint)
+deriving instance Ord (Variable Constraint)
 
 data Evidence
     = Protocol Implementation

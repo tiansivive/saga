@@ -58,7 +58,6 @@ library
       Saga.Language.Typechecker.Env
       Saga.Language.Typechecker.Environment
       Saga.Language.Typechecker.Errors
-      Saga.Language.Typechecker.Evaluation
       Saga.Language.Typechecker.Evaluation.Shared
       Saga.Language.Typechecker.Evaluation.Types
       Saga.Language.Typechecker.Inference.Elaboration
@@ -92,6 +91,12 @@ library
       Saga.Language.Typechecker.Solver.Substitution
       Saga.Language.Typechecker.Solver.Unification
       Saga.Language.Typechecker.Solving.Constraints
+      Saga.Language.Typechecker.Solving.Cycles
+      Saga.Language.Typechecker.Solving.Equalities
+      Saga.Language.Typechecker.Solving.Monad
+      Saga.Language.Typechecker.Solving.Shared
+      Saga.Language.Typechecker.Solving.Unification
+      Saga.Language.Typechecker.Substitution
       Saga.Language.Typechecker.Type
       Saga.Language.Typechecker.TypeExpr
       Saga.Language.Typechecker.Variables

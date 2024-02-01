@@ -70,5 +70,5 @@ deriving instance Show (AST Elaborated (NT.Pattern Expression))
 
 data instance Variable (Node Elaborated Expression) where
     Identifier    :: String -> Variable § Node Elaborated Expression
-    Evidence      :: String -> Variable § Node Elaborated Expression
+    Protocol      :: String -> Variable § Node Elaborated Expression
 deriving instance Show (Variable § Node Elaborated Expression)

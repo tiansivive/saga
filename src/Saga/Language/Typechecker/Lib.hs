@@ -30,10 +30,10 @@ listConstructor, fnConstructor :: Type
 listConstructor = T.Data "List"
 fnConstructor = T.Data "->"
 
--- int, bool, string :: Type
--- int = T.Data "Int" K.Type
--- bool = T.Data "Bool" K.Type
--- string = T.Data "String" K.Type
+int, bool, string :: Type
+int = T.Data "Int"
+bool = T.Data "Bool"
+string = T.Data "String"
 
 
 -- eqProtocol :: Protocol

@@ -30,7 +30,7 @@ import           Saga.Language.Typechecker.Env                       (CompilerSt
                                                                       Proofs (..))
 import           Saga.Language.Typechecker.Errors                    (SagaError (UnboundVariable))
 
-import qualified Saga.Language.Typechecker.Solving.Constraints       as CST
+import qualified Saga.Language.Typechecker.Solving.Constraints       as Solver
 import           Saga.Language.Typechecker.Solving.Constraints       (Evidence)
 
 import qualified Saga.Language.Typechecker.Variables                 as Var
@@ -47,7 +47,7 @@ import           Data.Functor                                        ((<&>))
 import           Data.Map                                            (Map)
 import qualified Data.Set                                            as Set
 import           Saga.Language.Typechecker.Elaboration.Instantiation
-import           Saga.Language.Typechecker.Solver.Substitution       (Subst,
+import           Saga.Language.Typechecker.Substitution              (Subst,
                                                                       Substitutable (..),
                                                                       compose,
                                                                       mkSubst,
@@ -77,28 +77,28 @@ lookup x = do
     walk t                    = return t
 
 
-contextualize :: (Eff.State State :> es, Eff.Reader Var.Level :> es) => Type -> Eff es CST.Constraint
+contextualize :: (Eff.State State :> es, Eff.Reader Var.Level :> es) => Type -> Eff es Solver.Constraint
 contextualize ty@(T.Qualified (bs :| cs :=> t)) = do
   (cs', sub) <- Eff.runState @(Subst Type) nullSubst . Eff.runReader bs $ concat <$> forM (locals t) collect
 
-  assumptions <- forM cs toCST
-  implied <- forM cs' toCST
+  assumptions <- forM cs toSolver
+  implied <- forM cs' toSolver
 
   eqs <- forM (Map.toList sub) (\(local, t) -> do
     lvl <- Eff.asks @Var.Level (+1)
     Eff.modify $ \s -> s { levels = Map.insert local lvl $ levels s }
     ev <- mkEvidence
-    return $ CST.Equality ev (CST.Var local) (toItem t))
+    return $ Solver.Equality ev (Solver.Var local) (toItem t))
 
-  return $ CST.Implication (locals t) (fmap CST.Assume assumptions) (scoped $ implied <> eqs)
+  return $ Solver.Implication (locals t) (fmap Solver.Assume assumptions) (scoped $ implied <> eqs)
 
   where
-    scoped = foldl CST.Conjunction CST.Empty
+    scoped = foldl Solver.Conjunction Solver.Empty
 
-    toCST (ty `T.Implements` protocol) = mkEvidence <&> \e -> CST.Impl e (toItem ty) protocol
-    toCST (T.Refinement binds liquid ty) = return $ CST.Refined (toItem <$> binds) (toItem ty) liquid
+    toSolver (ty `T.Implements` protocol) = mkEvidence <&> \e -> Solver.Impl e (toItem ty) protocol
+    toSolver (T.Refinement binds liquid ty) = return $ Solver.Refined (toItem <$> binds) (toItem ty) liquid
 
-contextualize ty = return CST.Empty
+contextualize ty = return Solver.Empty
 
 locals :: Type -> [Variable Type]
 locals t = [ v | v@(T.Local {}) <- Set.toList $ ftv t ]
@@ -138,17 +138,17 @@ fresh constructor = do
 
 
 
-mkEvidence :: (Eff.State State :> es) => Eff es § Variable CST.Evidence
+mkEvidence :: (Eff.State State :> es) => Eff es § Variable Solver.Constraint
 mkEvidence = do
   i <- Eff.gets $ evars |> (+1)
   Eff.modify $ \s -> s { evars = i }
   let count = show ([1 ..] !! i)
-  return $ CST.Evidence ("ev_" ++ count)
+  return $ Solver.Evidence ("ev_" ++ count)
 
 
-toItem :: Type -> CST.Item
-toItem (T.Var tvar) = CST.Var tvar
-toItem t            = CST.Mono t
+toItem :: Type -> Solver.Item
+toItem (T.Var tvar) = Solver.Var tvar
+toItem t            = Solver.Mono t
 
 
 extract :: Show (Node Elaborated e) => AST Elaborated e -> Node Elaborated (Annotation e)

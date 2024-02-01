@@ -4,27 +4,25 @@ module Saga.Language.Typechecker.Elaboration.Traversals where
 
 
 
-import           Control.Monad.Writer                          (execWriter,
-                                                                tell)
-import qualified Data.Map                                      as Map
-import           Data.Set                                      (Set)
-import qualified Data.Set                                      as Set
+import           Control.Monad.Writer                   (execWriter, tell)
+import qualified Data.Map                               as Map
+import           Data.Set                               (Set)
+import qualified Data.Set                               as Set
 
-import           Control.Monad.Identity                        (Identity (runIdentity))
-import           Saga.Language.Syntax.AST                      (Node,
-                                                                Visitor (..))
-import qualified Saga.Language.Syntax.Elaborated.Kinds         as K
-import           Saga.Language.Syntax.Elaborated.Kinds         (Kind)
-import qualified Saga.Language.Syntax.Elaborated.Types         as T
-import           Saga.Language.Syntax.Elaborated.Types         (Type)
-import qualified Saga.Language.Syntax.Polymorphism             as T
-import           Saga.Language.Syntax.Polymorphism             (Given (..),
-                                                                Polymorphic (..),
-                                                                Qualified (..))
-import           Saga.Language.Typechecker.Solver.Substitution (Subst,
-                                                                Substitutable (..))
-import           Saga.Utils.Operators                          ((||>))
-import           Saga.Utils.TypeLevel                          (type (§))
+import           Control.Monad.Identity                 (Identity (runIdentity))
+import           Saga.Language.Syntax.AST               (Node, Visitor (..))
+import qualified Saga.Language.Syntax.Elaborated.Kinds  as K
+import           Saga.Language.Syntax.Elaborated.Kinds  (Kind)
+import qualified Saga.Language.Syntax.Elaborated.Types  as T
+import           Saga.Language.Syntax.Elaborated.Types  (Type)
+import qualified Saga.Language.Syntax.Polymorphism      as T
+import           Saga.Language.Syntax.Polymorphism      (Given (..),
+                                                         Polymorphic (..),
+                                                         Qualified (..))
+import           Saga.Language.Typechecker.Substitution (Subst,
+                                                         Substitutable (..))
+import           Saga.Utils.Operators                   ((||>))
+import           Saga.Utils.TypeLevel                   (type (§))
 
 
 

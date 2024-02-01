@@ -12,6 +12,7 @@ import           Saga.Language.Typechecker.TypeExpr           (TypeExpr)
 import           Saga.Language.Typechecker.Variables          (Variable)
 
 import qualified Saga.Language.Syntax.Desugared.Types         as DS
+import qualified Saga.Language.Syntax.Elaborated.Types        as EL
 import qualified Saga.Language.Syntax.Evaluated.Types         as EV
 
 data SagaError where
@@ -39,7 +40,7 @@ data SagaError where
 
   -- | UNIFICATION
   UnificationMismatch :: [Type] -> [Type]-> SagaError
-  UnificationFail     :: Type -> Type-> SagaError
+  UnificationFail     :: EL.Type -> EL.Type-> SagaError
   UnificationKindFail :: Kind -> Kind -> SagaError
 
   KindMismatch :: Kind -> Kind -> SagaError
@@ -49,7 +50,7 @@ data SagaError where
   InfiniteKind :: (Show a, Show (Variable a)) => Variable a -> Kind -> SagaError
   CircularKind :: Kind -> Kind -> SagaError
 
-  RigidUnification :: (Show a, Show (Variable a)) => Variable a -> Type  -> SagaError
+  RigidUnification :: (Show a, Show (Variable a)) => Variable a -> EL.Type  -> SagaError
 
   -- | PROTOCOLS
   MissingProtocolImplementation :: ProtocolID -> Type -> SagaError
@@ -64,7 +65,7 @@ data SagaError where
   UnexpectedLocalPolymorphicType :: Polymorphic Type -> SagaError
   TooManyArguments :: DS.TypeExpr-> [DS.TypeExpr]-> SagaError
 
-  SubtypeFailure  :: Type ->Type-> SagaError
+  SubtypeFailure  :: EL.Type -> EL.Type -> SagaError
   Fail            :: String-> SagaError
 
 deriving instance Show SagaError

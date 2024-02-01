@@ -1,4 +1,5 @@
 module Saga.Utils.Common where
+import           Control.Monad        (liftM2)
 import           Control.Monad.Except (MonadError (..), runExcept, runExceptT)
 import           Control.Monad.Reader (MonadReader (local))
 
@@ -21,3 +22,7 @@ forM2 = flip mapM2
 
 fmap2 :: (Functor f, Functor f') => (a -> b) -> f (f' a) -> f (f' b)
 fmap2 = fmap . fmap
+
+
+distribute2 :: Monad m => m a1 -> m a2 -> m (a1, a2)
+distribute2 = liftM2 (,)

@@ -27,3 +27,7 @@ data instance Node Desugared NT.Kind where
     Application :: KindExpr -> [KindExpr]   -> KindExpr
 deriving instance Show KindExpr
 deriving instance Show (AST Desugared NT.Kind)
+deriving instance Eq KindExpr
+deriving instance Eq (AST Desugared NT.Kind)
+deriving instance Ord KindExpr
+deriving instance Ord (AST Desugared NT.Kind)

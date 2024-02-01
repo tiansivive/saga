@@ -32,7 +32,7 @@ data instance Node Evaluated NT.Type where
     Var         :: Variable Type                                      -> Type
     Polymorphic :: Polymorphic Type                                   -> Type
     Qualified   :: Qualified Type                                     -> Type
-    Closure     :: [Variable Type] -> TypeExpr -> Scope               -> Type
+    Closure     :: TypeExpr -> Scope               -> Type
     Void        :: Type
     Any         :: Type
 deriving instance Show Type

@@ -9,7 +9,7 @@ import           Saga.Language.Syntax.Elaborated.Types            (Type)
 import           Saga.Language.Syntax.Polymorphism                (Polymorphic (..))
 import           Saga.Language.Typechecker.Elaboration.Monad      (Instantiate (..))
 
-import           Saga.Language.Typechecker.Solver.Substitution    (Subst,
+import           Saga.Language.Typechecker.Substitution           (Subst,
                                                                    Substitutable (..),
                                                                    mkSubst)
 
@@ -32,3 +32,5 @@ instance Instantiate Kind where
 
 substitute :: Substitutable t => t -> Subst (Target t) -> t
 substitute = flip apply
+
+
