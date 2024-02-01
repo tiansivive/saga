@@ -34,3 +34,4 @@ substitute :: Substitutable t => t -> Subst (Target t) -> t
 substitute = flip apply
 
 
+-- | FIXME:TODO Must introduce a mechanism to reduce applied types without any free type variables.

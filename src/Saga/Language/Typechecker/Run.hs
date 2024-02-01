@@ -30,7 +30,7 @@ import qualified Saga.Language.Typechecker.Inference.Type.Shared         as TI
 
 import           Control.Monad                                           (when)
 import           Data.Maybe                                              (fromMaybe)
-import           Saga.Language.Typechecker.Evaluation                    (Evaluate (evaluate))
+import           Saga.Language.Typechecker.Evaluation.Types              (Evaluate (evaluate))
 import           Saga.Language.Typechecker.Inference.Type.Shared         (State (levels))
 import qualified Saga.Language.Typechecker.Kind                          as K
 import           Saga.Language.Typechecker.Lib                           (defaultEnv)

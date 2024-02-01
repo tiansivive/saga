@@ -43,10 +43,10 @@ import qualified Saga.Language.Typechecker.Inference.Kind      as KI
 
 import           Saga.Language.Typechecker.Inference.Kind      (kind)
 
-import           Saga.Language.Syntax.Desugared.Types          (Node, TypeExpr)
 import           Saga.Language.Syntax.Polymorphism             (Given (..),
                                                                 Polymorphic (..),
                                                                 Qualified (..))
+import           Saga.Language.Syntax.Reduced.Types            (Node, TypeExpr)
 import           Saga.Language.Typechecker.Solver.Substitution (ftv)
 import qualified Saga.Language.Typechecker.Variables           as Var
 import           Saga.Language.Typechecker.Variables           (Classifier,
@@ -58,12 +58,11 @@ import           Control.Monad                                 (forM)
 import qualified Saga.Language.Syntax.AST                      as NT (NodeType (..))
 import           Saga.Language.Syntax.AST                      hiding
                                                                (NodeType (..))
-import qualified Saga.Language.Syntax.Desugared.Types          as TE
-import qualified Saga.Language.Syntax.Evaluated.AST            as T
-import qualified Saga.Language.Syntax.Evaluated.Kinds          as K
-import qualified Saga.Language.Syntax.Evaluated.Types          as T
-import           Saga.Language.Syntax.Evaluated.Types          (Type)
 import qualified Saga.Language.Syntax.Polymorphism             as T
+import qualified Saga.Language.Syntax.Reduced.AST              as T
+import qualified Saga.Language.Syntax.Reduced.Kinds            as K
+import qualified Saga.Language.Syntax.Reduced.Types            as T
+import qualified Saga.Language.Syntax.Reduced.Types            as TE
 import           Saga.Language.Typechecker.Evaluation.Shared   (node)
 import           Saga.Utils.Common                             (forM2)
 
@@ -73,7 +72,7 @@ type EvaluationEff es = TypeCheck es
 type EvaluationM a = forall es. (EvaluationEff es) => Eff es a
 
 class Evaluate a where
-    evaluate :: EvaluationEff es => Node Desugared a -> Eff es (Node Evaluated a)
+    evaluate :: EvaluationEff es => Node Reduced a -> Eff es (Node Reduced a)
 
 instance Evaluate NT.Type where
 
@@ -170,7 +169,7 @@ instance Evaluate NT.Type where
 
 
 
-lookup :: String -> EvaluationM (AST Evaluated NT.Type)
+lookup :: String -> EvaluationM (AST Reduced NT.Type)
 --lookup id | trace ("Looking up: " ++ id) False = undefined
 lookup id = do
     Saga { types } <- Eff.ask

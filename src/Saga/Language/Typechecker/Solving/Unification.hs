@@ -12,12 +12,15 @@ import qualified Data.Set                                      as Set
 import           Effectful                                     (Eff, (:>))
 import qualified Effectful                                     as Eff
 import qualified Effectful.Error.Static                        as Eff
+import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.Writer.Static.Local                 as Eff
+import           Saga.Language.Syntax.AST                      (Phase (Elaborated))
 import qualified Saga.Language.Syntax.Elaborated.AST           as AST
 import qualified Saga.Language.Syntax.Elaborated.Kinds         as K
 import qualified Saga.Language.Syntax.Elaborated.Types         as T
 import           Saga.Language.Syntax.Elaborated.Types         (Type)
 import           Saga.Language.Syntax.Literals                 (Literal (..))
+import           Saga.Language.Typechecker.Env                 (CompilerState (kinds, types))
 import           Saga.Language.Typechecker.Errors              (Exception (..),
                                                                 SagaError (..),
                                                                 crash)
@@ -170,6 +173,7 @@ instance Unification Type where
         case (t, t') of
           (t1@(T.Closure {}), t2) -> do
             --Forall tvars (cs :=> t1') <- eval t1
+            foo <- eval t1
             unify _t1' t2
           (t1, t2@(T.Closure {})) -> do
             ---Forall tvars (cs :=> t2') <- eval t2
@@ -185,8 +189,10 @@ instance Unification Type where
 
 
 
-          eval (T.Closure tyExpr captured) = E.evaluate tyExpr
-
+          eval (T.Closure tyExpr captured) = Eff.local @(CompilerState Elaborated) (extend captured) $ E.evaluate tyExpr
+          extend (T.Scope tys ks) env = env { types = tys `Map.union` types env
+                                            , kinds = ks `Map.union` kinds env
+                                            }
             -- where
                 -- params' = foldr (\p@(T.Poly id _) -> Map.insert id $ Forall [] (Q.none :=> T.Var p)) Map.empty params
                 --extended env = env{ types = params' `Map.union` T.types captured `Map.union` types env }

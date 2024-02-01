@@ -17,9 +17,9 @@ import qualified Saga.Language.Syntax.Elaborated.Kinds                 as EK
 import qualified Saga.Language.Syntax.Elaborated.Types                 as ET
 import qualified Saga.Language.Syntax.Elaborated.Values                as EL
 
-import qualified Saga.Language.Syntax.Evaluated.AST                    as EV
-import qualified Saga.Language.Syntax.Evaluated.Types                  as EVT
-import qualified Saga.Language.Syntax.Evaluated.Values                 as EV
+import qualified Saga.Language.Syntax.Reduced.AST                      as RD
+import qualified Saga.Language.Syntax.Reduced.Types                    as RDT
+import qualified Saga.Language.Syntax.Reduced.Values                   as RD
 
 import           Control.Monad                                         (forM,
                                                                         forM_)
@@ -38,7 +38,8 @@ import           Saga.Language.Syntax.Polymorphism                     (Polymorp
 import qualified Saga.Language.Typechecker.Elaboration.Effects         as Effs
 import           Saga.Language.Typechecker.Elaboration.Effects         (State (..))
 import           Saga.Language.Typechecker.Elaboration.Generalization
-import           Saga.Language.Typechecker.Elaboration.Types.Types
+import           Saga.Language.Typechecker.Elaboration.Types.Types     hiding
+                                                                       (FieldAccess)
 import           Saga.Language.Typechecker.Elaboration.Values.Patterns
 import qualified Saga.Language.Typechecker.Elaboration.Values.Shared   as Shared
 
@@ -57,20 +58,20 @@ import           Saga.Utils.Operators                                  ((||>))
 
 instance Elaboration Expression where
     type Effects Expression es = Effs.Elaboration es
-    elaborate (EV.Raw node) = case node of
-        EV.Literal lit -> return $ EL.Annotated (EL.Literal lit) (Shared.decorate $ ET.Singleton lit)
+    elaborate (RD.Raw node) = case node of
+        RD.Literal lit -> return $ EL.Annotated (EL.Literal lit) (Shared.decorate $ ET.Singleton lit)
 
-        EV.Tuple elems ->  do
+        RD.Tuple elems ->  do
             elems' <- forM elems elaborate
             let tys = fmap EL.annotation elems'
             return $ EL.Annotated (EL.Tuple elems') (Shared.decorate $ ET.Tuple tys)
 
-        EV.Record pairs ->  do
+        RD.Record pairs ->  do
             pairs' <- forM pairs $ mapM elaborate
             let tys = fmap EL.annotation <$> pairs'
             return $ EL.Annotated (EL.Record pairs') (Shared.decorate $ ET.Record tys)
 
-        EV.List elems -> do
+        RD.List elems -> do
             tvar <- Shared.fresh ET.Unification
             elems' <- forM elems elaborate
             let tys = fmap Shared.extract elems'
@@ -79,12 +80,12 @@ instance Elaboration Expression where
                 ev <- Shared.mkEvidence
                 Eff.tell $ Solver.Equality ev (Solver.Var tvar) (Solver.Mono t)
 
-            list' <- elaborate $ EV.Raw Lib.listConstructor
+            let list' = EL.Annotated Lib.listConstructor (EL.Raw $ EK.Arrow (EL.Raw EK.Type) (EL.Raw EK.Type))
             return $ EL.Annotated (EL.List elems') (Shared.decorate $ ET.Applied list' (Shared.decorate $ ET.Var tvar))
 
 
 
-        EV.Lambda ps@(param : rest) body -> do
+        RD.Lambda ps@(param : rest) body -> do
             tvar <- ET.Var <$> Shared.fresh ET.Unification
             let scoped = Eff.local (\e -> e { types = Map.insert param (Shared.decorate tvar) $ types e })
             scoped $ do
@@ -97,7 +98,7 @@ instance Elaboration Expression where
             where
                 out = case rest of
                     [] -> body
-                    _  -> EV.Raw $ EV.Lambda rest body
+                    _  -> RD.Raw $ RD.Lambda rest body
 
         FieldAccess record field -> do
             fieldType <- ET.Var <$> Shared.fresh ET.Unification
@@ -107,8 +108,8 @@ instance Elaboration Expression where
             Eff.tell $ Solver.Equality evidence (Solver.Mono $ Shared.extract record') (Solver.Mono $ ET.Record [(field, Shared.decorate fieldType)])
             return $ EL.Annotated (EL.FieldAccess record' field) (Shared.decorate fieldType)
 
-        EV.Application (EV.Raw (EV.Var ".")) args -> Eff.throwError $ Fail $ "Unrecognised expressions for property access:\n\t" ++ show args
-        app'@(EV.Application fn [arg]) -> do
+        RD.Application (RD.Raw (RD.Var ".")) args -> Eff.throwError $ Fail $ "Unrecognised expressions for property access:\n\t" ++ show args
+        app'@(RD.Application fn [arg]) -> do
             out <- ET.Var <$> Shared.fresh ET.Unification
             fn'   <- elaborate fn
             arg'  <- elaborate arg
@@ -129,12 +130,12 @@ instance Elaboration Expression where
                     Eff.modify $ \s -> s { tvars = count' }
                     return inferred
 
-        EV.Application fn (a : as) -> elaborate curried
+        RD.Application fn (a : as) -> elaborate curried
             where
-                partial = EV.Raw $ EV.Application fn [a]
-                curried = foldl (\f a -> EV.Raw $ EV.Application f [a]) partial as
+                partial = RD.Raw $ RD.Application fn [a]
+                curried = foldl (\f a -> RD.Raw $ RD.Application f [a]) partial as
 
-        EV.Match scrutinee cases -> do
+        RD.Match scrutinee cases -> do
             scrutinee' <- elaborate scrutinee
             let ty = Shared.extract scrutinee'
 
@@ -163,24 +164,24 @@ instance Elaboration Expression where
                     ty               -> (tvars, ty:tys)
 
 
-        EV.Block stmts -> walk [] stmts
+        RD.Block stmts -> walk [] stmts
             where
                 walk processed [] = return $ EL.Annotated (EL.Block $ reverse processed) returnTy
                     where returnTy = case head processed of
                             EL.Annotated (EL.Return {}) ty -> ty
                             _                              -> Shared.decorate ET.Void
-                walk processed ((EV.Raw stmt) : rest) = case stmt of
+                walk processed ((RD.Raw stmt) : rest) = case stmt of
 
-                    EV.Return expr                 -> do
+                    RD.Return expr                 -> do
                         annotated@(EL.Annotated _ ty) <- elaborate expr
                         walk (EL.Annotated (EL.Return annotated) ty : processed) []
 
-                    EV.Declaration (EV.Type id ty) -> do
+                    RD.Declaration (RD.Type id ty) -> do
                         ty' <- elaborate ty
                         Eff.local (\e -> e{ types = Map.insert id ty' $ types e }) $ do
                             walk (EL.Raw (EL.Declaration $ EL.Type id ty') : processed) rest
 
-                    EV.Declaration (EV.Let id expr) -> do
+                    RD.Declaration (RD.Let id expr) -> do
                         tvar <- Shared.fresh ET.Unification
 
                         Eff.local (\e -> e{ types = Map.insert id (Shared.decorate $ ET.Var tvar) $ types e }) $ do
@@ -188,13 +189,13 @@ instance Elaboration Expression where
                             ev <- Shared.mkEvidence
                             Eff.tell $ Solver.Equality ev (Solver.Var tvar) (Solver.Mono $ Shared.extract expr')
                             walk processed rest
-                    EV.Procedure expr -> do
+                    RD.Procedure expr -> do
                         expr' <- elaborate expr
                         walk (EL.Annotated (EL.Procedure expr') (Shared.decorate ET.Void) : processed) rest
 
                     d -> crash $ NotYetImplemented $ "Elaboration of block statement: " ++ show d
 
-        EV.Var name -> do
+        RD.Var name -> do
             ty <- Shared.lookup name
             constraint <- Shared.contextualize $ EL.node ty
             case constraint of
@@ -214,7 +215,7 @@ instance Elaboration Expression where
 
 instance Elaboration (Case Expression) where
     type Effects (Case Expression) es = Effs.Elaboration es
-    elaborate (EV.Raw (EV.Case pat expr))  = Eff.local @Var.Level (+1) $ do
+    elaborate (RD.Raw (RD.Case pat expr))  = Eff.local @Var.Level (+1) $ do
         (pat', tyvars) <- Eff.runWriter @TypeVars $ elaborate pat
 
         let (pairs, tvars) = unzip $ tyvars ||> fmap (\(id, tvar) -> ((id, Shared.decorate $ ET.Polymorphic (Forall [tvar] (ET.Var tvar))), tvar))
@@ -234,6 +235,6 @@ instance Elaboration (Case Expression) where
                 assume ev ty ty' = Solver.Assume $ Solver.Equality ev (Shared.toItem ty) (Shared.toItem ty')
 
 
-pattern FieldAccess record field <- EV.Application (EV.Raw (EV.Var ".")) [record, EV.Raw (EV.Var field)]
+pattern FieldAccess record field <- RD.Application (RD.Raw (RD.Var ".")) [record, RD.Raw (RD.Var field)]
 
 

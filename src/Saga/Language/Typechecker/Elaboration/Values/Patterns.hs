@@ -15,8 +15,8 @@ import qualified Saga.Language.Syntax.Elaborated.Values              as EL
 import           Control.Monad                                       (forM)
 import           Effectful                                           (Eff, (:>))
 import qualified Effectful.Writer.Static.Local                       as Eff
-import qualified Saga.Language.Syntax.Evaluated.AST                  as EV
-import qualified Saga.Language.Syntax.Evaluated.Values               as EV
+import qualified Saga.Language.Syntax.Reduced.AST                    as RD
+import qualified Saga.Language.Syntax.Reduced.Values                 as RD
 import qualified Saga.Language.Typechecker.Elaboration.Effects       as Effs
 import qualified Saga.Language.Typechecker.Elaboration.Values.Shared as Shared
 import qualified Saga.Language.Typechecker.Lib                       as Lib
@@ -36,23 +36,23 @@ type TypeVars = [(String, Variable ET.Type)]
 instance Elaboration (Pattern Expression) where
     type Effects (Pattern Expression) es = PatternEff es
 
-    elaborate (EV.Raw pat) = case pat of
-        EV.Wildcard -> do
+    elaborate (RD.Raw pat) = case pat of
+        RD.Wildcard -> do
             ty <- ET.Var <$> Shared.fresh ET.Unification
             return $ EL.Annotated EL.Wildcard (Shared.decorate ty)
-        EV.Id id -> do
+        RD.Id id -> do
             tvar <- Shared.fresh ET.Unification
             emit (id, tvar)
             return $ EL.Annotated (EL.Id id) (Shared.decorate $ ET.Var tvar)
 
-        EV.PatLit l -> return $ EL.Annotated (EL.PatLit l) (Shared.decorate $ ET.Singleton l)
-        EV.PatTuple pats rest -> do
+        RD.PatLit l -> return $ EL.Annotated (EL.PatLit l) (Shared.decorate $ ET.Singleton l)
+        RD.PatTuple pats rest -> do
             pats' <- mapM elaborate pats
             return $ EL.Annotated (EL.PatTuple pats' rest) (Shared.decorate . ET.Tuple $ fmap EL.annotation pats')
-        EV.PatList pats rest -> do
+        RD.PatList pats rest -> do
             pats' <- mapM elaborate pats
             tvar <- Shared.fresh ET.Unification
-            list' <- elaborate $ EV.Raw Lib.listConstructor
+            list' <- elaborate $ RD.Raw Lib.listConstructor
             let result = EL.Annotated (EL.PatList pats' rest) (Shared.decorate $ ET.Applied list' $ choice (ET.Var tvar) pats')
 
             case rest of
@@ -68,7 +68,7 @@ instance Elaboration (Pattern Expression) where
                 choice tvar []    = Shared.decorate tvar
                 choice tvar (t:_) = EL.annotation t
 
-        EV.PatRecord pairs rest -> do
+        RD.PatRecord pairs rest -> do
             pairs' <- forM pairs elaborate'
             let result = EL.Annotated (EL.PatRecord pairs' rest) (Shared.decorate . ET.Record $ fmap2 EL.annotation pairs')
             case rest of

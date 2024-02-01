@@ -1,5 +1,5 @@
 module Saga.Language.Typechecker.Evaluation.Shared where
-import qualified Saga.Language.Syntax.Evaluated.AST as E
+import qualified Saga.Language.Syntax.Reduced.AST as E
 
 
 

@@ -12,13 +12,14 @@ import qualified Saga.Language.Typechecker.TypeExpr          as TE
 import qualified Saga.Language.Typechecker.Variables         as Var
 
 import qualified Data.Map                                    as Map
-import qualified Saga.Language.Syntax.Evaluated.AST          as AST
-import qualified Saga.Language.Syntax.Evaluated.Kinds        as K
-import qualified Saga.Language.Syntax.Evaluated.Types        as T
-import           Saga.Language.Syntax.Evaluated.Types        (Type)
-import qualified Saga.Language.Syntax.Evaluated.Values       as E
+import qualified Saga.Language.Syntax.Elaborated.Types       as T
+import           Saga.Language.Syntax.Elaborated.Types       (Type)
 import           Saga.Language.Syntax.Polymorphism           (Polymorphic (..),
                                                               Qualified (..))
+import qualified Saga.Language.Syntax.Reduced.AST            as AST
+import qualified Saga.Language.Syntax.Reduced.Kinds          as K
+import           Saga.Language.Syntax.Reduced.Types          (TypeExpr)
+import qualified Saga.Language.Syntax.Reduced.Values         as E
 import           Saga.Language.Typechecker.Environment
 
 import qualified Saga.Language.Syntax.Polymorphism           as Q

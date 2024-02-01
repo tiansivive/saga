@@ -15,11 +15,11 @@ import Saga.Language.Syntax.Elaborated.Types
 import           Saga.Language.Syntax.AST hiding (NodeType (..))
 import qualified Saga.Language.Syntax.AST as NT (NodeType (..))
 
-import qualified Saga.Language.Syntax.Desugared.Values as Desugared
+import qualified Saga.Language.Syntax.Reduced.Values as RD
 
 data CompilerState (phase :: Phase) = Saga
   { protocols   :: [Protocol]
-  , values      :: Map String Desugared.Expr
+  , values      :: Map String RD.Expr
   , types       :: Map String (AST phase NT.Type)
   , kinds       :: Map String (AST phase NT.Kind)
   , extra       :: ExtraData phase
@@ -35,9 +35,8 @@ data Info = Info
   deriving (Show)
 
 type family ExtraData (phase :: Phase) where
-  ExtraData Desugared = ()
   ExtraData Elaborated = Proofs
-  ExtraData Evaluated = ()
+  ExtraData Reduced = ()
 
 data Proofs = Proofs { scrutinee :: Node Elaborated NT.Type, narrowings :: Map Type Type }
   deriving (Show)

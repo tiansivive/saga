@@ -3,28 +3,30 @@
 
 
 module Saga.Language.Typechecker.Elaboration.Types.Shared where
-import qualified Data.Map                                             as Map
-import           Effectful                                            (Eff,
-                                                                       (:>))
-import qualified Effectful.Error.Static                               as Eff
-import qualified Effectful.Reader.Static                              as Eff
-import qualified Effectful.State.Static.Local                         as Eff
-import           Saga.Language.Syntax.AST                             (AST,
-                                                                       NodeType (..),
-                                                                       Phase (..))
-import qualified Saga.Language.Syntax.Elaborated.AST                  as EL
-import qualified Saga.Language.Syntax.Elaborated.Kinds                as K
+import qualified Data.Map                                            as Map
+import           Effectful                                           (Eff, (:>))
+import qualified Effectful.Error.Static                              as Eff
+import qualified Effectful.Reader.Static                             as Eff
+import qualified Effectful.State.Static.Local                        as Eff
+import           Saga.Language.Syntax.AST                            (AST,
+                                                                      Annotation,
+                                                                      NodeType (..),
+                                                                      Phase (..))
+import qualified Saga.Language.Syntax.Elaborated.AST                 as EL
+import qualified Saga.Language.Syntax.Elaborated.Kinds               as K
+import           Saga.Language.Syntax.Elaborated.Types               (Node)
+import           Saga.Language.Typechecker.Elaboration.Effects       (State (..))
 import           Saga.Language.Typechecker.Elaboration.Instantiation
-import           Saga.Language.Typechecker.Elaboration.Monad          (Instantiate (..))
-import           Saga.Language.Typechecker.Elaboration.Effects (State (..))
-import           Saga.Language.Typechecker.Env                        (CompilerState (..))
-import           Saga.Language.Typechecker.Errors                     (Exception (NotYetImplemented),
-                                                                       SagaError (UnboundVariable),
-                                                                       crash)
-import qualified Saga.Language.Typechecker.Variables                  as Var
-import           Saga.Language.Typechecker.Variables                  (Variable)
-import           Saga.Utils.Operators                                 ((|>))
-import           Saga.Utils.TypeLevel                                 (type (§))
+import           Saga.Language.Typechecker.Elaboration.Monad         (Instantiate (..))
+import           Saga.Language.Typechecker.Env                       (CompilerState (..))
+import           Saga.Language.Typechecker.Errors                    (Exception (NotYetImplemented),
+                                                                      SagaError (UnboundVariable),
+                                                                      crash)
+import qualified Saga.Language.Typechecker.Solving.Constraints       as Solver
+import qualified Saga.Language.Typechecker.Variables                 as Var
+import           Saga.Language.Typechecker.Variables                 (Variable)
+import           Saga.Utils.Operators                                ((|>))
+import           Saga.Utils.TypeLevel                                (type (§))
 
 
 fresh :: (Eff.Reader Var.Level :> es, Eff.State State :> es) => Eff es § Variable K.Kind
@@ -33,6 +35,16 @@ fresh = do
   Eff.modify $ \s -> s { kvars = i }
   let count = show ([1 ..] !! i)
   return $ K.Unification ("k" ++ count)
+
+mkEvidence :: (Eff.State State :> es) => Eff es § Variable Solver.Constraint
+mkEvidence = do
+  i <- Eff.gets $ evars |> (+1)
+  Eff.modify $ \s -> s { evars = i }
+  let count = show ([1 ..] !! i)
+  return $ Solver.Evidence ("ev_" ++ count)
+
+extract :: Show (Node Elaborated e) => AST Elaborated e -> Node Elaborated (Annotation e)
+extract = EL.annotation |> EL.node
 
 lookup ::
   (Eff.Reader (CompilerState Elaborated) :> es, Eff.Reader Var.Level :> es, Eff.State State :> es, Eff.Error SagaError :> es)

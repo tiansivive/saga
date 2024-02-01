@@ -12,9 +12,9 @@ import qualified Saga.Language.Syntax.AST                                 as NT 
 import           Saga.Language.Syntax.AST                                 (AST,
                                                                            Phase (..))
 import qualified Saga.Language.Syntax.Elaborated.Types                    as EL
-import qualified Saga.Language.Syntax.Evaluated.AST                       as EV
-import           Saga.Language.Syntax.Evaluated.Types                     (Type)
-import qualified Saga.Language.Syntax.Evaluated.Values                    as EV
+import qualified Saga.Language.Syntax.Reduced.AST                         as RD
+import           Saga.Language.Syntax.Reduced.Types                       (Type)
+import qualified Saga.Language.Syntax.Reduced.Values                      as RD
 import qualified Saga.Language.Typechecker.Elaboration.Effects            as Effs
 import           Saga.Language.Typechecker.Elaboration.Effects            (State (..))
 import           Saga.Language.Typechecker.Elaboration.Monad              (Elaboration (..))
@@ -35,11 +35,11 @@ import           Text.Pretty.Simple                                       (pPrin
 
 
 
-fn = EV.Raw $
-    EV.Lambda ["x"] $
-        EV.Raw (EV.Application
-            (EV.Raw (EV.Var "x"))
-            [EV.Raw (EV.Literal $ LInt 1)]
+fn = RD.Raw $
+    RD.Lambda ["x"] $
+        RD.Raw (RD.Application
+            (RD.Raw (RD.Var "x"))
+            [RD.Raw (RD.Literal $ LInt 1)]
             )
 
 

@@ -19,7 +19,7 @@ import           Saga.Language.Typechecker.Variables   (Variable)
 import           Control.Monad.Identity                (Identity)
 import qualified Data.Kind                             as GHC
 import           Prelude                               hiding (map, traverse)
-import           Saga.Language.Syntax.Desugared.Types  (TypeExpr)
+import           Saga.Language.Syntax.Reduced.Types    (TypeExpr)
 import           Saga.Utils.Common                     (fmap2, mapM2)
 import           Saga.Utils.TypeLevel                  (type (§))
 
@@ -35,7 +35,7 @@ data instance Node Elaborated NT.Type where
     Var         :: Variable Type                                        -> Type
     Polymorphic :: Polymorphic Type                                     -> Type
     Qualified   :: Qualified Type                                       -> Type
-    Closure     :: TypeExpr -> Scope   -> Type
+    Closure     :: TypeExpr -> Scope  -> Type
     Void        :: Type
     Any         :: Type
 deriving instance Show Type
@@ -47,8 +47,8 @@ deriving instance Eq (AST Elaborated NT.Type)
 deriving instance Ord (AST Elaborated NT.Type)
 
 data Scope = Scope
-  { types :: Map String (AST Elaborated NT.Type)
-  , kinds :: Map String (AST Elaborated NT.Kind)
+  { types :: Map String (AST Reduced NT.Type)
+  , kinds :: Map String (AST Reduced NT.Kind)
   } deriving (Show, Eq, Ord)
 
 

@@ -30,7 +30,7 @@ import           Control.Monad.RWS                                      (MonadRe
 import qualified Data.List                                              as List
 
 import           Data.Functor                                           ((<&>))
-import qualified Saga.Language.Typechecker.Evaluation                   as Eval
+import qualified Saga.Language.Typechecker.Evaluation.Types                   as Eval
 import qualified Saga.Language.Typechecker.Qualification                as Q
 import           Saga.Language.Typechecker.Solver.Monad                 (Solution (..),
                                                                          Solve (..),

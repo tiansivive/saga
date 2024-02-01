@@ -53,7 +53,7 @@ import qualified Effectful                                               as Eff
 import qualified Effectful.Error.Static                                  as Eff
 import qualified Effectful.Reader.Static                                 as Eff
 import qualified Effectful.Writer.Static.Local                           as Eff
-import qualified Saga.Language.Typechecker.Evaluation                    as E
+import qualified Saga.Language.Typechecker.Evaluation.Types              as E
 import qualified Saga.Language.Typechecker.Inference.Type.Pattern        as Pat
 import qualified Saga.Language.Typechecker.Inference.Type.Shared         as Shared
 import           Saga.Language.Typechecker.Lib

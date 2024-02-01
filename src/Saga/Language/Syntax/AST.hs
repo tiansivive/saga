@@ -17,7 +17,7 @@ type data NodeType
     | Case NodeType | Pattern NodeType
     | Constraint | Liquid
 
-type data Phase = Parsed | Desugared | Evaluated | Elaborated | Zonked | TypeChecked
+type data Phase = Parsed | Reduced | Elaborated | Zonked | TypeChecked
 
 type family Annotation (n :: NodeType) where
     Annotation Expression           = Type

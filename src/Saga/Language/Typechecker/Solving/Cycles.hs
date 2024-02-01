@@ -9,7 +9,7 @@ import           Saga.Language.Typechecker.Substitution           (Subst,
                                                                    compose)
 
 import           Saga.Language.Syntax.Elaborated.Types            (Type)
-import qualified Saga.Language.Syntax.Evaluated.Types             as T
+import qualified Saga.Language.Syntax.Reduced.Types               as T
 
 import           Saga.Language.Typechecker.Elaboration.Traversals
 import           Saga.Language.Typechecker.Variables              (Variable)

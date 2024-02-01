@@ -23,7 +23,7 @@ import qualified Saga.Language.Typechecker.Kind                as K
 import           Control.Monad.Trans.Reader                    (ReaderT (runReaderT))
 import           Control.Monad.Trans.Writer                    (WriterT,
                                                                 runWriterT)
-import qualified Saga.Language.Typechecker.Evaluation          as E
+import qualified Saga.Language.Typechecker.Evaluation.Types    as E
 
 
 import           Saga.Language.Typechecker.Inference.Kind      (HasKind (..),

@@ -18,7 +18,7 @@ import           Saga.Language.Syntax.Polymorphism (Polymorphic (..))
 
 class Elaboration (e :: NodeType) where
     type family Effects e (es :: [Eff.Effect]) :: GHC.Constraint
-    elaborate :: Effects e es => AST Evaluated e -> Eff es (AST Elaborated e)
+    elaborate :: Effects e es => AST Reduced e -> Eff es (AST Elaborated e)
 
 class Instantiate t where
     instantiate :: Polymorphic t -> t -> t
