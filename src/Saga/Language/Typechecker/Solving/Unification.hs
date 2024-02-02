@@ -1,43 +1,48 @@
 {-# LANGUAGE ViewPatterns #-}
 module Saga.Language.Typechecker.Solving.Unification where
-import           Control.Monad                                 (foldM, forM,
-                                                                liftM2,
-                                                                zipWithM,
-                                                                zipWithM_)
-import           Data.Functor                                  ((<&>))
-import qualified Data.List                                     as List
-import qualified Data.Map                                      as Map
-import           Data.Maybe                                    (catMaybes)
-import qualified Data.Set                                      as Set
-import           Effectful                                     (Eff, (:>))
-import qualified Effectful                                     as Eff
-import qualified Effectful.Error.Static                        as Eff
-import qualified Effectful.Reader.Static                       as Eff
-import qualified Effectful.Writer.Static.Local                 as Eff
-import           Saga.Language.Syntax.AST                      (Phase (Elaborated))
-import qualified Saga.Language.Syntax.Elaborated.AST           as AST
-import qualified Saga.Language.Syntax.Elaborated.Kinds         as K
-import qualified Saga.Language.Syntax.Elaborated.Types         as T
-import           Saga.Language.Syntax.Elaborated.Types         (Type)
-import           Saga.Language.Syntax.Literals                 (Literal (..))
-import           Saga.Language.Typechecker.Env                 (CompilerState (kinds, types))
-import           Saga.Language.Typechecker.Errors              (Exception (..),
-                                                                SagaError (..),
-                                                                crash)
-import qualified Saga.Language.Typechecker.Evaluation.Types    as E
-import qualified Saga.Language.Typechecker.Lib                 as Lib
-import qualified Saga.Language.Typechecker.Solving.Constraints as Solver
-import           Saga.Language.Typechecker.Solving.Cycles      (Cycle)
-import           Saga.Language.Typechecker.Solving.Monad       (Proofs, Solving)
-import qualified Saga.Language.Typechecker.Solving.Shared      as Shared
-import           Saga.Language.Typechecker.Solving.Shared      (Tag (..))
-import           Saga.Language.Typechecker.Substitution        (Subst,
-                                                                Substitutable (..),
-                                                                compose,
-                                                                nullSubst)
-import           Saga.Language.Typechecker.Variables           (Variable)
-import           Saga.Utils.Common                             (distribute2)
-import           Saga.Utils.Operators                          ((|>), (||>))
+import           Control.Monad                                     (foldM, forM,
+                                                                    liftM2,
+                                                                    zipWithM,
+                                                                    zipWithM_)
+import           Data.Functor                                      ((<&>))
+import qualified Data.List                                         as List
+import qualified Data.Map                                          as Map
+import           Data.Maybe                                        (catMaybes)
+import qualified Data.Set                                          as Set
+import           Effectful                                         (Eff, (:>))
+import qualified Effectful                                         as Eff
+import qualified Effectful.Error.Static                            as Eff
+import qualified Effectful.Reader.Static                           as Eff
+import qualified Effectful.Writer.Static.Local                     as Eff
+import           Saga.Language.Syntax.AST                          (Phase (Elaborated))
+import qualified Saga.Language.Syntax.Elaborated.AST               as AST
+import qualified Saga.Language.Syntax.Elaborated.Kinds             as K
+import qualified Saga.Language.Syntax.Elaborated.Types             as T
+import           Saga.Language.Syntax.Elaborated.Types             (Type)
+import           Saga.Language.Syntax.Literals                     (Literal (..))
+import qualified Saga.Language.Syntax.Reduced.AST                  as RD
+import           Saga.Language.Typechecker.Env                     (CompilerState (kinds, types))
+import           Saga.Language.Typechecker.Errors                  (Exception (..),
+                                                                    SagaError (..),
+                                                                    crash)
+
+import qualified Saga.Language.Typechecker.Elaboration.Monad       as E
+import           Saga.Language.Typechecker.Elaboration.Types.Types hiding
+                                                                   (lookup)
+import qualified Saga.Language.Typechecker.Lib                     as Lib
+import qualified Saga.Language.Typechecker.Solving.Constraints     as Solver
+import           Saga.Language.Typechecker.Solving.Cycles          (Cycle)
+import           Saga.Language.Typechecker.Solving.Monad           (Proofs,
+                                                                    Solving)
+import qualified Saga.Language.Typechecker.Solving.Shared          as Shared
+import           Saga.Language.Typechecker.Solving.Shared          (Tag (..))
+import           Saga.Language.Typechecker.Substitution            (Subst,
+                                                                    Substitutable (..),
+                                                                    compose,
+                                                                    nullSubst)
+import           Saga.Language.Typechecker.Variables               (Variable)
+import           Saga.Utils.Common                                 (distribute2)
+import           Saga.Utils.Operators                              ((|>), (||>))
 
 
 type UnificationEff es t = (Solving es, Eff.Writer [Cycle t] :> es, Eff.Writer Proofs :> es, Eff.Writer Solver.Constraint :> es)
@@ -189,7 +194,7 @@ instance Unification Type where
 
 
 
-          eval (T.Closure tyExpr captured) = Eff.local @(CompilerState Elaborated) (extend captured) $ E.evaluate tyExpr
+          eval (T.Closure tyExpr captured) = Eff.local @(CompilerState Elaborated) (extend captured) $ E.elaborate (RD.Raw tyExpr)
           extend (T.Scope tys ks) env = env { types = tys `Map.union` types env
                                             , kinds = ks `Map.union` kinds env
                                             }

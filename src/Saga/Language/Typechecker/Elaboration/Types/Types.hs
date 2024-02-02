@@ -45,8 +45,7 @@ import           Saga.Language.Syntax.Polymorphism                    (Given (..
 import           Saga.Language.Typechecker.Elaboration.Effects        (State (..))
 import           Saga.Language.Typechecker.Elaboration.Types.Kinds    hiding
                                                                       (Protocol)
-import           Saga.Language.Typechecker.Elaboration.Types.Shared   (Tag (..),
-                                                                       mkEvidence)
+import           Saga.Language.Typechecker.Elaboration.Types.Shared   (Tag (..))
 import           Saga.Language.Typechecker.Env                        (CompilerState (..))
 import           Saga.Language.Typechecker.Errors                     (Exception (..),
                                                                        SagaError (..),
@@ -69,7 +68,7 @@ instance Elaboration NT.Type where
     RD.Arrow t1 t2 -> do
       t1' <- elaborate $ RD.Raw t1
       t2' <- elaborate $ RD.Raw t2
-      ev <- Shared.mkEvidence
+      ev <- Shared.fresh' E
       Eff.tell $ Solver.Equality ev (Solver.K $ Shared.extract t1') (Solver.K EK.Type)
       return $ EL.Annotated (EL.Arrow t1' t2') (EL.Raw EK.Type)
 
@@ -107,7 +106,7 @@ instance Elaboration NT.Type where
       where
         tvars = sequence $ do
           p <- params
-          return $ Shared.fresh >>= \kvar -> let k = EK.Var kvar in return $ EL.Poly p k
+          return $ Shared.fresh' K >>= \kvar -> let k = EK.Var kvar in return $ EL.Poly p k
 
     FieldAccess (RD.Raw -> record) field -> do
         record' <- elaborate record
@@ -119,12 +118,12 @@ instance Elaboration NT.Type where
 
     RD.Application (RD.Raw -> f) [RD.Raw -> arg] -> do
       sub@(EL.Unification _ k) <- Shared.fresh' T
-      out <- EK.Var <$> Shared.fresh
+      out <- EK.Var <$> Shared.fresh' K
       f' <- elaborate f
       arg' <- elaborate arg
 
       inferred <- generalize' $ EL.annotation arg' `EK.Arrow` EL.Raw out
-      evidence <- Shared.mkEvidence
+      evidence <- Shared.fresh' E
       Eff.tell $ Solver.Equality evidence (Solver.K $ Shared.extract f') (Solver.K $ EK.Polymorphic inferred)
       Eff.tell $ Solver.Equality evidence (Solver.K out) (Solver.K k)
 
@@ -182,7 +181,7 @@ instance Elaboration NT.Constraint where
   elaborate (RD.Annotated constraint k) = do
     k' <- elaborate k
     c <- elaborate (RD.Raw constraint)
-    ev <- mkEvidence
+    ev <- Shared.fresh' E
     Eff.tell $ Solver.Equality ev (Solver.K $ Shared.extract c) (Solver.K $ EL.node k')
     return $ EL.Annotated (EL.node c) k'
 
@@ -230,7 +229,7 @@ instance Elaboration NT.Constraint where
 --       let poly = ET.Polymorphic $ Forall (fmap fst tvars') (EL.node t')
 --       return $ EL.Annotated poly (EL.annotation t')
 --       where
---         fresh' map tvar = Shared.fresh <&> \kvar -> map ||> Map.insert tvar (EL.Raw $ EK.Var kvar)
+--         fresh' map tvar = Shared.fresh' T <&> \kvar -> map ||> Map.insert tvar (EL.Raw $ EK.Var kvar)
 --     RD.Qualified ty -> crash $ NotYetImplemented "Elaborating Qualified types is not supported yet."
 
 --   elaborate t = undefined

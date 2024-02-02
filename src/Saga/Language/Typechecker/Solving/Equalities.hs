@@ -27,6 +27,7 @@ import qualified Effectful.Error.Static                              as Eff
 import           Saga.Language.Typechecker.Elaboration.Instantiation
 import           Saga.Language.Typechecker.Elaboration.Monad         (Instantiate (..))
 import           Saga.Language.Typechecker.Variables                 (Variable)
+import Saga.Language.Typechecker.Solving.Unification (Unification(..))
 
 
 
@@ -62,7 +63,7 @@ solve (Solver.Equality _ it it') = case (it, it') of
 
 
         unify' ty ty' = do
-            ((sub, cycles), proofs') <- Eff.runWriter @Proofs . Eff.runWriter @[Cycle Type]  $ _unify ty ty'
+            ((sub, cycles), proofs') <- Eff.runWriter @Proofs . Eff.runWriter @[Cycle Type]  $ unify ty ty'
             Eff.modify $ \sol -> sol{ proofs = proofs' `Map.union` proofs sol }
             Eff.modify $ mappend cycles
             Shared.update T sub

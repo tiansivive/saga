@@ -32,13 +32,6 @@ import           Saga.Utils.Operators                                ((|>))
 import           Saga.Utils.TypeLevel                                (type (§))
 
 
-fresh :: (Elaboration es) => Eff es § Variable EK.Kind
-fresh = fresh' K
-
-mkEvidence :: (Elaboration es) => Eff es § Variable Solver.Constraint
-mkEvidence = fresh' E
-
-
 
 fresh' :: Elaboration es => Tag a -> Eff es (Var a)
 fresh' E = do
@@ -89,5 +82,5 @@ lookup x = do
 
 
   where
-    walk (EK.Polymorphic poly) = fresh >>= EK.Var |> instantiate poly |> walk
+    walk (EK.Polymorphic poly) = fresh' K >>= EK.Var |> instantiate poly |> walk
     walk t                     = return t
