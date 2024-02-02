@@ -9,6 +9,7 @@ import qualified Effectful.Fail                                as Eff
 import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.State.Static.Local                  as Eff
 import qualified Effectful.Writer.Static.Local                 as Eff
+import           Prelude                                       hiding (print)
 import           Saga.Language.Syntax.AST
 import           Saga.Language.Syntax.Elaborated.AST
 import qualified Saga.Language.Syntax.Elaborated.Kinds         as K
@@ -51,7 +52,33 @@ run = Eff.runState initialSolution
         |> Eff.runEff
 
 
-test = Solver.run constraint ||> run >>= pPrint
+print (Left fail) = do
+    putStrLn "FAILURE:"
+    pPrint fail
+    return ()
+print (Right (Left (callstack, err))) = do
+    putStrLn "\n---------------------\nSAGA ERROR:\n"
+    pPrint err
+    putStrLn "\n---------------------\nCallstack:\n"
+    pPrint callstack
+    return ()
+print (Right (Right res)) = do
+    let ((((residuals, solution), count), cycles), info) = res
+    putStrLn "\n--------------------- INFO --------------------- "
+    pPrint info
+    putStrLn "\n--------------------- CYCLES --------------------- "
+    pPrint cycles
+    putStrLn "\n--------------------- COUNT --------------------- "
+    pPrint count
+    putStrLn "\n--------------------- SOLUTION --------------------- "
+    pPrint solution
+    putStrLn "\n--------------------- RESIDUALS --------------------- "
+    pPrint residuals
+
+    return ()
+
+
+test = Solver.run constraint ||> run >>= print
 
 constraint =
     Equality

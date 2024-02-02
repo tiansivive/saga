@@ -25,6 +25,7 @@ import           Saga.Language.Typechecker.Solving.Shared            (Tag (..),
                                                                       update)
 
 import           Data.Maybe                                          (isJust)
+import           Debug.Pretty.Simple                                 (pTrace)
 import qualified Effectful.Error.Static                              as Eff
 import qualified Saga.Language.Syntax.Elaborated.AST                 as EL
 import           Saga.Language.Typechecker.Elaboration.Instantiation
@@ -38,6 +39,7 @@ import           Saga.Language.Typechecker.Variables                 (Variable)
 
 solve :: Solving es => Solver.Constraint -> Eff es (Status, Solver.Constraint)
 
+-- solve c | pTrace ("\n-------------------- SOLVING EQUALITY --------------------\n" ++ show c) False = undefined
 solve (Solver.Equality _ (Solver.Ty ty) (Solver.Ty ty')) = do
     constraint <- Eff.execWriter @Solver.Constraint $ do
         t <- inst ty

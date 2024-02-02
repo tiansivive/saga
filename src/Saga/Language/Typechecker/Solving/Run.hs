@@ -40,7 +40,7 @@ run constraint = do
     process (Shared.flatten constraint) []
     where
         process :: Solving es => [Solver.Constraint] -> [(Status, Solver.Constraint)] -> Eff es [Solver.Constraint]
-        process cs done | pTrace ("\n----------------------\nPROCESSING:\n" ++ show cs ++ show done) False = undefined
+        -- process cs done | pTrace ("\n----------------------\nPROCESSING:\n" ++ show cs ++ show done) False = undefined
         process [] done = let next = fmap snd done in
             if all deferred done then
                 return next
@@ -58,6 +58,7 @@ run constraint = do
 
 
 step :: Solving es => [Solver.Constraint] -> Eff es [Solver.Constraint]
+-- step cs | pTrace ("\n----------------------\nSTEP:\n" ++ show cs) False = undefined
 step cs = do
     Solution { tvars, proofs } <- Eff.get
     simplified <- forM cs simplify
@@ -120,7 +121,7 @@ instance Solve Solver.Constraint where
     -- solve c                                         = crash $ NotYetImplemented $ "Solving constraint: " ++ show c
 
     simplify :: Solving es => Constraint -> Eff es Constraint
-    simplify c@(Solver.Equality ev it it') = simplify c
+    simplify c@(Solver.Equality ev it it') = Equalities.simplify c
     -- simplify (Solver.Impl ev it p)                            = simplify $ P.Impl ev it p
     -- simplify (Solver.Refined scope it liquid)                 = simplify $ R.Refine scope it liquid
     -- simplify (Solver.Implication vars assumps constraint)     = Imp.simplify' $ Imp.Implies vars assumps constraint
