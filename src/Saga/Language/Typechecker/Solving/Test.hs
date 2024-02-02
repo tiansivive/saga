@@ -41,7 +41,7 @@ initialEnv = Saga [] Map.empty Map.empty Map.empty (Proofs T.Void Map.empty)
 
 
 run = Eff.runState initialSolution
-        |> Eff.runState (Count 0 0)
+        |> Eff.runState (Count 0 0 0)
         |> Eff.runState @[Cycle T.Type] []
         |> Eff.runReader @Levels Map.empty
         |> Eff.runReader (Var.Level 0)

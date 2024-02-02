@@ -1,19 +1,18 @@
 {-# LANGUAGE DataKinds #-}
 module Saga.Language.Typechecker.Protocols where
 
-import           Prelude                                       hiding (id)
+import           Prelude                                 hiding (id)
 
 
-import qualified Data.Set                                      as Set
-import qualified Saga.Language.Syntax.AST                      as NT (NodeType (..))
-import           Saga.Language.Syntax.AST                      hiding
-                                                               (NodeType (..))
-import           Saga.Language.Syntax.Polymorphism             (Polymorphic)
+import qualified Data.Set                                as Set
+import qualified Saga.Language.Syntax.AST                as NT (NodeType (..))
+import           Saga.Language.Syntax.AST                hiding (NodeType (..))
+import           Saga.Language.Syntax.Polymorphism       (Polymorphic)
 
-import           Saga.Language.Syntax.Reduced.Types            (TypeExpr)
-import           Saga.Language.Syntax.Reduced.Values           (Expr)
-import           Saga.Language.Typechecker.Qualification       (Qualified ((:=>)))
-import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
+import           Saga.Language.Syntax.Reduced.Types      (TypeExpr)
+import           Saga.Language.Syntax.Reduced.Values     (Expr)
+import           Saga.Language.Typechecker.Qualification (Qualified ((:=>)))
+import           Saga.Language.Typechecker.Substitution  (Substitutable (..))
 
 
 data Protocol = Protocol

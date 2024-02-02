@@ -56,7 +56,7 @@ type Solving es =   ( Eff.Reader (CompilerState Elaborated) :> es
 
                     )
 
-data Count = Count { evs :: Int, tvs :: Int }
+data Count = Count { evs :: Int, tvs :: Int, kvs :: Int }
   deriving Show
 
 data Solution = Solution { evidence :: Witness, tvars :: Subst Type, kvars :: Subst Kind, witnessed :: Witnessed, proofs :: Proofs }
@@ -88,7 +88,7 @@ class Entails a where
 initialSolution :: Solution
 initialSolution = Solution { evidence = Map.empty, tvars = Map.empty, kvars = Map.empty, witnessed = Map.empty, proofs = Map.empty }
 initialCount :: Count
-initialCount = Count 0 0
+initialCount = Count 0 0 0
 
 
 

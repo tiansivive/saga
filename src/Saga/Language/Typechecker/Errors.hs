@@ -1,20 +1,20 @@
 module Saga.Language.Typechecker.Errors where
-import           Saga.Language.Core.Expr                      (Expr)
-import           Saga.Language.Core.Literals                  (Literal)
-import           Saga.Language.Typechecker.Kind               (Kind)
-import           Saga.Language.Typechecker.Protocols          (ProtocolID)
-import           Saga.Language.Typechecker.Refinement.Liquid  (Liquid, Op)
-import           Saga.Language.Typechecker.Solver.Constraints (Constraint,
-                                                               Evidence, Item)
-import           Saga.Language.Typechecker.Type               (Polymorphic,
-                                                               Type)
-import           Saga.Language.Typechecker.TypeExpr           (TypeExpr)
-import           Saga.Language.Typechecker.Variables          (Variable)
+import           Saga.Language.Core.Expr                       (Expr)
+import           Saga.Language.Core.Literals                   (Literal)
+import           Saga.Language.Typechecker.Kind                (Kind)
+import           Saga.Language.Typechecker.Protocols           (ProtocolID)
+import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid, Op)
+import           Saga.Language.Typechecker.Solving.Constraints (Constraint,
+                                                                Evidence, Item)
+import           Saga.Language.Typechecker.Type                (Polymorphic,
+                                                                Type)
+import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
+import           Saga.Language.Typechecker.Variables           (Variable)
 
 
-import qualified Saga.Language.Syntax.Elaborated.Types        as EL
-import qualified Saga.Language.Syntax.Reduced.Types           as RD
-import qualified Saga.Language.Syntax.Reduced.Values          as RD
+import qualified Saga.Language.Syntax.Elaborated.Types         as EL
+import qualified Saga.Language.Syntax.Reduced.Types            as RD
+import qualified Saga.Language.Syntax.Reduced.Values           as RD
 
 data SagaError where
   UnboundVariable     :: String -> SagaError
@@ -47,7 +47,7 @@ data SagaError where
   KindMismatch :: Kind -> Kind -> SagaError
 
 
-  InfiniteType :: (Show a, Show (Variable a)) => (Variable a) -> Type-> SagaError
+  InfiniteType :: (Show a, Show (Variable a)) => (Variable a) -> EL.Type -> SagaError
   InfiniteKind :: (Show a, Show (Variable a)) => Variable a -> Kind -> SagaError
   CircularKind :: Kind -> Kind -> SagaError
 

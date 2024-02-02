@@ -26,6 +26,8 @@ import           Saga.Language.Typechecker.Errors                  (Exception (.
                                                                     SagaError (..),
                                                                     crash)
 
+import           Debug.Pretty.Simple                               (pTrace,
+                                                                    pTraceM)
 import           Saga.Language.Syntax.Polymorphism                 (Given (..),
                                                                     Qualified (..))
 import qualified Saga.Language.Typechecker.Elaboration.Monad       as E
@@ -229,6 +231,7 @@ instance Unification Type where
                     let solution = Map.singleton a $ T.Union (fmap AST.Raw tys' )
                     Eff.tell [(a, t, solution)]
                     return nullSubst
+            _ -> Eff.throwError $ InfiniteType a t
 
         | otherwise = do
             -- | NOTE: The kind stuff below should not apply anymore since we're elaborating kinds and emitting and solving kind constraints

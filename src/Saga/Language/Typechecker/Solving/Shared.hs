@@ -10,8 +10,7 @@ import qualified Saga.Language.Syntax.Elaborated.Kinds         as K
 import qualified Saga.Language.Syntax.Elaborated.Types         as T
 import           Saga.Language.Syntax.Elaborated.Types         (Type)
 import qualified Saga.Language.Typechecker.Solving.Constraints as Solver
-import           Saga.Language.Typechecker.Solving.Constraints (Evidence,
-                                                                Item (..))
+import           Saga.Language.Typechecker.Solving.Constraints (Evidence)
 import           Saga.Language.Typechecker.Solving.Monad       (Count (..),
                                                                 Solution (..),
                                                                 Solving,
@@ -54,26 +53,41 @@ update :: Solving es => Tag a -> Sub a -> Eff es ()
 update E sub = Eff.modify $ \s -> s{ evidence = sub `Map.union` evidence s }
 update T sub = Eff.modify $ \s -> s{ tvars = sub `compose` tvars s }
 
+
+
 fresh :: Solving es => Tag a -> Eff es (Var a)
 fresh E = do
     i <- Eff.gets $ evs |> (+1)
     Eff.modify $ \s -> s { evs = i}
     let count = show ([1 ..] !! i)
-    return $ Solver.Evidence $ "ev_" ++ count
+    return $ Solver.Evidence $ "ev" ++ count
 fresh T = do
     i <- Eff.gets $ tvs |> (+1)
     Eff.modify $ \s -> s {tvs  = i}
     let count = show ([1 ..] !! i)
-    return $ T.Poly ("ct_" ++ count) K.Type
+    kvar <- K.Var <$> fresh K
+    return $ T.Unification ("soT" ++ count) kvar
+fresh K = do
+    i <- Eff.gets $ kvs |> (+1)
+    Eff.modify $ \s -> s {kvs  = i}
+    let count = show ([1 ..] !! i)
+    return $ K.Unification ("soK" ++ count)
+
 
 data Tag a where
   E  :: Tag Evidence
-  T  :: Tag Type
+  T  :: Tag T.Type
+  K  :: Tag K.Kind
+
+
+
+type family Var a where
+    Var T.Type  = Variable T.Type
+    Var K.Kind  = Variable K.Kind
+    Var Evidence = Variable Solver.Constraint
+
 
 type family Sub a where
     Sub Type     = Subst Type
     Sub Evidence = Witness
 
-type family Var a where
-    Var Type     = Variable Type
-    Var Evidence = Variable Solver.Constraint
