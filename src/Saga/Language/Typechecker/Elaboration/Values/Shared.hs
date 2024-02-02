@@ -53,8 +53,8 @@ import           Saga.Language.Typechecker.Substitution              (Subst,
                                                                       mkSubst,
                                                                       nullSubst)
 
-import qualified Saga.Language.Typechecker.Elaboration.Traversals    as Traverse
-import           Saga.Language.Typechecker.Elaboration.Traversals
+import qualified Saga.Language.Typechecker.Traversals                as Traverse
+import           Saga.Language.Typechecker.Traversals
 
 
 lookup ::
@@ -88,15 +88,15 @@ contextualize ty@(T.Qualified (bs :| cs :=> t)) = do
     lvl <- Eff.asks @Var.Level (+1)
     Eff.modify $ \s -> s { levels = Map.insert local lvl $ levels s }
     ev <- mkEvidence
-    return $ Solver.Equality ev (Solver.Var local) (toItem t))
+    return $ Solver.Equality ev (Solver.Ty $ T.Var local) (Solver.Ty t))
 
   return $ Solver.Implication (locals t) (fmap Solver.Assume assumptions) (scoped $ implied <> eqs)
 
   where
     scoped = foldl Solver.Conjunction Solver.Empty
 
-    toSolver (ty `T.Implements` protocol) = mkEvidence <&> \e -> Solver.Impl e (toItem ty) protocol
-    toSolver (T.Refinement binds liquid ty) = return $ Solver.Refined (toItem <$> binds) (toItem ty) liquid
+    toSolver (ty `T.Implements` protocol) = mkEvidence <&> \e -> Solver.Impl e ty protocol
+    toSolver (T.Refinement binds liquid ty) = return $ Solver.Refined binds ty liquid
 
 contextualize ty = return Solver.Empty
 
@@ -144,11 +144,6 @@ mkEvidence = do
   Eff.modify $ \s -> s { evars = i }
   let count = show ([1 ..] !! i)
   return $ Solver.Evidence ("ev_" ++ count)
-
-
-toItem :: Type -> Solver.Item
-toItem (T.Var tvar) = Solver.Var tvar
-toItem t            = Solver.Mono t
 
 
 extract :: Show (Node Elaborated e) => AST Elaborated e -> Node Elaborated (Annotation e)

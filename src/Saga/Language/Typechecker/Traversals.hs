@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds    #-}
 {-# LANGUAGE TypeFamilies #-}
-module Saga.Language.Typechecker.Elaboration.Traversals where
+module Saga.Language.Typechecker.Traversals where
 
 
 

@@ -1,19 +1,19 @@
 module Saga.Language.Typechecker.Elaboration.Instantiation where
 
 
-import qualified Data.Map                                         as Map
-import qualified Saga.Language.Syntax.Elaborated.Kinds            as K
-import           Saga.Language.Syntax.Elaborated.Kinds            (Kind)
-import qualified Saga.Language.Syntax.Elaborated.Types            as T
-import           Saga.Language.Syntax.Elaborated.Types            (Type)
-import           Saga.Language.Syntax.Polymorphism                (Polymorphic (..))
-import           Saga.Language.Typechecker.Elaboration.Monad      (Instantiate (..))
+import qualified Data.Map                                    as Map
+import qualified Saga.Language.Syntax.Elaborated.Kinds       as K
+import           Saga.Language.Syntax.Elaborated.Kinds       (Kind)
+import qualified Saga.Language.Syntax.Elaborated.Types       as T
+import           Saga.Language.Syntax.Elaborated.Types       (Type)
+import           Saga.Language.Syntax.Polymorphism           (Polymorphic (..))
+import           Saga.Language.Typechecker.Elaboration.Monad (Instantiate (..))
 
-import           Saga.Language.Typechecker.Substitution           (Subst,
-                                                                   Substitutable (..),
-                                                                   mkSubst)
+import           Saga.Language.Typechecker.Substitution      (Subst,
+                                                              Substitutable (..),
+                                                              mkSubst)
 
-import           Saga.Language.Typechecker.Elaboration.Traversals
+import           Saga.Language.Typechecker.Traversals
 
 
 instance Instantiate Type where

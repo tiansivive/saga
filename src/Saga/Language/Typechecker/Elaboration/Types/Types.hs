@@ -89,7 +89,6 @@ instance Elaboration NT.Type where
                 elaborate ty >>= \t ->
                   return (EL.Local id $ Shared.extract t, EL.node t)
 
-
     RD.Implementation prtcl tyExpr -> do
         Saga { protocols } <- Eff.ask @(CompilerState Elaborated)
         case List.find (\(Protocol { id }) -> id == prtcl) protocols of
@@ -127,7 +126,7 @@ instance Elaboration NT.Type where
       Eff.tell $ Solver.Equality evidence (Solver.K $ Shared.extract f') (Solver.K $ EK.Polymorphic inferred)
       Eff.tell $ Solver.Equality evidence (Solver.K out) (Solver.K k)
 
-      Eff.tell $ Solver.Evaluate (EL.Var sub) (EL.node f') (EL.node arg')
+      Eff.tell $ Solver.Evaluate (EL.Var sub) (Solver.Application (EL.node f') (EL.node arg'))
       return $ EL.Annotated (EL.Var sub) (EL.Raw out)
 
       where
@@ -149,7 +148,7 @@ instance Elaboration NT.Type where
       subject' <- elaborate subject
       sub@(EL.Unification _ k) <- Shared.fresh' T
       -- | TODO: Most likely we need a specific structure for the match clause rather than a closure
-      Eff.tell $ Solver.Evaluate (EL.Var sub) (EL.Closure node (EL.Scope types kinds)) (EL.node subject')
+      Eff.tell $ Solver.Evaluate (EL.Var sub) (Solver.Match node (Solver.Scope types kinds))
 
       return $ EL.Annotated (EL.Var sub) (EL.Raw k)
 
@@ -185,73 +184,12 @@ instance Elaboration NT.Constraint where
     Eff.tell $ Solver.Equality ev (Solver.K $ Shared.extract c) (Solver.K $ EL.node k')
     return $ EL.Annotated (EL.node c) k'
 
---   elaborate (AST.Raw node) = case node of
---     RD.Data name -> do
---       k <- Shared.lookup name
---       return $ EL.Annotated (ET.Data name) k
 
---     RD.Singleton lit -> return $ EL.Annotated (ET.Singleton lit) (EL.Raw EK.Type)
---     RD.Tuple elems -> do
---       elems' <- forM elems elaborate
---       return $ EL.Annotated (ET.Tuple elems') (EL.Raw EK.Type)
---     RD.Record pairs ->  do
---       pairs' <- forM2 pairs elaborate
---       return $ EL.Annotated (ET.Record pairs') (EL.Raw EK.Type)
---     RD.Union elems -> do
---       elems' <- forM elems elaborate
---       return $ EL.Annotated (ET.Union elems') (EL.Raw EK.Type)
---     RD.Arrow in' out -> do
---       in'' <- elaborate $ AST.Raw in'
---       out' <- elaborate $ AST.Raw out
---       return $ EL.Annotated (ET.Arrow in'' out') (EL.Raw EK.Type)
-
---     RD.Applied cons arg -> do
---       out <- EK.Var <$> Shared.fresh
---       cons' <- elaborate cons
---       arg' <- elaborate arg
-
---       inferred <- generalize' $ EL.annotation arg' `EK.Arrow` EL.Raw out
---       return $ EL.Annotated (ET.Applied cons' arg') (EL.Raw EK.Type)
---       where
---         generalize' ty = do
---           count <- Eff.gets kvars
---           (inferred, count') <- Eff.runState count $ generalize ty
---           Eff.modify $ \s -> s { kvars = count' }
---           return inferred
-
---     RD.Var kvar -> do
---       (kvar', ann) <- elaborateVar kvar
---       return $ EL.Annotated (ET.Var kvar') (EL.Raw ann)
-
---     RD.Polymorphic (Forall tvars (AST.Raw -> t)) -> do
---       tvars' <- forM tvars elaborateVar
---       t' <- elaborate t
---       let poly = ET.Polymorphic $ Forall (fmap fst tvars') (EL.node t')
---       return $ EL.Annotated poly (EL.annotation t')
---       where
---         fresh' map tvar = Shared.fresh' T <&> \kvar -> map ||> Map.insert tvar (EL.Raw $ EK.Var kvar)
---     RD.Qualified ty -> crash $ NotYetImplemented "Elaborating Qualified types is not supported yet."
-
---   elaborate t = undefined
-
-
-
-
-
--- elaborateVar v        = case v of
---   RD.Poly name node        -> elaborate' ET.Poly name node
---   RD.Existential name node -> elaborate' ET.Existential name node
---   RD.Local name node       -> elaborate' ET.Local name node
---   where
---     elaborate' cons name (AST.Raw -> k) = do
---       k' <- elaborate k
---       return (ET.Poly name (EL.node k'), EL.node k')
 
 lookup :: Effs.Elaboration es => String -> Eff es (EL.AST Elaborated NT.Type)
 lookup id = do
     Saga { types } <- Eff.ask
     maybe (Eff.throwError $ UndefinedIdentifier id) return $ Map.lookup id types
-
 
 
 

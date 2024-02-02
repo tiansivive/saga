@@ -1,18 +1,17 @@
 module Saga.Language.Typechecker.Solving.Cycles where
 
 
-import qualified Data.Map                                         as Map
-import           Effectful                                        (Eff, (:>))
-import qualified Effectful.Error.Static                           as Eff
-import           Saga.Language.Typechecker.Errors                 (SagaError (..))
-import           Saga.Language.Typechecker.Substitution           (Subst,
-                                                                   compose)
+import qualified Data.Map                               as Map
+import           Effectful                              (Eff, (:>))
+import qualified Effectful.Error.Static                 as Eff
+import           Saga.Language.Typechecker.Errors       (SagaError (..))
+import           Saga.Language.Typechecker.Substitution (Subst, compose)
 
-import           Saga.Language.Syntax.Elaborated.Types            (Type)
-import qualified Saga.Language.Syntax.Reduced.Types               as T
+import           Saga.Language.Syntax.Elaborated.Types  (Type)
+import qualified Saga.Language.Syntax.Reduced.Types     as T
 
-import           Saga.Language.Typechecker.Elaboration.Traversals
-import           Saga.Language.Typechecker.Variables              (Variable)
+import           Saga.Language.Typechecker.Traversals
+import           Saga.Language.Typechecker.Variables    (Variable)
 
 type Cycle t = (Variable t, t, Subst t)
 

@@ -26,6 +26,8 @@ import           Saga.Language.Typechecker.Errors                  (Exception (.
                                                                     SagaError (..),
                                                                     crash)
 
+import           Saga.Language.Syntax.Polymorphism                 (Given (..),
+                                                                    Qualified (..))
 import qualified Saga.Language.Typechecker.Elaboration.Monad       as E
 import           Saga.Language.Typechecker.Elaboration.Types.Types hiding
                                                                    (lookup)
@@ -60,6 +62,18 @@ type TypeUnification es = UnificationEff es Type
 instance Unification Type where
     unify :: TypeUnification es => Type -> Type -> Eff es (Subst Type)
     --unify t t' | pTrace ("\nUnifying:\n" ++ show t ++ "\nWith:\n" ++ show t') False = undefined
+
+
+    unify t@(T.Polymorphic {}) _ = Eff.throwError . Fail $ "Cannot unify a polymorphic type! \nType:\n" ++ show t ++ "\nShould have been instantiated"
+    unify _ t@(T.Polymorphic {}) = Eff.throwError . Fail $ "Cannot unify a polymorphic type! \nType:\n" ++ show t ++ "\nShould have been instantiated"
+
+    unify (T.Qualified (bs :| cs :=> qt)) t = do
+        Eff.tell =<< Shared.propagate cs
+        unify qt t
+    unify t (T.Qualified (bs :| cs :=> qt)) = do
+        Eff.tell =<< Shared.propagate cs
+        unify t qt
+
     unify (T.Var v) t
       | T.Instantiation {} <- v   = Eff.throwError $ UnexpectedVariable v
       | T.Unification {} <- v   = bind v t
@@ -167,7 +181,10 @@ instance Unification Type where
         tys = nodes ||> fmap AST.node
         unifier t1 t2 = Eff.catchError @SagaError (unify t1 t2 <&> Just) (\_ _ -> return Nothing)
 
+
+
     unify t t' = do
+        crash $ NotYetImplemented $ "Unifying types: " ++ show t ++ " and " ++ show t'
         -- | NOTE: The kind stuff below should not apply anymore since we're elaborating kinds and emitting and solving kind constraints
         -- ((k, k'), cs) <- KI.run kinds
 
@@ -175,17 +192,17 @@ instance Unification Type where
         -- (subst, cycles) <- Eff.runWriter @[Cycle K.Kind] $ unify k k'
         -- unless (null cycles) (Eff.Eff.throwError $ CircularKind k k')
 
-        case (t, t') of
-          (t1@(T.Closure {}), t2) -> do
-            --Forall tvars (cs :=> t1') <- eval t1
-            foo <- eval t1
-            unify _t1' t2
-          (t1, t2@(T.Closure {})) -> do
-            ---Forall tvars (cs :=> t2') <- eval t2
-            unify t1 _t2'
-          _ -> crash $ NotYetImplemented $ "Unifying types: " ++ show t ++ " and " ++ show t'
+        -- case (t, t') of
+        --   (t1@(T.Closure {}), t2) -> do
+        --     --Forall tvars (cs :=> t1') <- eval t1
+        --     foo <- eval t1
+        --     unify _t1' t2
+        --   (t1, t2@(T.Closure {})) -> do
+        --     ---Forall tvars (cs :=> t2') <- eval t2
+        --     unify t1 _t2'
+        --  _ ->
 
-        where
+        -- where
         --   kinds :: _KindInference es => Eff es (K.Kind, K.Kind)
         --   kinds = do
         --     k  <- kind t
@@ -194,11 +211,11 @@ instance Unification Type where
 
 
 
-          eval (T.Closure tyExpr captured) = Eff.local @(CompilerState Elaborated) (extend captured) $ E.elaborate (RD.Raw tyExpr)
-          extend (T.Scope tys ks) env = env { types = tys `Map.union` types env
-                                            , kinds = ks `Map.union` kinds env
-                                            }
-            -- where
+          -- eval (T.Closure tyExpr captured) = Eff.local @(CompilerState Elaborated) (extend captured) $ E.elaborate (RD.Raw tyExpr)
+          -- extend (T.Scope tys ks) env = env { types = tys `Map.union` types env
+          --                                   , kinds = ks `Map.union` kinds env
+          --                                   }
+          --   -- where
                 -- params' = foldr (\p@(T.Poly id _) -> Map.insert id $ Forall [] (Q.none :=> T.Var p)) Map.empty params
                 --extended env = env{ types = params' `Map.union` T.types captured `Map.union` types env }
 

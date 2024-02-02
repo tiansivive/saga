@@ -35,7 +35,6 @@ data instance Node Elaborated NT.Type where
     Var         :: Variable Type                                        -> Type
     Polymorphic :: Polymorphic Type                                     -> Type
     Qualified   :: Qualified Type                                       -> Type
-    Closure     :: TypeExpr -> Scope  -> Type
     Void        :: Type
     Any         :: Type
 deriving instance Show Type

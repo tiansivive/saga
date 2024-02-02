@@ -44,7 +44,6 @@ library
       Saga.Language.Typechecker.Elaboration.Instantiation
       Saga.Language.Typechecker.Elaboration.Monad
       Saga.Language.Typechecker.Elaboration.Test
-      Saga.Language.Typechecker.Elaboration.Traversals
       Saga.Language.Typechecker.Elaboration.Types.Kinds
       Saga.Language.Typechecker.Elaboration.Types.Shared
       Saga.Language.Typechecker.Elaboration.Types.Types
@@ -90,9 +89,12 @@ library
       Saga.Language.Typechecker.Solving.Cycles
       Saga.Language.Typechecker.Solving.Equalities
       Saga.Language.Typechecker.Solving.Monad
+      Saga.Language.Typechecker.Solving.Run
       Saga.Language.Typechecker.Solving.Shared
+      Saga.Language.Typechecker.Solving.Test
       Saga.Language.Typechecker.Solving.Unification
       Saga.Language.Typechecker.Substitution
+      Saga.Language.Typechecker.Traversals
       Saga.Language.Typechecker.Type
       Saga.Language.Typechecker.TypeExpr
       Saga.Language.Typechecker.Variables

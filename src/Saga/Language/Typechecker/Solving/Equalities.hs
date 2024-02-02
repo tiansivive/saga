@@ -21,45 +21,61 @@ import           Saga.Language.Typechecker.Solving.Monad             (Proofs,
                                                                       Solving,
                                                                       Status (..))
 import qualified Saga.Language.Typechecker.Solving.Shared            as Shared
-import           Saga.Language.Typechecker.Solving.Shared            (Tag (..))
+import           Saga.Language.Typechecker.Solving.Shared            (Tag (..),
+                                                                      update)
 
+import           Data.Maybe                                          (isJust)
 import qualified Effectful.Error.Static                              as Eff
+import qualified Saga.Language.Syntax.Elaborated.AST                 as EL
 import           Saga.Language.Typechecker.Elaboration.Instantiation
 import           Saga.Language.Typechecker.Elaboration.Monad         (Instantiate (..))
+import           Saga.Language.Typechecker.Solving.Unification       (Unification (..))
+import           Saga.Language.Typechecker.Substitution              (mkSubst)
 import           Saga.Language.Typechecker.Variables                 (Variable)
-import Saga.Language.Typechecker.Solving.Unification (Unification(..))
 
 
 
 
 solve :: Solving es => Solver.Constraint -> Eff es (Status, Solver.Constraint)
 
-solve (Solver.Equality _ it it') = case (it, it') of
-    (Mono ty, Mono ty')                     -> ty `equals` ty'
-    (Mono ty, Poly ty')                     -> instAndUnify ty' ty
-    (Mono ty, Var tvar)           -> ty `equals` T.Var tvar
+solve (Solver.Equality _ (Solver.Ty ty) (Solver.Ty ty')) = do
+    constraint <- Eff.execWriter @Solver.Constraint $ do
+        t <- inst ty
+        t' <- inst ty'
+        unify' t t'
+
+    return (Solved, constraint)
 
 
-    (Poly ty, Mono ty')                     -> instAndUnify ty ty'
-    (Poly ty, Var tvar)           -> instAndUnify ty (T.Var tvar)
+    -- case (it, it') of
+    -- (Mono ty, Mono ty')                     -> ty `equals` ty'
+    -- (Mono ty, Poly ty')                     -> instAndUnify ty' ty
+    -- (Mono ty, Var tvar)           -> ty `equals` T.Var tvar
 
-    (Var tvar, Mono ty)           -> ty `equals` T.Var tvar
-    (Var tvar, Poly ty)           -> instAndUnify ty (T.Var tvar)
-    (Var tvar, Var tvar')         -> T.Var tvar `equals` T.Var tvar'
 
-    eq -> crash $ NotYetImplemented $ "Solving equality: " ++ show eq
+    -- (Poly ty, Mono ty')                     -> instAndUnify ty ty'
+    -- (Poly ty, Var tvar)           -> instAndUnify ty (T.Var tvar)
+
+    -- (Var tvar, Mono ty)           -> ty `equals` T.Var tvar
+    -- (Var tvar, Poly ty)           -> instAndUnify ty (T.Var tvar)
+    -- (Var tvar, Var tvar')         -> T.Var tvar `equals` T.Var tvar'
+
+    -- eq -> crash $ NotYetImplemented $ "Solving equality: " ++ show eq
 
     where
-        ty `equals`  ty' = unify' ty ty' >> return (Solved, Solver.Empty)
+        -- ty `equals`  ty' = do
+        --    constraint <- Eff.execWriter @Solver.Constraint (unify' ty ty')
+        --    return (Solved, constraint)
 
-        instAndUnify poly ty = do
-            (t, constraint) <- Eff.runWriter $ inst poly
-            unify' ty t
-            case t of
-                T.Qualified (bs :| cs :=> qt) -> do
-                    result <- Shared.propagate cs
-                    return (Solved, Solver.Conjunction constraint result)
-                _ -> return (Solved, constraint)
+        -- instAndUnify poly ty = do
+        --     (t, constraint) <- Eff.runWriter $ inst poly
+        --     constraint' <- Eff.execWriter @Solver.Constraint $ unify' ty t
+        --     let constraint'' = Solver.Conjunction constraint constraint'
+        --     case t of
+        --         T.Qualified (bs :| cs :=> qt) -> do
+        --             result <- Shared.propagate cs
+        --             return (Solved, Solver.Conjunction constraint'' result)
+        --         _ -> return (Solved, constraint'')
 
 
         unify' ty ty' = do
@@ -74,7 +90,7 @@ solve (Solver.Equality _ it it') = case (it, it') of
             fresh <- T.Var <$> Shared.fresh Shared.T
             let instTy = instantiate poly fresh
             ev <- Shared.fresh Shared.E
-            Eff.tell $ Solver.Equality ev (Var tvar) (Mono fresh)
+            Eff.tell $ Solver.Equality ev (Solver.Ty $ T.Var tvar) (Solver.Ty fresh)
             inst instTy
         inst ty = return ty
 
@@ -82,4 +98,31 @@ solve (Solver.Equality _ it it') = case (it, it') of
 
 
 solve c = crash $ Unexpected c "for Equality constraint"
+
+
+
+simplify (Equality ev (Ty (arg `T.Arrow`  out)) (Ty (arg' `T.Arrow`  out'))) = do
+    ev1 <- Shared.fresh Shared.E
+    let inTypeEq = Solver.Equality ev1 (Ty $ EL.node arg) (Ty $ EL.node arg')
+
+    -- ev2 <- Shared.fresh Shared.E
+    -- let inKindEq = Solver.Equality ev2 (K $ EL.node $ EL.annotation arg) (K $ EL.node $ EL.annotation arg')
+
+    ev3 <- Shared.fresh Shared.E
+    let outTypeEq = Solver.Equality ev3 (Ty $ EL.node out) (Ty $ EL.node out')
+
+    -- ev4 <- Shared.fresh Shared.E
+    -- let outKindEq = Solver.Equality ev4 (K $ EL.node $ EL.annotation out) (K $ EL.node $ EL.annotation out')
+    return $ Solver.Conjunction inTypeEq outTypeEq
+
+simplify (Equality ev it it')
+    | it == it' = do
+        Shared.update E $ Map.fromList [(ev, Solver.Coercion Solver.Structural)]
+        return Solver.Empty
+    | otherwise = do
+        Solution { evidence } <- Eff.get
+        return $
+            if isJust $ Map.lookup ev evidence then
+                Solver.Empty
+            else Solver.Equality ev it it'
 

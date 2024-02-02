@@ -31,6 +31,7 @@ import           Prelude                                                  hiding
 import           Saga.Language.Syntax.Literals                            (Literal (..))
 import           Saga.Language.Typechecker.Elaboration.Values.Expressions
 import           Saga.Language.Typechecker.Errors                         (SagaError)
+import qualified Saga.Language.Typechecker.Solving.Equalities             as Equalities
 import           Text.Pretty.Simple                                       (pPrint)
 
 

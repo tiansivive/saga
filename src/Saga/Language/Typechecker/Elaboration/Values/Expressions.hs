@@ -78,7 +78,7 @@ instance Elaboration Expression where
 
             forM_ tys $ \t -> do
                 ev <- Shared.mkEvidence
-                Eff.tell $ Solver.Equality ev (Solver.Var tvar) (Solver.Mono t)
+                Eff.tell $ Solver.Equality ev (Solver.Ty $ ET.Var tvar) (Solver.Ty t)
 
             let list' = EL.Annotated Lib.listConstructor (EL.Raw $ EK.Arrow (EL.Raw EK.Type) (EL.Raw EK.Type))
             return $ EL.Annotated (EL.List elems') (Shared.decorate $ ET.Applied list' (Shared.decorate $ ET.Var tvar))
@@ -105,7 +105,7 @@ instance Elaboration Expression where
             evidence <- Shared.mkEvidence
             record' <- elaborate record
             -- | TODO: Add row polymorphism: use a new, different constraint type
-            Eff.tell $ Solver.Equality evidence (Solver.Mono $ Shared.extract record') (Solver.Mono $ ET.Record [(field, Shared.decorate fieldType)])
+            Eff.tell $ Solver.Equality evidence (Solver.Ty $ Shared.extract record') (Solver.Ty $ ET.Record [(field, Shared.decorate fieldType)])
             return $ EL.Annotated (EL.FieldAccess record' field) (Shared.decorate fieldType)
 
         RD.Application (RD.Raw (RD.Var ".")) args -> Eff.throwError $ Fail $ "Unrecognised expressions for property access:\n\t" ++ show args
@@ -119,7 +119,7 @@ instance Elaboration Expression where
             -- | EDIT: Do we even need to do that?
             inferred <- generalize' $ EL.annotation arg' `ET.Arrow` Shared.decorate out
             evidence <- Shared.mkEvidence
-            Eff.tell $ Solver.Equality evidence (Shared.toItem $ Shared.extract fn') (Solver.Poly $ ET.Polymorphic inferred)
+            Eff.tell $ Solver.Equality evidence (Solver.Ty $ Shared.extract fn') (Solver.Ty $ ET.Polymorphic inferred)
 
             return $ EL.Annotated (EL.Application fn' [arg']) (Shared.decorate out)
             where
@@ -148,11 +148,11 @@ instance Elaboration Expression where
 
                 for_ ty' $ \t -> do
                     ev <- Shared.mkEvidence
-                    Eff.tell $ Solver.Equality ev (Shared.toItem ty) (Shared.toItem t)
+                    Eff.tell $ Solver.Equality ev (Solver.Ty ty) (Solver.Ty t)
 
                 forM_ tvars $ \v -> do
                     ev <- Shared.mkEvidence
-                    Eff.tell $ Solver.Equality ev (Solver.Var v) (maybe (Shared.toItem ty) Shared.toItem ty')
+                    Eff.tell $ Solver.Equality ev (Solver.Ty $ ET.Var v) (maybe (Solver.Ty ty) Solver.Ty ty')
 
                 let out = ET.Union $ fmap (\(EL.Annotated _ ann) -> ann) cases'
                 return $ EL.Annotated (EL.Match scrutinee' cases') (Shared.decorate out)
@@ -187,7 +187,7 @@ instance Elaboration Expression where
                         Eff.local (\e -> e{ types = Map.insert id (Shared.decorate $ ET.Var tvar) $ types e }) $ do
                             expr' <- elaborate expr
                             ev <- Shared.mkEvidence
-                            Eff.tell $ Solver.Equality ev (Solver.Var tvar) (Solver.Mono $ Shared.extract expr')
+                            Eff.tell $ Solver.Equality ev (Solver.Ty $ ET.Var tvar) (Solver.Ty $ Shared.extract expr')
                             walk processed rest
                     RD.Procedure expr -> do
                         expr' <- elaborate expr
@@ -232,7 +232,7 @@ instance Elaboration (Case Expression) where
             Eff.tell $ Solver.Implication tvars [assume ev (Shared.extract pat') narrowed] constraint
             return $ EL.Annotated (EL.Case pat' expr') (EL.annotation expr')
             where
-                assume ev ty ty' = Solver.Assume $ Solver.Equality ev (Shared.toItem ty) (Shared.toItem ty')
+                assume ev ty ty' = Solver.Assume $ Solver.Equality ev (Solver.Ty ty) (Solver.Ty ty')
 
 
 pattern FieldAccess record field <- RD.Application (RD.Raw (RD.Var ".")) [record, RD.Raw (RD.Var field)]

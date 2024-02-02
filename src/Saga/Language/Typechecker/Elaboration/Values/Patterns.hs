@@ -20,7 +20,7 @@ import qualified Saga.Language.Syntax.Reduced.Values                 as RD
 import qualified Saga.Language.Typechecker.Elaboration.Effects       as Effs
 import qualified Saga.Language.Typechecker.Elaboration.Values.Shared as Shared
 import qualified Saga.Language.Typechecker.Lib                       as Lib
-import qualified Saga.Language.Typechecker.Solving.Constraints       as CST
+import qualified Saga.Language.Typechecker.Solving.Constraints       as Solver
 import           Saga.Language.Typechecker.Variables                 (Variable)
 
 import           Saga.Language.Typechecker.Elaboration.Types.Types
@@ -60,7 +60,7 @@ instance Elaboration (Pattern Expression) where
                 Just id -> do
                     tvar <- Shared.fresh ET.Unification
                     ev   <- Shared.mkEvidence
-                    Eff.tell $ CST.Equality ev (CST.Mono $ Shared.extract result) (CST.Var tvar)
+                    Eff.tell $ Solver.Equality ev (Solver.Ty $ Shared.extract result) (Solver.Ty $ ET.Var tvar)
                     emit (id, tvar)
                     return result
 

@@ -6,42 +6,42 @@ module Saga.Language.Typechecker.Solving.Monad where
 
 
 
-import qualified Data.Map                                         as Map
-import qualified Effectful.State.Static.Local                     as Eff
+import qualified Data.Map                                      as Map
+import qualified Effectful.State.Static.Local                  as Eff
 
-import           Saga.Language.Typechecker.Errors                 (SagaError)
-import           Saga.Language.Typechecker.Monad                  (TypeCheck)
-import           Saga.Language.Typechecker.Solving.Constraints    (Constraint,
-                                                                   Evidence,
-                                                                   Variable)
+import           Saga.Language.Typechecker.Errors              (SagaError)
+import           Saga.Language.Typechecker.Monad               (TypeCheck)
+import           Saga.Language.Typechecker.Solving.Constraints (Constraint,
+                                                                Evidence,
+                                                                Variable)
 
-import           Saga.Language.Typechecker.Substitution           (Subst,
-                                                                   Substitutable,
-                                                                   compose)
+import           Saga.Language.Typechecker.Substitution        (Subst,
+                                                                Substitutable,
+                                                                compose)
 
-import           Debug.Pretty.Simple                              (pTraceM)
-import           Effectful                                        (Eff, (:>))
-import qualified Effectful                                        as Eff
-import qualified Effectful.Reader.Static                          as Eff
+import           Debug.Pretty.Simple                           (pTraceM)
+import           Effectful                                     (Eff, (:>))
+import qualified Effectful                                     as Eff
+import qualified Effectful.Reader.Static                       as Eff
 
 
-import qualified Saga.Language.Typechecker.Monad                  as TC
-import           Saga.Language.Typechecker.Solving.Cycles         (Cycle)
+import qualified Saga.Language.Typechecker.Monad               as TC
+import           Saga.Language.Typechecker.Solving.Cycles      (Cycle)
 
-import           Saga.Language.Syntax.Elaborated.Types            (Type)
+import           Saga.Language.Syntax.Elaborated.Types         (Type)
 import           Saga.Language.Syntax.Literals
-import qualified Saga.Language.Typechecker.Variables              as Var
+import qualified Saga.Language.Typechecker.Variables           as Var
 
-import           Data.Map                                         (Map)
-import qualified Effectful.Error.Static                           as Eff
-import qualified Effectful.Fail                                   as Eff
-import qualified Effectful.Writer.Static.Local                    as Eff
-import           Saga.Language.Syntax.AST                         hiding
-                                                                  (NodeType (..))
-import           Saga.Language.Syntax.Elaborated.Kinds            (Kind)
-import           Saga.Language.Typechecker.Elaboration.Traversals
-import           Saga.Language.Typechecker.Env                    (CompilerState,
-                                                                   Info)
+import           Data.Map                                      (Map)
+import qualified Effectful.Error.Static                        as Eff
+import qualified Effectful.Fail                                as Eff
+import qualified Effectful.Writer.Static.Local                 as Eff
+import           Saga.Language.Syntax.AST                      hiding
+                                                               (NodeType (..))
+import           Saga.Language.Syntax.Elaborated.Kinds         (Kind)
+import           Saga.Language.Typechecker.Env                 (CompilerState,
+                                                                Info)
+import           Saga.Language.Typechecker.Traversals
 
 
 type Solving es =   ( Eff.Reader (CompilerState Elaborated) :> es
@@ -53,6 +53,7 @@ type Solving es =   ( Eff.Reader (CompilerState Elaborated) :> es
                     , Eff.State Solution :> es
                     , Eff.State Count :> es
                     , Eff.State [Cycle Type] :> es
+
                     )
 
 data Count = Count { evs :: Int, tvs :: Int }
@@ -74,6 +75,14 @@ class Solve c where
 
     irreducible :: c -> Bool
     irreducible = const True
+
+-- | ISSUE #23
+-- | TODO #24 Move Constraint list to a state effect within the Solver monad
+class Entails a where
+    entails :: Solving es => a -> [Constraint] -> Eff es [Constraint]
+
+
+
 
 
 initialSolution :: Solution
