@@ -13,7 +13,7 @@ import           Saga.Language.Syntax.AST                                 (AST,
                                                                            Phase (..))
 import qualified Saga.Language.Syntax.Elaborated.Types                    as EL
 import qualified Saga.Language.Syntax.Reduced.AST                         as RD
-import           Saga.Language.Syntax.Reduced.Types                       (Type)
+import           Saga.Language.Syntax.Reduced.Types                       (TypeExpr)
 import qualified Saga.Language.Syntax.Reduced.Values                      as RD
 import qualified Saga.Language.Typechecker.Elaboration.Effects            as Effs
 import           Saga.Language.Typechecker.Elaboration.Effects            (State (..))

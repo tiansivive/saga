@@ -31,11 +31,13 @@ import           Saga.Language.Typechecker.Variables                  (Variable)
 import           Data.Functor                                         ((<&>))
 import qualified Data.List                                            as List
 import qualified Data.Map                                             as Map
+import           Effectful                                            (Eff)
 import qualified Effectful.Error.Static                               as Eff
 import qualified Effectful.Reader.Static                              as Eff
 import qualified Effectful.Writer.Static.Local                        as Eff
 import           Prelude                                              hiding
-                                                                      (id)
+                                                                      (id,
+                                                                       lookup)
 import           Saga.Language.Syntax.AST                             (Phase (..))
 import           Saga.Language.Syntax.Polymorphism                    (Given (..),
                                                                        Polymorphic (..),
@@ -43,7 +45,8 @@ import           Saga.Language.Syntax.Polymorphism                    (Given (..
 import           Saga.Language.Typechecker.Elaboration.Effects        (State (..))
 import           Saga.Language.Typechecker.Elaboration.Types.Kinds    hiding
                                                                       (Protocol)
-import           Saga.Language.Typechecker.Elaboration.Types.Shared   (mkEvidence)
+import           Saga.Language.Typechecker.Elaboration.Types.Shared   (Tag (..),
+                                                                       mkEvidence)
 import           Saga.Language.Typechecker.Env                        (CompilerState (..))
 import           Saga.Language.Typechecker.Errors                     (Exception (..),
                                                                        SagaError (..),
@@ -59,7 +62,7 @@ instance Elaboration NT.Type where
   type Effects NT.Type es = Effs.Elaboration es
 
   elaborate (RD.Raw node) = case node of
-    RD.Identifier x -> _lookup x
+    RD.Identifier x -> lookup x
 
     RD.Singleton lit -> return $ EL.Annotated (EL.Singleton lit) (EL.Raw EK.Type)
 
@@ -106,7 +109,6 @@ instance Elaboration NT.Type where
           p <- params
           return $ Shared.fresh >>= \kvar -> let k = EK.Var kvar in return $ EL.Poly p k
 
-
     FieldAccess (RD.Raw -> record) field -> do
         record' <- elaborate record
         case EL.node record' of
@@ -115,8 +117,8 @@ instance Elaboration NT.Type where
         where
             not_field r = Fail $ field ++ " is not a field of " ++ show r
 
-    --RD.Application f a -> crash $ NotYetImplemented "Elaboration and evaluation of type applications type expressions"
     RD.Application (RD.Raw -> f) [RD.Raw -> arg] -> do
+      sub@(EL.Unification _ k) <- Shared.fresh' T
       out <- EK.Var <$> Shared.fresh
       f' <- elaborate f
       arg' <- elaborate arg
@@ -124,12 +126,10 @@ instance Elaboration NT.Type where
       inferred <- generalize' $ EL.annotation arg' `EK.Arrow` EL.Raw out
       evidence <- Shared.mkEvidence
       Eff.tell $ Solver.Equality evidence (Solver.K $ Shared.extract f') (Solver.K $ EK.Polymorphic inferred)
+      Eff.tell $ Solver.Equality evidence (Solver.K out) (Solver.K k)
 
-
-      return $ case (EL.node f', EL.node arg') of
-          (EL.Var tvar, _)                      -> EL.Annotated (EL.Applied f' arg') (EL.Raw out)
-          (ty@(EL.Polymorphic poly), EL.Var {}) -> EL.Annotated (EL.Applied f' arg') (EL.Raw out)
-          (ty@(EL.Polymorphic poly), t)         -> EL.Annotated (instantiate poly t) (EL.Raw out)
+      Eff.tell $ Solver.Evaluate (EL.Var sub) (EL.node f') (EL.node arg')
+      return $ EL.Annotated (EL.Var sub) (EL.Raw out)
 
       where
         generalize' k = do
@@ -142,42 +142,17 @@ instance Elaboration NT.Type where
             where
                 partial = RD.Application f [a]
                 curried = RD.Raw $ foldl (\f' a -> RD.Application f' [a]) partial as
-      --return $ EL.Annotated (EL.Application (EL.node f') (EL.node a')) (EL.Raw EK.Type)
-  -- do
-  --       fn' <- evaluate fnExpr
-  --       args <- mapM evaluate argExprs
 
-  --       case fn' of
-  --           -- | TODO: #21 @tiansivive :Kinds:TypeEvaluation we probably need some kind check here
 
-  --           t@(T.Data {}) -> return . node $ application t args
-  --           -- | TODO: #21 @tiansivive :Kinds:TypeEvaluation we probably need some kind check here
-  --           t@(T.Applied {}) -> return . node $ application t args
-  --           T.Closure closure env -> _apply closure args
-  --           T.Var (T.Poly  t _) -> do
-  --               T.Raw t' <- lookup t
-  --               case t' of
-  --                   -- | TODO: #21 @tiansivive :Kinds:TypeEvaluation we probably need some kind check here
-  --                   T.Data tycon -> return . node $ application t' args
-  --                   -- | TODO: #21 @tiansivive :Kinds:TypeEvaluation we probably need some kind check here
-  --                   T.Applied cons arg -> return . node $ application t' args
-  --                   T.Closure closure env -> _apply closure args
-  --                   _ -> Eff.throwError $ UnexpectedType t' "Cannot apply this variable expression"
-  --           _ -> Eff.throwError $ UnexpectedType fn' "Cannot apply this type expression"
+    RD.Match (RD.Raw -> subject) _  -> do
+      Saga { types, kinds } <- Eff.ask
 
-  --       where
-  --           application (T.Raw -> t) (fmap T.Raw -> args) = foldl (T.Applied |>: T.Raw ) t args
-  --            apply :: TypeExpr -> [Variable Type] -> [Type] -> EvaluationM Type
-            -- apply tyExpr [] [] = evaluate tyExpr
-            -- apply tyExpr tvars [] = do
-            --     Saga { types, kinds } <- Eff.ask
-            --     return $ T.Closure tyExpr (T.Scope types kinds)
+      subject' <- elaborate subject
+      sub@(EL.Unification _ k) <- Shared.fresh' T
+      -- | TODO: Most likely we need a specific structure for the match clause rather than a closure
+      Eff.tell $ Solver.Evaluate (EL.Var sub) (EL.Closure node (EL.Scope types kinds)) (EL.node subject')
 
-            -- apply tyExpr (p@(T.Poly id k) :params) (a :args) = Eff.local (\e -> e{ types = Map.insert id (T.Raw $ T.Var p) (types e) }) $ do
-            --     apply tyExpr params args
-            -- apply _ [] (a: args) = Eff.throwError $ TooManyArguments fnExpr argExprs
-
-    RD.Match t cases  -> crash $ NotYetImplemented "Elaboration and evaluation of Match type expressions"
+      return $ EL.Annotated (EL.Var sub) (EL.Raw k)
 
     RD.Union tys -> do
       tys' <- forM tys (elaborate . RD.Raw)
@@ -272,6 +247,12 @@ instance Elaboration NT.Constraint where
 --     elaborate' cons name (AST.Raw -> k) = do
 --       k' <- elaborate k
 --       return (ET.Poly name (EL.node k'), EL.node k')
+
+lookup :: Effs.Elaboration es => String -> Eff es (EL.AST Elaborated NT.Type)
+lookup id = do
+    Saga { types } <- Eff.ask
+    maybe (Eff.throwError $ UndefinedIdentifier id) return $ Map.lookup id types
+
 
 
 

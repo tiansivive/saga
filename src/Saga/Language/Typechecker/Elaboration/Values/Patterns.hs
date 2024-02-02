@@ -52,8 +52,8 @@ instance Elaboration (Pattern Expression) where
         RD.PatList pats rest -> do
             pats' <- mapM elaborate pats
             tvar <- Shared.fresh ET.Unification
-            list' <- elaborate $ RD.Raw Lib.listConstructor
-            let result = EL.Annotated (EL.PatList pats' rest) (Shared.decorate $ ET.Applied list' $ choice (ET.Var tvar) pats')
+
+            let result = EL.Annotated (EL.PatList pats' rest) (list' $ choice (ET.Var tvar) pats')
 
             case rest of
                 Nothing -> return result
@@ -67,6 +67,7 @@ instance Elaboration (Pattern Expression) where
             where
                 choice tvar []    = Shared.decorate tvar
                 choice tvar (t:_) = EL.annotation t
+                list' = Shared.decorate . ET.Applied (EL.Raw Lib.listConstructor)
 
         RD.PatRecord pairs rest -> do
             pairs' <- forM pairs elaborate'

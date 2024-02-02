@@ -22,6 +22,7 @@ data Constraint where
     Pure        :: Item -> Constraint
     Impure      :: Item -> Constraint
     Implication :: [Variable Type] -> [Assumption] -> Constraint -> Constraint
+    Evaluate    :: { result :: Type, cons :: Type, arg :: Type } -> Constraint
 deriving instance Show Constraint
 
 

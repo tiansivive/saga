@@ -47,8 +47,8 @@ deriving instance Eq (AST Elaborated NT.Type)
 deriving instance Ord (AST Elaborated NT.Type)
 
 data Scope = Scope
-  { types :: Map String (AST Reduced NT.Type)
-  , kinds :: Map String (AST Reduced NT.Kind)
+  { types :: Map String (AST Elaborated NT.Type)
+  , kinds :: Map String (AST Elaborated NT.Kind)
   } deriving (Show, Eq, Ord)
 
 
@@ -60,6 +60,7 @@ data instance Variable Type where
   Rigid             :: String -> Kind -> Variable Type
   Scoped            :: String -> Kind -> Variable Type
   Unification       :: String -> Kind -> Variable Type
+  Evaluation        :: String -> Kind -> Variable Type
   Instantiation     :: String -> Kind -> Variable Type
 deriving instance Show (Variable Type)
 deriving instance Eq (Variable Type)
