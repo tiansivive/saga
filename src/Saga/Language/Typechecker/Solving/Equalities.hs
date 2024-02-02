@@ -3,10 +3,16 @@ module Saga.Language.Typechecker.Solving.Equalities where
 
 import qualified Data.Map                                            as Map
 import           Effectful                                           (Eff, (:>))
+import qualified Effectful.Error.Static                              as Eff
 import qualified Effectful.State.Static.Local                        as Eff
 import qualified Effectful.Writer.Static.Local                       as Eff
+
+
+import qualified Saga.Language.Syntax.Elaborated.AST                 as EL
+
 import qualified Saga.Language.Syntax.Elaborated.Types               as T
 import           Saga.Language.Syntax.Elaborated.Types               (Type)
+
 import           Saga.Language.Syntax.Polymorphism                   (Given (..),
                                                                       Polymorphic (..),
                                                                       Qualified (..))
@@ -26,8 +32,8 @@ import           Saga.Language.Typechecker.Solving.Shared            (Tag (..),
 
 import           Data.Maybe                                          (isJust)
 import           Debug.Pretty.Simple                                 (pTrace)
-import qualified Effectful.Error.Static                              as Eff
-import qualified Saga.Language.Syntax.Elaborated.AST                 as EL
+
+
 import           Saga.Language.Typechecker.Elaboration.Instantiation
 import           Saga.Language.Typechecker.Elaboration.Monad         (Instantiate (..))
 import           Saga.Language.Typechecker.Solving.Unification       (Unification (..))

@@ -14,7 +14,7 @@ collapse :: Eff.Error SagaError :> es => Subst Type -> Cycle Type -> Eff es (Sub
 collapse sub (tvar, ty, solution) =
       if unbound tvar sub then
         return $ compose solution sub
-      else Eff.throwError $ InfiniteType tvar ty
+      else Eff.throwError $ InfiniteType tvar _ty
 
 
 -- | TODO: Check if any of the tvars are constrained. If so, then try to unify within the union. If it fails, it's an actual error

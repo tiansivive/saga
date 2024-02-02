@@ -231,6 +231,8 @@ instance Unification Type where
                     let solution = Map.singleton a $ T.Union (fmap AST.Raw tys' )
                     Eff.tell [(a, t, solution)]
                     return nullSubst
+
+            -- _ -> Eff.throwError $ Fail "Infinite type"
             _ -> Eff.throwError $ InfiniteType a t
 
         | otherwise = do
