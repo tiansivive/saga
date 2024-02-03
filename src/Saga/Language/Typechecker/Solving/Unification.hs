@@ -46,7 +46,9 @@ import           Saga.Language.Typechecker.Substitution            (Subst,
                                                                     nullSubst)
 import           Saga.Language.Typechecker.Variables               (Variable)
 import           Saga.Utils.Common                                 (distribute2)
-import           Saga.Utils.Operators                              ((|>), (||>))
+import           Saga.Utils.Operators                              ((|$>), (|>),
+                                                                    (|>:),
+                                                                    (||>))
 
 
 type UnificationEff es t = (Solving es, Eff.Writer [Cycle t] :> es, Eff.Writer Proofs :> es, Eff.Writer Solver.Constraint :> es)
@@ -278,10 +280,42 @@ sub@(T.Record pairs1) `isSubtype` parent@(T.Record pairs2) = do
             Shared.fresh E >>= \ev -> Eff.tell $ Solver.Equality ev (project k1) (project k2)
             unify t1 t2
 
-
 sub `isSubtype` parent = Eff.throwError $ SubtypeFailure sub parent
 
 
+
+type KindUnification es = UnificationEff es K.Kind
+instance Unification K.Kind where
+
+  unify k@(K.Polymorphic {}) _ = Eff.throwError . Fail $ "Cannot unify a polymorphic kind! \nKind:\n" ++ show k ++ "\nShould have been instantiated"
+  unify _ k@(K.Polymorphic {}) = Eff.throwError . Fail $ "Cannot unify a polymorphic kind! \nKind:\n" ++ show k ++ "\nShould have been instantiated"
+
+  unify K.Type K.Type = return Map.empty
+  unify K.Kind K.Kind = return Map.empty
+  unify K.Constraint K.Constraint   = return Map.empty
+
+  unify (K.Protocol (AST.node -> k1)) (K.Protocol (AST.node -> k2)) = unify k1 k2
+
+  unify ((AST.node -> inK1) `K.Arrow`  (AST.node -> outK1)) ((AST.node -> inK2) `K.Arrow` (AST.node -> outK2)) = do
+    sub <- unify inK1 inK2
+    s <- unify (apply sub outK1) (apply sub outK2)
+    return $ s `compose` sub
+
+  unify (K.Application (AST.node -> f) (fmap AST.node -> ks)) (K.Application (AST.node -> f') (fmap AST.node -> ks')) = do
+    sub <- unify f f'
+    subs <- zipWithM unify ks ks'
+    return $ foldl (flip compose) sub subs
+
+  unify k (K.Var v)                    = bind v k
+  unify (K.Var v) k                    = bind v k
+
+  bind v k
+      | K.Var v == k  = return Map.empty
+      | occursCheck v k   = Eff.throwError $ InfiniteKind v k
+      | otherwise     = return $ Map.singleton v k
+
+
+  occursCheck v k = v `Set.member` ftv k
 
 project = Solver.K . AST.node
 emitKindEquality (project -> ka) (project -> kb) = Shared.fresh E >>= \ev -> Eff.tell $ Solver.Equality ev ka kb

@@ -97,8 +97,8 @@ entails i@(Solver.Implementation e t pid) cs = do
 
 
 
-simplify' :: Solving es => Solver.Constraint -> Eff es Solver.Constraint
-simplify' impl@(Solver.Implementation ev t prtcl) = do
+simplify :: Solving es => Solver.Constraint -> Eff es Solver.Constraint
+simplify impl@(Solver.Implementation ev t prtcl) = do
     Solution { evidence, tvars } <- Eff.get
     process evidence tvars
 

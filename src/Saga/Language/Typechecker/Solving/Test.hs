@@ -78,7 +78,7 @@ print (Right (Right res)) = do
     return ()
 
 
-test = Solver.run (constraint, Map.empty) ||> run >>= print
+test = Solver.process constraint||> run >>= print
 
 constraint =
     Equality

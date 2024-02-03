@@ -12,6 +12,7 @@ import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 import           Saga.Language.Typechecker.Variables           (Variable)
 
 
+import qualified Saga.Language.Syntax.Elaborated.Kinds         as EL
 import qualified Saga.Language.Syntax.Elaborated.Types         as EL
 import qualified Saga.Language.Syntax.Reduced.Types            as RD
 import qualified Saga.Language.Syntax.Reduced.Values           as RD
@@ -49,7 +50,7 @@ data SagaError where
 
 
   InfiniteType :: (Show a, Show (Variable a)) => (Variable a) -> EL.Type -> SagaError
-  InfiniteKind :: (Show a, Show (Variable a)) => Variable a -> Kind -> SagaError
+  InfiniteKind :: (Show a, Show (Variable a)) => Variable a -> EL.Kind -> SagaError
   CircularKind :: Kind -> Kind -> SagaError
 
   RigidUnification :: (Show a, Show (Variable a)) => Variable a -> EL.Type  -> SagaError

@@ -65,8 +65,8 @@ entails ref@(Solver.Refinement scope ty liquid) cs = do
                         ]
 
 
-solve' :: Solving es => Solver.Constraint -> Eff es (Status, Solver.Constraint)
-solve' r@(Solver.Refinement scope ty liquid) = do
+solve :: Solving es => Solver.Constraint -> Eff es (Status, Solver.Constraint)
+solve r@(Solver.Refinement scope ty liquid) = do
     res <- Eff.liftIO . SBV.sat $ evalStateT (translate liquid) empty
     case res of
         SatResult (SBV.Satisfiable _ model) -> return $
@@ -76,8 +76,8 @@ solve' r@(Solver.Refinement scope ty liquid) = do
         _ -> Eff.throwError $ UnsatisfiableRefinement $ Solver.Refinement scope ty liquid
 
 
-simplify' :: Solving es => Solver.Constraint -> Eff es  Solver.Constraint
-simplify' (Solver.Refinement scope it liquid) = do
+simplify :: Solving es => Solver.Constraint -> Eff es  Solver.Constraint
+simplify (Solver.Refinement scope it liquid) = do
     proofs' <- Eff.gets proofs
     let subst = scope ||> Map.mapWithKey (convert proofs')
     return $ Solver.Refinement scope it (apply subst liquid)
