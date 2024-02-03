@@ -38,10 +38,10 @@ propagate = foldM (\acc c -> Solver.Conjunction acc <$> from c) Solver.Empty
 from :: Solving es => T.TypeConstraint -> Eff es Solver.Constraint
 --from (T.Pure t)          = return $ C.Pure $ Mono t
 --from (Q.Resource m t)    = return $ C.Resource (Mono t) m
-from (T.Refinement bs re t) = return $ Solver.Refined bs t re
+from (T.Refinement bs re t) = return $ Solver.Refinement bs t re
 from (T.Implements t p)  = do
     superEv <- fresh E
-    return $ Solver.Impl superEv t p
+    return $ Solver.Implementation superEv t p
 -- from (Q.Equality t t')   = do
 --     eqEv <- fresh E
 --     return $ C.Equality eqEv (Mono t) (Mono t')
@@ -85,7 +85,6 @@ type family Var a where
     Var T.Type  = Variable T.Type
     Var K.Kind  = Variable K.Kind
     Var Evidence = Variable Solver.Constraint
-
 
 type family Sub a where
     Sub Type     = Subst Type

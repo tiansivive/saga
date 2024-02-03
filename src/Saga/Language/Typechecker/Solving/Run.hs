@@ -6,6 +6,7 @@ import qualified Data.List                                     as List
 import qualified Data.Map                                      as Map
 import           Debug.Pretty.Simple                           (pTrace, pTraceM)
 import           Effectful                                     (Eff)
+import qualified Effectful.Reader.Static                       as Eff
 import qualified Effectful.State.Static.Local                  as Eff
 import qualified Saga.Language.Syntax.Elaborated.Types         as T
 import qualified Saga.Language.Typechecker.Solving.Constraints as Solver
@@ -18,16 +19,18 @@ import           Saga.Language.Typechecker.Solving.Monad       (Entails (..),
                                                                 Solve (..),
                                                                 Solving,
                                                                 Status (..))
+import qualified Saga.Language.Typechecker.Solving.Protocols   as Protocols
 import qualified Saga.Language.Typechecker.Solving.Shared      as Shared
 import           Saga.Language.Typechecker.Substitution        (Substitutable (..))
-import           Saga.Language.Typechecker.Zonking.Zonking     (Context (..))
+import qualified Saga.Language.Typechecker.Variables           as Var
+
 import           Saga.Utils.Operators                          ((|>), (||>))
 
 
 
 
-run :: Solving es => Constraint -> Eff es [Solver.Constraint]
-run constraint = do
+run :: Solving es => (Constraint, Levels) -> Eff es [Solver.Constraint]
+run (constraint, lvls) = do
     -- pTraceM $ "\nCONSTRAINTS:\n" ++ show (Shared.flatten constraint)
     -- ((residuals, cycles), solution) <- Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState [] . Eff.runReader (Var.Level 0) . Eff.runReader levels $ process (Shared.flatten constraint) []
     -- pTraceM $ "\n-----------------------------\nCYCLES:\n" ++ show cycles
@@ -111,13 +114,25 @@ instance Entails Constraint where
 -- -- | SUGGESTION: This is a good place to start refactoring the constraints into a data family.
 -- -- | That way we do not need to pattern match on the constructors here, we can just have a different instance for each constructor.
 instance Solve Solver.Constraint where
-    solve c@(Solver.Equality ev it it') = Equalities.solve c
-    -- solve (Solver.Impl ev it p)                          = solve $ P.Impl ev it p
+    solve c@(Solver.Equality {})       = Equalities.solve c
+    solve c@(Solver.Implementation {}) = Protocols.solve c
+
+
+    solve (Solver.Implication vs as Solver.Empty) = return (Deferred, Shared.merge cs)
+        where cs = [c | Solver.Assume c <- as]
+
+    solve (Solver.Implication vs as c) = Eff.local @Var.Level (+1) $ do
+        lvls <- Eff.ask @Levels
+        residuals <- run (c, lvls)
+        let cs = [ c | Solver.Assume c <- as ]
+        return (Deferred, Shared.merge $ cs ++ residuals)
+
+
     -- solve (Solver.Implication vars assumps constraint)   = solveImplication $ Imp.Implies vars assumps constraint
     -- solve (Solver.Refined scope it liquid)               = solve $ R.Refine scope it liquid
     -- solve Solver.Empty                                   = return (Solved, Solver.Empty)
     --solve c@(Solver.Conjunction {})                      = return (Deferred, c)
-    solve c                             = return (Deferred, c)
+    solve c                            = return (Deferred, c)
     -- solve c                                         = crash $ NotYetImplemented $ "Solving constraint: " ++ show c
 
     simplify :: Solving es => Constraint -> Eff es Constraint

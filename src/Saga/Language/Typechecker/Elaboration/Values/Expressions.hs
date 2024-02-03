@@ -209,7 +209,7 @@ instance Elaboration Expression where
             where
                 elaborate' expr (Solver.Assume c)
                     -- | QUESTION: Do we need to also annotate types here or de we expand it during Zonking?
-                    | Solver.Impl (Solver.Evidence e) _ protocol <- c = EL.Application (EL.Raw expr) [EL.Raw (EL.Var $ EL.Protocol e)]
+                    | Solver.Implementation (Solver.Evidence e) _ protocol <- c = EL.Application (EL.Raw expr) [EL.Raw (EL.Var $ EL.Protocol e)]
                     | otherwise                                 = expr
 
 

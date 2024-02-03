@@ -26,18 +26,18 @@ import           Saga.Language.Syntax.Reduced.Types     (TypeExpr)
 import           Saga.Language.Typechecker.Traversals
 
 data Constraint where
-    Empty       :: Constraint
-    Conjunction :: Constraint -> Constraint -> Constraint
-    Equality    :: Variable Constraint -> Item -> Item -> Constraint
-    Impl        :: Variable Constraint -> Type -> ProtocolID -> Constraint
-    OneOf       :: { source :: Type, union :: Type } -> Constraint
-    Refined     :: Bindings -> Type -> Liquid -> Constraint
-    Proof       :: { source :: Type, narrowed :: Type } -> Constraint
+    Empty           :: Constraint
+    Conjunction     :: Constraint -> Constraint -> Constraint
+    Equality        :: Variable Constraint -> Item -> Item -> Constraint
+    Implementation  :: Variable Constraint -> Type -> ProtocolID -> Constraint
+    OneOf           :: { source :: Type, union :: Type } -> Constraint
+    Refinement      :: Bindings -> Type -> Liquid -> Constraint
+    Proof           :: { source :: Type, narrowed :: Type } -> Constraint
     -- Consumed    :: Item -> Constraint
     -- Pure        :: Item -> Constraint
     -- Impure      :: Item -> Constraint
-    Implication :: [Variable Type] -> [Assumption] -> Constraint -> Constraint
-    Evaluate    :: { result :: Type, expr :: Expression } -> Constraint
+    Implication     :: [Variable Type] -> [Assumption] -> Constraint -> Constraint
+    Evaluate        :: { result :: Type, expr :: Expression } -> Constraint
 deriving instance Show Constraint
 deriving instance Eq Constraint
 
@@ -87,14 +87,14 @@ instance Substitutable Constraint where
     type Target Constraint = Type
     apply sub (Conjunction c c')   = Conjunction (apply sub c) (apply sub c')
     apply sub (Equality ev it it') = Equality ev (apply sub it) (apply sub it')
-    apply sub (Impl ev it prtcl)   = Impl ev (apply sub it) prtcl
-    apply sub (Refined scope it liquid)   = Refined scope (apply sub it) liquid
+    apply sub (Implementation ev it prtcl)   = Implementation ev (apply sub it) prtcl
+    apply sub (Refinement scope it liquid)   = Refinement scope (apply sub it) liquid
     apply sub c                    = c
 
     ftv (Conjunction c c')        = ftv c <> ftv c'
     ftv (Equality ev it it')      = ftv it <> ftv it'
-    ftv (Impl ev it prtcl)        = ftv it
-    ftv (Refined scope it liquid) = ftv it <> (Map.elems scope ||> fmap ftv |> mconcat)
+    ftv (Implementation ev it prtcl)        = ftv it
+    ftv (Refinement scope it liquid) = ftv it <> (Map.elems scope ||> fmap ftv |> mconcat)
     ftv _                         = Set.empty
 
 instance Substitutable Item where

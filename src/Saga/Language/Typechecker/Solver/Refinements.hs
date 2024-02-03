@@ -104,6 +104,7 @@ simplify' (Refine scope it liquid) = do
 
         fromLit (LInt n)  = L.Number n
         fromLit (LBool b) = L.Boolean b
+
 instance Substitutable Liquid where
     type Target Liquid = Liquid
 

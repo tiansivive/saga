@@ -89,11 +89,17 @@ instance Elaboration NT.Type where
                 elaborate ty >>= \t ->
                   return (EL.Local id $ Shared.extract t, EL.node t)
 
-    RD.Implementation prtcl tyExpr -> do
+    RD.Implementation prtcl (RD.Raw -> tyExpr) -> do
         Saga { protocols } <- Eff.ask @(CompilerState Elaborated)
         case List.find (\(Protocol { id }) -> id == prtcl) protocols of
             Nothing                -> error $ "Could not find Protocol: " ++ prtcl
-            Just (Protocol { spec }) -> elaborate . RD.Raw $ RD.Application spec [tyExpr]
+            Just (Protocol { spec }) -> do
+              ty <- elaborate tyExpr
+              crash $ NotYetImplemented "Elaboration of Protocol Implementation"
+              -- TODO:SUGGESTION Add one more constraint type, to evaluate this application and add the implementation to the environment
+              -- We also need some way to get the underlying value expression in order to add it to the environment
+              -- Will probably be handled when elaborating annotated expressions
+              -- RD.Raw $ RD.Application spec
 
     RD.Lambda params (RD.Raw -> body) ->  do
       tvars' <- tvars

@@ -95,8 +95,8 @@ contextualize ty@(T.Qualified (bs :| cs :=> t)) = do
   where
     scoped = foldl Solver.Conjunction Solver.Empty
 
-    toSolver (ty `T.Implements` protocol) = mkEvidence <&> \e -> Solver.Impl e ty protocol
-    toSolver (T.Refinement binds liquid ty) = return $ Solver.Refined binds ty liquid
+    toSolver (ty `T.Implements` protocol) = mkEvidence <&> \e -> Solver.Implementation e ty protocol
+    toSolver (T.Refinement binds liquid ty) = return $ Solver.Refinement binds ty liquid
 
 contextualize ty = return Solver.Empty
 

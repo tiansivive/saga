@@ -53,7 +53,7 @@ type Solving es =   ( Eff.Reader (CompilerState Elaborated) :> es
                     , Eff.State Solution :> es
                     , Eff.State Count :> es
                     , Eff.State [Cycle Type] :> es
-
+                    , Eff.IOE :> es
                     )
 
 data Count = Count { evs :: Int, tvs :: Int, kvs :: Int }
