@@ -27,6 +27,7 @@ import           Saga.Language.Core.Literals                   (Literal)
 import           Saga.Language.Typechecker.Variables           (Variable)
 import           Saga.Utils.Operators                          ((|>), (||>))
 
+import qualified Saga.Language.Syntax.AST                      as NT (NodeType (..))
 
 data Constraint where
     Empty       :: Constraint
@@ -51,7 +52,7 @@ data Item
     deriving (Show, Eq)
 
 data Evidence
-    = Protocol Implementation
+    = Protocol (Implementation)
     | Coercion Mechanism
     deriving (Show, Eq, Ord)
 data instance Variable Evidence where

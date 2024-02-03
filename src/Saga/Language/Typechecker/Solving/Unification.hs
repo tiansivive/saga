@@ -14,7 +14,7 @@ import qualified Effectful                                         as Eff
 import qualified Effectful.Error.Static                            as Eff
 import qualified Effectful.Reader.Static                           as Eff
 import qualified Effectful.Writer.Static.Local                     as Eff
-import           Saga.Language.Syntax.AST                          (Phase (Elaborated))
+
 import qualified Saga.Language.Syntax.Elaborated.AST               as AST
 import qualified Saga.Language.Syntax.Elaborated.Kinds             as K
 import qualified Saga.Language.Syntax.Elaborated.Types             as T
@@ -83,7 +83,7 @@ instance Unification Type where
       | T.Unification {} <- v   = bind v t
       | T.Scoped {} <- v        = bind v t
       | T.Local {} <- v         = bind v t
-      | T.Poly {} <- v          = bind v t
+      | T.Poly {}  <- v          = bind v t
       | T.Skolem {} <- v
       , T.Var v' <- t             = bind v' (T.Var v)
       | T.Rigid {} <- v
@@ -306,8 +306,21 @@ instance Unification K.Kind where
     subs <- zipWithM unify ks ks'
     return $ foldl (flip compose) sub subs
 
-  unify k (K.Var v)                    = bind v k
-  unify (K.Var v) k                    = bind v k
+
+  unify (K.Var v) k
+
+    | K.Poly {}  <- v                   = bind v k
+    | K.Unification {} <- v             = bind v k
+    | K.Rigid {} <- v, K.Var v' <- k    = bind v' k
+    | K.Rigid {} <- v                   = Eff.throwError $ RigidUnification v k
+    | otherwise = crash $ NotYetImplemented $ "Binding a var:\n" ++ show v ++ "\nwith\n" ++ show k
+
+  unify k (K.Var v)
+    | K.Unification {} <- v             = bind v k
+    | K.Poly {}  <- v                   = bind v k
+    | K.Rigid {} <- v, K.Var v' <- k    = bind v' k
+    | K.Rigid {} <- v                   = Eff.throwError $ RigidUnification v k
+    | otherwise = crash $ NotYetImplemented $ "Binding a var:\n" ++ show v ++ "\nwith\n" ++ show k
 
   bind v k
       | K.Var v == k  = return Map.empty
@@ -316,6 +329,10 @@ instance Unification K.Kind where
 
 
   occursCheck v k = v `Set.member` ftv k
+
+
+
+
 
 project = Solver.K . AST.node
 emitKindEquality (project -> ka) (project -> kb) = Shared.fresh E >>= \ev -> Eff.tell $ Solver.Equality ev ka kb

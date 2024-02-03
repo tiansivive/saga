@@ -21,16 +21,16 @@ import           Saga.Utils.Operators                                ((|>),
                                                                       (||>))
 
 
-import qualified Saga.Language.Typechecker.Protocols                 as P
+import qualified Saga.Language.Syntax.Protocols                      as P
 
 import           Control.Monad                                       ((>=>))
 import qualified Data.List                                           as List
 import qualified Effectful.Reader.Static                             as Eff
 import           Prelude                                             hiding (id)
 import           Saga.Language.Syntax.AST                            (Phase (..))
+import           Saga.Language.Syntax.Protocols                      (Protocol (..))
 import           Saga.Language.Typechecker.Elaboration.Monad         (Instantiate (..))
 import           Saga.Language.Typechecker.Env                       (CompilerState (..))
-import           Saga.Language.Typechecker.Protocols                 (Protocol (..))
 import qualified Saga.Language.Typechecker.Solving.Shared            as Shared
 import           Saga.Language.Typechecker.Solving.Shared            (Tag (..))
 import           Saga.Language.Typechecker.Substitution              (Substitutable (..),

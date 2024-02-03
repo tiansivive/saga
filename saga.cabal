@@ -29,6 +29,7 @@ library
       Saga.Language.Syntax.Liquids
       Saga.Language.Syntax.Literals
       Saga.Language.Syntax.Polymorphism
+      Saga.Language.Syntax.Protocols
       Saga.Language.Syntax.Reduced.AST
       Saga.Language.Syntax.Reduced.Kinds
       Saga.Language.Syntax.Reduced.Types
@@ -101,10 +102,13 @@ library
       Saga.Language.Typechecker.Type
       Saga.Language.Typechecker.TypeExpr
       Saga.Language.Typechecker.Variables
+      Saga.Language.Typechecker.Zonking.Expressions
+      Saga.Language.Typechecker.Zonking.Monad
       Saga.Language.Typechecker.Zonking.Normalisation
       Saga.Language.Typechecker.Zonking.Qualification
       Saga.Language.Typechecker.Zonking.Run
       Saga.Language.Typechecker.Zonking.Substitutions
+      Saga.Language.Typechecker.Zonking.Types
       Saga.Language.Typechecker.Zonking.Zonking
       Saga.Lexer.Lexer
       Saga.Lexer.Tokens

@@ -5,7 +5,7 @@
 module Saga.Language.Typechecker.Env where
 
     
-import Saga.Language.Typechecker.Protocols (Protocol) 
+import Saga.Language.Syntax.Protocols (Protocol) 
 import Saga.Language.Typechecker.Errors (SagaError)
 
 import Data.Map (Map)
@@ -18,13 +18,13 @@ import qualified Saga.Language.Syntax.AST as NT (NodeType (..))
 import qualified Saga.Language.Syntax.Reduced.Values as RD
 
 data CompilerState (phase :: Phase) = Saga
-  { protocols   :: [Protocol]
+  { protocols   :: [Protocol phase]
   , values      :: Map String RD.Expr
   , types       :: Map String (AST phase NT.Type)
   , kinds       :: Map String (AST phase NT.Kind)
   , extra       :: ExtraData phase
   }
-deriving instance (Show (AST phase NT.Type), Show (AST phase NT.Kind), Show (ExtraData phase)) => (Show (CompilerState phase))
+deriving instance (Show (Protocol phase), Show (AST phase NT.Type), Show (AST phase NT.Kind), Show (ExtraData phase)) => (Show (CompilerState phase))
 
 
 data Info = Info

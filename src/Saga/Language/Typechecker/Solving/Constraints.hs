@@ -2,12 +2,17 @@
 module Saga.Language.Typechecker.Solving.Constraints where
 import           Data.Map                               (Map)
 import           Saga.Language.Syntax.Liquids           (Liquid)
-import           Saga.Language.Typechecker.Protocols    (Implementation,
+import           Saga.Language.Syntax.Protocols         (Implementation,
                                                          ProtocolID)
 
 import qualified Saga.Language.Syntax.Elaborated.Kinds  as K
-import qualified Saga.Language.Syntax.Elaborated.Types  as T
-import           Saga.Language.Syntax.Elaborated.Types  (Type)
+import qualified Saga.Language.Syntax.Elaborated.Types  as T hiding (Bindings,
+                                                              ProtocolID,
+                                                              Refinement, Scope)
+import           Saga.Language.Syntax.Elaborated.Types  hiding (Bindings,
+                                                         ProtocolID, Refinement,
+                                                         Scope)
+import           Saga.Language.Syntax.Elaborated.Values
 import           Saga.Language.Syntax.Polymorphism      (Polymorphic)
 
 
@@ -63,7 +68,7 @@ deriving instance Eq (Variable Constraint)
 deriving instance Ord (Variable Constraint)
 
 data Evidence
-    = Protocol Implementation
+    = Protocol (Implementation Elaborated)
     | Coercion Mechanism
     deriving (Show, Eq, Ord)
 data Mechanism = Nominal | Structural deriving (Show, Eq, Ord)

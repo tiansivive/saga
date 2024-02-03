@@ -12,6 +12,7 @@ import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 import           Saga.Language.Typechecker.Variables           (Variable)
 
 
+import           Saga.Language.Syntax.AST                      (Phase (..))
 import qualified Saga.Language.Syntax.Elaborated.Kinds         as EL
 import qualified Saga.Language.Syntax.Elaborated.Types         as EL
 import qualified Saga.Language.Syntax.Reduced.Types            as RD
@@ -53,9 +54,10 @@ data SagaError where
   InfiniteKind :: (Show a, Show (Variable a)) => Variable a -> EL.Kind -> SagaError
   CircularKind :: Kind -> Kind -> SagaError
 
-  RigidUnification :: (Show a, Show (Variable a)) => Variable a -> EL.Type  -> SagaError
+  RigidUnification :: (Show a, Show (Variable a), Show (EL.Node Elaborated nt)) => Variable a -> EL.Node Elaborated nt  -> SagaError
 
   -- | PROTOCOLS
+  MissingProtocol :: ProtocolID -> SagaError
   MissingProtocolImplementation :: ProtocolID -> EL.Type -> SagaError
   MultipleImplementationEvidence :: EL.Type -> ProtocolID -> SagaError
   EvidenceNotFound :: String -> SagaError

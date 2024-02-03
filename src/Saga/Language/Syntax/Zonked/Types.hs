@@ -24,7 +24,7 @@ data instance Node Zonked NT.Type where
     Tuple       :: [AST Zonked NT.Type]                         -> Type
     Record      :: [(String, AST Zonked NT.Type)]               -> Type
     Union       :: [AST Zonked NT.Type]                         -> Type
-    Arrow       :: Type -> Type                                 -> Type
+    Arrow       :: AST Zonked NT.Type -> AST Zonked NT.Type     -> Type
     Data        :: String -> Kind                               -> Type
     Applied     :: AST Zonked NT.Type -> AST Zonked NT.Type     -> Type
     Var         :: Variable Type                                -> Type
