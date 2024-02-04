@@ -42,6 +42,7 @@ import           Saga.Language.Syntax.AST                             (Phase (..
 import           Saga.Language.Syntax.Polymorphism                    (Given (..),
                                                                        Polymorphic (..),
                                                                        Qualified (..))
+import           Saga.Language.Syntax.Protocols                       (Protocol (..))
 import           Saga.Language.Typechecker.Elaboration.Effects        (State (..))
 import           Saga.Language.Typechecker.Elaboration.Types.Kinds    hiding
                                                                       (Protocol)
@@ -50,7 +51,6 @@ import           Saga.Language.Typechecker.Env                        (CompilerS
 import           Saga.Language.Typechecker.Errors                     (Exception (..),
                                                                        SagaError (..),
                                                                        crash)
-import           Saga.Language.Typechecker.Protocols                  (Protocol (..))
 import qualified Saga.Language.Typechecker.Solving.Constraints        as Solver
 import           Saga.Utils.Operators                                 ((|$>),
                                                                        (|>),

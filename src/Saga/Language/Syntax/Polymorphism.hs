@@ -1,5 +1,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+
 
 module Saga.Language.Syntax.Polymorphism where
 
@@ -8,12 +10,13 @@ import qualified Data.Map as Map
 
 import Saga.Language.Typechecker.Variables (Variable)
 
-
+import Data.Data
 
 data Polymorphic t = Forall [Variable t] t
 deriving instance (Show t, Show (Variable t)) => Show (Polymorphic t)
 deriving instance (Eq t, Eq (Variable t))     => Eq (Polymorphic t)
 deriving instance (Ord t, Ord (Variable t))   => Ord (Polymorphic t)
+deriving instance (Data t, Data (Variable t))   => Data (Polymorphic t)
 
 data Qualified t = (:=>)
     { given :: Given t

@@ -5,41 +5,41 @@
 {-# LANGUAGE TypeFamilies          #-}
 
 module Saga.Language.Typechecker.Zonking.Normalisation where
-import           Saga.Language.Core.Expr                         (Expr)
-import           Saga.Language.Typechecker.Solver.Substitution   (Substitutable (..))
+import           Saga.Language.Core.Expr                       (Expr)
+import           Saga.Language.Typechecker.Solver.Substitution (Substitutable (..))
 
 
-import qualified Data.Map                                        as Map
-import           Data.Maybe                                      (fromMaybe)
-import           Data.Set                                        (Set)
-import qualified Data.Set                                        as Set
-import           Effectful                                       (Eff, (:>))
-import qualified Effectful.Reader.Static                         as Eff
+import qualified Data.Map                                      as Map
+import           Data.Maybe                                    (fromMaybe)
+import           Data.Set                                      (Set)
+import qualified Data.Set                                      as Set
+import           Effectful                                     (Eff, (:>))
+import qualified Effectful.Reader.Static                       as Eff
 
-import qualified Saga.Language.Core.Expr                         as AST
-import qualified Saga.Language.Typechecker.Kind                  as K
-import           Saga.Language.Typechecker.Monad                 (TypeCheck)
-import qualified Saga.Language.Typechecker.Type                  as T
-import           Saga.Language.Typechecker.Type                  (Type)
-import qualified Saga.Language.Typechecker.Variables             as Var
-import           Saga.Language.Typechecker.Variables             (Variable)
-import           Saga.Language.Typechecker.Zonking.Substitutions
+import qualified Saga.Language.Core.Expr                       as AST
+import qualified Saga.Language.Typechecker.Kind                as K
+import           Saga.Language.Typechecker.Monad               (TypeCheck)
+import qualified Saga.Language.Typechecker.Type                as T
+import           Saga.Language.Typechecker.Type                (Type)
+import qualified Saga.Language.Typechecker.Variables           as Var
+import           Saga.Language.Typechecker.Variables           (Variable)
 
 
-import           Control.Monad                                   (forM)
-import           Data.Functor                                    ((<&>))
-import qualified Effectful.Error.Static                          as Eff
+
+import           Control.Monad                                 (forM)
+import           Data.Functor                                  ((<&>))
+import qualified Effectful.Error.Static                        as Eff
 import           Saga.Language.Typechecker.Environment
-import           Saga.Language.Typechecker.Errors                (Exception (NotYetImplemented),
-                                                                  SagaError (UnexpectedVariable),
-                                                                  crash)
-import qualified Saga.Language.Typechecker.Qualification         as Q
-import           Saga.Language.Typechecker.Qualification         (Given (..),
-                                                                  Qualified (..))
-import qualified Saga.Language.Typechecker.Solver.Constraints    as Solver
-import           Saga.Language.Typechecker.TypeExpr              (TypeExpr)
+import           Saga.Language.Typechecker.Errors              (Exception (NotYetImplemented),
+                                                                SagaError (UnexpectedVariable),
+                                                                crash)
+import qualified Saga.Language.Typechecker.Qualification       as Q
+import           Saga.Language.Typechecker.Qualification       (Given (..),
+                                                                Qualified (..))
+import qualified Saga.Language.Typechecker.Solver.Constraints  as Solver
+import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 
-type NormalizedEff es t = (TypeCheck es,  Eff.Reader [(Variable t, String)] :> es)
+type NormalizedEff es t = (Eff.Error SagaError :> es, Eff.Reader [(Variable t, String)] :> es)
 type Normalized t a = forall es. NormalizedEff es t => Eff es a
 class Normalisation a where
     type Of a

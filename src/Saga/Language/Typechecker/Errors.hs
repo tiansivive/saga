@@ -61,7 +61,7 @@ data SagaError where
   MissingProtocolImplementation :: ProtocolID -> EL.Type -> SagaError
   MultipleImplementationEvidence :: EL.Type -> ProtocolID -> SagaError
   EvidenceNotFound :: String -> SagaError
-  UnexpectedEvidence :: Evidence -> String -> SagaError
+  UnexpectedEvidence :: Solver.Evidence -> String -> SagaError
 
   -- | REFINEMENTS
   UnsatisfiableRefinement :: Solver.Constraint -> SagaError

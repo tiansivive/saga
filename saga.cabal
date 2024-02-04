@@ -104,10 +104,11 @@ library
       Saga.Language.Typechecker.Variables
       Saga.Language.Typechecker.Zonking.Expressions
       Saga.Language.Typechecker.Zonking.Monad
+      Saga.Language.Typechecker.Zonking.Norm
       Saga.Language.Typechecker.Zonking.Normalisation
       Saga.Language.Typechecker.Zonking.Qualification
       Saga.Language.Typechecker.Zonking.Run
-      Saga.Language.Typechecker.Zonking.Substitutions
+      Saga.Language.Typechecker.Zonking.Test
       Saga.Language.Typechecker.Zonking.Types
       Saga.Language.Typechecker.Zonking.Zonking
       Saga.Lexer.Lexer
@@ -144,6 +145,7 @@ library
     , pretty-simple
     , sbv
     , transformers
+    , uniplate
   default-language: GHC2021
 
 test-suite saga-test
@@ -175,4 +177,5 @@ test-suite saga-test
     , saga
     , sbv
     , transformers
+    , uniplate
   default-language: GHC2021
