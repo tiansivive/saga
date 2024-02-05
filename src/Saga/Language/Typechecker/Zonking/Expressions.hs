@@ -40,6 +40,7 @@ import           Control.Applicative                           ((<|>))
 import           Data.Generics.Uniplate.Data                   (transformBiM,
                                                                 transformM)
 import qualified Data.Map                                      as Map
+import           Debug.Pretty.Simple                           (pTrace, pTraceM)
 import           Saga.Language.Typechecker.Solving.Monad       (Solution (..))
 import           Saga.Language.Typechecker.Solving.Shared      (Tag (..), Var)
 import           Saga.Language.Typechecker.Variables           (Variable)
@@ -48,27 +49,34 @@ import           Saga.Language.Typechecker.Zonking.Types
 
 
 zonkE :: (Zonking es) => AST Elaborated NT.Expression -> Eff es (AST Elaborated NT.Expression)
+--zonkE node | pTrace ("\n-------------------\nZonking\n---------------------\n " ++ show node) False = undefined
 zonkE node = do
     z <- transformM subs node
+    --pTraceM $ "Zonked\n" ++ show z
     parameterize z
 
     where
         subs :: Zonking es => AST Elaborated NT.Expression -> Eff es (AST Elaborated NT.Expression)
-        subs ast@(AST.Annotated expr ann) = do
+        --subs ast | pTrace ("\n-------------------\nSubstituting\n---------------------\n" ++ show ast) False = undefined
+        subs ast@(AST.Annotated (EX.Var (EX.Identifier x)) ann) = do
             ann' <- zonkT ann
             Context { solution, residuals } <- Eff.ask
             let params = collect residuals ||> fmap (\(ev, _, _) -> ev)
-            case expr of
-                EX.Var (EX.Identifier x)
-                        | x `elem` params -> return $ AST.Annotated (EX.Var $ EX.Identifier x) ann'
-                        | otherwise -> lookup E (Solver.Evidence x) >>= \case
-                            Just (Solver.Protocol (P.Implementation (P.Name id, ty, expr))) -> return $ AST.Annotated (EX.Var $ EX.Identifier id) ann'
-                            Just ev -> Eff.throwError $ UnexpectedEvidence ev "Expected Protocol Implementation"
+            if x `elem` params
+                then return $ AST.Annotated (EX.Var $ EX.Identifier x) ann'
+                else lookup E (Solver.Evidence x) >>= \case
+                    Just (Solver.Protocol (P.Implementation (P.Name id, ty, expr))) -> return $ AST.Annotated (EX.Var $ EX.Identifier id) ann'
+                    Just ev -> Eff.throwError $ UnexpectedEvidence ev "Expected Protocol Implementation"
 
-                            Nothing -> return $ AST.Annotated (EX.Var $ EX.Identifier x) ann'
-                _ -> return $ AST.Annotated expr ann'
-            
+                    Nothing -> return $ AST.Annotated (EX.Var $ EX.Identifier x) ann'
 
+        subs ast@(AST.Annotated expr ann) = do
+            ann' <- zonkT ann
+            return $ AST.Annotated expr ann'
+        subs ast = return ast
+
+
+        --parameterize expr | pTrace ("Parameterizing: " ++ show expr) False = undefined
         parameterize expr = do
             Context { solution, residuals } <- Eff.ask
             case collect residuals of

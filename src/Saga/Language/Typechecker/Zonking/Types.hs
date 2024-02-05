@@ -30,12 +30,15 @@ import           Saga.Language.Typechecker.Substitution  (Substitutable (..))
 import           Saga.Utils.Common                       (forM2)
 import           Saga.Utils.Operators                    ((||>))
 
+import           Debug.Pretty.Simple                     (pTrace)
 import           Saga.Language.Typechecker.Traversals
 
 
 zonkT :: (Zonking es) => AST Elaborated NT.Type -> Eff es (AST Elaborated NT.Type)
-zonkT = transformM subs
+--zonkT node | pTrace ("Zonking type node: " ++ show node) False = undefined
+zonkT node = transformM subs node
     where
+        subs ::  (Zonking es) => AST Elaborated NT.Type -> Eff es (AST Elaborated NT.Type)
         subs (AST.Annotated ty ann) = do
             Context { solution } <- Eff.ask
             ann' <- zonkK ann
@@ -53,12 +56,14 @@ zonkT = transformM subs
 
 
 zonkK :: (Zonking es) => AST Elaborated NT.Kind -> Eff es (AST Elaborated NT.Kind)
-zonkK = transformM subs
+--zonkK node | pTrace ("Zonking kind node: " ++ show node) False = undefined
+zonkK node = transformM subs node
     where
+        subs ::  (Zonking es) => AST Elaborated NT.Kind -> Eff es (AST Elaborated NT.Kind)
         subs (AST.Raw k) = do
             Context { solution } <- Eff.ask
             return . AST.Raw $ apply (kvars solution) k
-
+        subs (AST.Annotated k ann) = error "Zonking annotated kind not yet implemented"
 
 
 -- instance Zonk NT.Type where

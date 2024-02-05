@@ -1,5 +1,7 @@
-{-# LANGUAGE DataKinds    #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds      #-}
+{-# LANGUAGE LambdaCase     #-}
+{-# LANGUAGE TypeFamilies   #-}
 module Saga.Language.Typechecker.Traversals where
 
 
@@ -10,6 +12,8 @@ import           Data.Set                               (Set)
 import qualified Data.Set                               as Set
 
 import           Control.Monad.Identity                 (Identity (runIdentity))
+import           Data.Generics.Uniplate.Data            (transform, universeBi)
+import           Debug.Pretty.Simple                    (pTrace)
 import           Saga.Language.Syntax.AST               (Node, Visitor (..))
 import qualified Saga.Language.Syntax.Elaborated.Kinds  as K
 import           Saga.Language.Syntax.Elaborated.Kinds  (Kind)
@@ -68,23 +72,11 @@ instance Substitutable T.TypeConstraint where
 instance Substitutable Kind where
     type Target Kind = Kind
 
-    apply sub t@(K.Var v)                      = Map.findWithDefault t v sub
-    apply sub ty = runIdentity $ case ty of
-        K.Polymorphic (Forall tvars ty') -> K.Polymorphic . Forall tvars <$> visit substitute ty'
-        _ -> visit substitute ty
+    apply sub k = transform apply' k
         where
-            substitute = return . apply sub
+            apply' (K.Var v) = Map.findWithDefault (K.Var v) v sub
+            apply' k         = k
 
-    ftv (K.Var v) = Set.singleton v
-    ftv t = execWriter $ case t of
-        K.Polymorphic (Forall tvars ty) -> do
-            tell $ Set.fromList tvars
-            visit ftv' ty
-        ty -> visit ftv' ty
-
-        where
-            ftv' t = do
-                tell $ ftv t
-                return t
+    ftv k = Set.fromList $ [ v | K.Var v <- universeBi k]
 
 

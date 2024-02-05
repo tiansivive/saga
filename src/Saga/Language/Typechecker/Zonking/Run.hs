@@ -47,8 +47,6 @@ import           Saga.Utils.TypeLevel                          (type (§))
 run :: Zonking es => AST Elaborated NT.Expression -> Eff es (AST Elaborated NT.Expression)
 run ast  = do
     zonked <- zonkE ast
-    pTraceM $ "Zonked\n" ++ show zonked
-
     ast' <- normalise zonked
     -- residuals' <- Eff.runReader (mapping zonked) $ forM residuals normalise
 
