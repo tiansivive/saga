@@ -44,9 +44,9 @@ import           Saga.Language.Typechecker.Variables           (Variable)
 import           Saga.Utils.Operators                          ((||>))
 import           Saga.Utils.TypeLevel                          (type (§))
 
-run :: Zonking es => AST Elaborated NT.Expression -> Context -> Eff es (AST Elaborated NT.Expression)
-run ast context@(Context { residuals, solution }) = do
-    zonked <- Eff.runReader context $ zonkE ast
+run :: Zonking es => AST Elaborated NT.Expression -> Eff es (AST Elaborated NT.Expression)
+run ast  = do
+    zonked <- zonkE ast
     pTraceM $ "Zonked\n" ++ show zonked
 
     ast' <- normalise zonked

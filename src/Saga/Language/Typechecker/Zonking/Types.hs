@@ -40,6 +40,17 @@ zonkT = transformM subs
             Context { solution } <- Eff.ask
             ann' <- zonkK ann
             return $ AST.Annotated (apply (tvars solution) ty) ann'
+        subs (AST.Raw ty) = do
+            Context { solution } <- Eff.ask
+            return . AST.Raw $ apply (tvars solution) ty
+        -- subs ast = do
+        --     Context { solution } <- Eff.ask
+        --     case ast of
+        --         AST.Annotated ty ann -> do
+        --             ann' <- zonkK ann
+        --             return $ AST.Annotated (apply (tvars solution) ty) ann'
+        --         AST.Raw ty -> AST.Raw <$> apply (tvars solution) ty
+
 
 zonkK :: (Zonking es) => AST Elaborated NT.Kind -> Eff es (AST Elaborated NT.Kind)
 zonkK = transformM subs
