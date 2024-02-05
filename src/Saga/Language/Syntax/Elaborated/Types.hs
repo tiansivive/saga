@@ -17,6 +17,7 @@ import           Saga.Language.Syntax.Liquids          hiding (Var)
 import           Saga.Language.Typechecker.Variables   (Variable)
 
 import           Control.Monad.Identity                (Identity)
+import           Data.Data                             (Data)
 import qualified Data.Kind                             as GHC
 import           Prelude                               hiding (map, traverse)
 import           Saga.Language.Syntax.Reduced.Types    (TypeExpr)
@@ -40,10 +41,12 @@ data instance Node Elaborated NT.Type where
 deriving instance Show Type
 deriving instance Eq Type
 deriving instance Ord Type
+deriving instance Data Type
 
 deriving instance Show (AST Elaborated NT.Type)
 deriving instance Eq (AST Elaborated NT.Type)
 deriving instance Ord (AST Elaborated NT.Type)
+deriving instance Data (AST Elaborated NT.Type)
 
 data Scope = Scope
   { types :: Map String (AST Elaborated NT.Type)
@@ -64,6 +67,7 @@ data instance Variable Type where
 deriving instance Show (Variable Type)
 deriving instance Eq (Variable Type)
 deriving instance Ord (Variable Type)
+deriving instance Data (Variable Type)
 
 
 type TypeConstraint = Node Elaborated NT.Constraint
@@ -78,6 +82,7 @@ type ProtocolID = String
 deriving instance Show TypeConstraint
 deriving instance Eq TypeConstraint
 deriving instance Ord TypeConstraint
+deriving instance Data TypeConstraint
 
 deriving instance Show (AST Elaborated NT.Constraint)
 

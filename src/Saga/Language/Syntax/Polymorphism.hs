@@ -25,6 +25,7 @@ data Qualified t = (:=>)
 deriving instance (Show t, Show (Given t)) => Show (Qualified t)
 deriving instance (Eq t, Eq (Given t)) => Eq (Qualified t)
 deriving instance (Ord t, Ord (Given t)) => Ord (Qualified t)
+deriving instance (Data t, Data (Given t)) => Data (Qualified t)
 infixl 1 :=>
 
 
@@ -35,6 +36,7 @@ data Given t = (:|)
 deriving instance (Show t, Show (Variable t), Show (Qualifier t)) => Show (Given t)
 deriving instance (Eq t, Eq (Variable t), Eq (Qualifier t)) => Eq (Given t)
 deriving instance (Ord t, Ord (Variable t), Ord (Qualifier t)) => Ord (Given t)
+deriving instance (Data t, Ord (Variable t), Data (Variable t), Data (Qualifier t)) => Data (Given t)
 infixl 1 :|
 
 type family Qualifier t 

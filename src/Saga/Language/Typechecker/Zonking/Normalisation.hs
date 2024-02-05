@@ -39,132 +39,132 @@ import           Saga.Language.Typechecker.Qualification       (Given (..),
 import qualified Saga.Language.Typechecker.Solver.Constraints  as Solver
 import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 
-type NormalizedEff es t = (Eff.Error SagaError :> es, Eff.Reader [(Variable t, String)] :> es)
-type Normalized t a = forall es. NormalizedEff es t => Eff es a
-class Normalisation a where
-    type Of a
-    normalise :: NormalizedEff es (Of a) => a -> Eff es a
+-- type NormalizedEff es t = (Eff.Error SagaError :> es, Eff.Reader [(Variable t, String)] :> es)
+-- type Normalized t a = forall es. NormalizedEff es t => Eff es a
+-- class Normalisation a where
+--     type Of a
+--     normalise :: NormalizedEff es (Of a) => a -> Eff es a
 
-instance Normalisation Expr where
-    type Of Expr = Type
+-- instance Normalisation Expr where
+--     type Of Expr = Type
 
-    normalise =  \case
-        AST.Typed e ty -> AST.Typed <$> normalise e <*> normalise ty
+--     normalise =  \case
+--         AST.Typed e ty -> AST.Typed <$> normalise e <*> normalise ty
 
-        AST.Lambda ps body -> AST.Lambda ps <$> normalise body
-        AST.FnApp fn args  -> AST.FnApp <$> normalise fn <*> forM args normalise
-        AST.Match cond cases -> AST.Match <$> normalise cond <*> forM cases normalise
+--         AST.Lambda ps body -> AST.Lambda ps <$> normalise body
+--         AST.FnApp fn args  -> AST.FnApp <$> normalise fn <*> forM args normalise
+--         AST.Match cond cases -> AST.Match <$> normalise cond <*> forM cases normalise
 
-        AST.Record es -> AST.Record <$> mapM (mapM normalise) es
-        AST.Tuple es  -> AST.Tuple <$> mapM normalise es
-        AST.List es   -> AST.List <$> mapM normalise es
+--         AST.Record es -> AST.Record <$> mapM (mapM normalise) es
+--         AST.Tuple es  -> AST.Tuple <$> mapM normalise es
+--         AST.List es   -> AST.List <$> mapM normalise es
 
-        AST.Block stmts -> AST.Block <$> mapM normalise stmts
-        e           -> return e
-
-
-instance Normalisation AST.Case where
-    type Of AST.Case = Type
-    normalise = \case
-        AST.Case pat e -> AST.Case pat <$> normalise e
-        AST.TypedCase pat ty e -> AST.TypedCase pat <$> normalise ty <*> normalise e
-
-instance Normalisation AST.Statement where
-    type Of AST.Statement = Type
-    normalise = \case
-        AST.Return e -> AST.Return <$> normalise  e
-        AST.Procedure e -> AST.Procedure <$> normalise e
-        AST.Declaration d -> AST.Declaration <$> normalise d
-
-instance Normalisation AST.Declaration where
-    type Of AST.Declaration = Type
-    normalise = \case
-        AST.Let id ty k e -> AST.Let id ty k <$> normalise e
-        d -> return d
+--         AST.Block stmts -> AST.Block <$> mapM normalise stmts
+--         e           -> return e
 
 
-instance Normalisation (T.Polymorphic Type) where
-    type Of (T.Polymorphic Type) = Type
+-- instance Normalisation AST.Case where
+--     type Of AST.Case = Type
+--     normalise = \case
+--         AST.Case pat e -> AST.Case pat <$> normalise e
+--         AST.TypedCase pat ty e -> AST.TypedCase pat <$> normalise ty <*> normalise e
 
-    normalise (T.Forall tvars qt) = do
-        tvars' <- mapM normalise tvars
-        qt' <- normalise qt
-        return $ T.Forall tvars' qt'
+-- instance Normalisation AST.Statement where
+--     type Of AST.Statement = Type
+--     normalise = \case
+--         AST.Return e -> AST.Return <$> normalise  e
+--         AST.Procedure e -> AST.Procedure <$> normalise e
+--         AST.Declaration d -> AST.Declaration <$> normalise d
 
-instance Normalisation (Qualified Type) where
-    type Of (Qualified Type) = Type
-    normalise (bs :| cs :=> ty) = do
-        bs' <- mapM normalise bs
-        cs' <- mapM normalise cs
-        ty' <- normalise ty
-        return $ bs' :| cs' :=> ty'
-
-instance Normalisation T.Constraint where
-    type Of T.Constraint = Type
-
-    normalise (Q.Equality ty ty') = Q.Equality <$> normalise ty <*> normalise ty'
-    normalise (Q.Implements ty prtcl) = Q.Implements <$> normalise ty <*> pure prtcl
-    normalise (Q.Refinement binding liquid ty) = Q.Refinement <$> normalise binding <*> pure liquid <*> normalise ty
-    normalise (Q.Pure ty ) = Q.Pure <$> normalise ty
-    normalise (Q.Resource m ty) = Q.Resource m <$> normalise ty
-
-instance Normalisation (Q.Binding a) where
-    type Of (Q.Binding a) = Type
-
-    normalise = normalise
-
-instance Normalisation Type where
-    type Of Type = Type
-
-    normalise = \case
-        T.Var tvar                      -> T.Var <$> normalise tvar
-        T.Tuple elems                   -> T.Tuple <$> mapM normalise elems
-        T.Record pairs                  -> T.Record <$> mapM (mapM normalise) pairs
-        T.Union elems                   -> T.Union <$> mapM normalise elems
-        T.Arrow arg out                 -> T.Arrow <$> normalise arg <*> normalise out
-        T.Applied con arg               -> T.Applied <$> normalise con <*> normalise arg
-        T.Closure params tyExpr scope   -> T.Closure <$> mapM normalise params <*> pure tyExpr <*> pure scope
-        t                               -> return t
-
-instance Normalisation (Variable Type) where
-    type Of (Variable Type) = Type
-
-    normalise tvar = do
-        mapping <- Eff.ask
-        replaced <- sequence $ lookup tvar mapping <&> \id -> case tvar of
-                (T.Poly _ k)        -> return $ T.Poly id k
-                (T.Unification _ k) -> return $ T.Poly id k
-                (T.Local _ k)       -> return $ T.Local id k
-                (T.Scoped _ k)      -> return $ T.Local id k
-                (T.Rigid _ k)       -> return $ T.Rigid id k
-                (T.Skolem _ k)      -> return $ T.Skolem id k
-                v                   -> Eff.throwError $ UnexpectedVariable v
-
-        return $ fromMaybe tvar replaced
+-- instance Normalisation AST.Declaration where
+--     type Of AST.Declaration = Type
+--     normalise = \case
+--         AST.Let id ty k e -> AST.Let id ty k <$> normalise e
+--         d -> return d
 
 
+-- instance Normalisation (T.Polymorphic Type) where
+--     type Of (T.Polymorphic Type) = Type
 
-instance Normalisation Solver.Constraint where
-    type Of Solver.Constraint = Type
+--     normalise (T.Forall tvars qt) = do
+--         tvars' <- mapM normalise tvars
+--         qt' <- normalise qt
+--         return $ T.Forall tvars' qt'
 
-    normalise = \case
-        Solver.Impl ev (Solver.Mono ty) pid -> do
-            ty' <- normalise ty
-            return $ Solver.Impl ev (Solver.Mono ty') pid
-        Solver.Refined scope (Solver.Mono ty) liquid -> do
-            ty' <- normalise ty
-            scope' <- mapM normalise scope
-            return $ Solver.Refined scope' (Solver.Mono ty') liquid
+-- instance Normalisation (Qualified Type) where
+--     type Of (Qualified Type) = Type
+--     normalise (bs :| cs :=> ty) = do
+--         bs' <- mapM normalise bs
+--         cs' <- mapM normalise cs
+--         ty' <- normalise ty
+--         return $ bs' :| cs' :=> ty'
 
-        c -> return c
+-- instance Normalisation T.Constraint where
+--     type Of T.Constraint = Type
+
+--     normalise (Q.Equality ty ty') = Q.Equality <$> normalise ty <*> normalise ty'
+--     normalise (Q.Implements ty prtcl) = Q.Implements <$> normalise ty <*> pure prtcl
+--     normalise (Q.Refinement binding liquid ty) = Q.Refinement <$> normalise binding <*> pure liquid <*> normalise ty
+--     normalise (Q.Pure ty ) = Q.Pure <$> normalise ty
+--     normalise (Q.Resource m ty) = Q.Resource m <$> normalise ty
+
+-- instance Normalisation (Q.Binding a) where
+--     type Of (Q.Binding a) = Type
+
+--     normalise = normalise
+
+-- instance Normalisation Type where
+--     type Of Type = Type
+
+--     normalise = \case
+--         T.Var tvar                      -> T.Var <$> normalise tvar
+--         T.Tuple elems                   -> T.Tuple <$> mapM normalise elems
+--         T.Record pairs                  -> T.Record <$> mapM (mapM normalise) pairs
+--         T.Union elems                   -> T.Union <$> mapM normalise elems
+--         T.Arrow arg out                 -> T.Arrow <$> normalise arg <*> normalise out
+--         T.Applied con arg               -> T.Applied <$> normalise con <*> normalise arg
+--         T.Closure params tyExpr scope   -> T.Closure <$> mapM normalise params <*> pure tyExpr <*> pure scope
+--         t                               -> return t
+
+-- instance Normalisation (Variable Type) where
+--     type Of (Variable Type) = Type
+
+--     normalise tvar = do
+--         mapping <- Eff.ask
+--         replaced <- sequence $ lookup tvar mapping <&> \id -> case tvar of
+--                 (T.Poly _ k)        -> return $ T.Poly id k
+--                 (T.Unification _ k) -> return $ T.Poly id k
+--                 (T.Local _ k)       -> return $ T.Local id k
+--                 (T.Scoped _ k)      -> return $ T.Local id k
+--                 (T.Rigid _ k)       -> return $ T.Rigid id k
+--                 (T.Skolem _ k)      -> return $ T.Skolem id k
+--                 v                   -> Eff.throwError $ UnexpectedVariable v
+
+--         return $ fromMaybe tvar replaced
 
 
-instance Normalisation Solver.Item where
-    type Of Solver.Item = Type
 
-    normalise (Solver.Mono ty)  = Solver.Mono <$> normalise ty
-    normalise (Solver.Poly ty)  = Solver.Poly <$> normalise ty
-    normalise (Solver.Var tvar) = Solver.Var <$> normalise tvar
+-- instance Normalisation Solver.Constraint where
+--     type Of Solver.Constraint = Type
+
+--     normalise = \case
+--         Solver.Impl ev (Solver.Mono ty) pid -> do
+--             ty' <- normalise ty
+--             return $ Solver.Impl ev (Solver.Mono ty') pid
+--         Solver.Refined scope (Solver.Mono ty) liquid -> do
+--             ty' <- normalise ty
+--             scope' <- mapM normalise scope
+--             return $ Solver.Refined scope' (Solver.Mono ty') liquid
+
+--         c -> return c
 
 
-    -- normalise it = crash . NotYetImplemented $ "Normalisation for item: " ++ show it
+-- instance Normalisation Solver.Item where
+--     type Of Solver.Item = Type
+
+--     normalise (Solver.Mono ty)  = Solver.Mono <$> normalise ty
+--     normalise (Solver.Poly ty)  = Solver.Poly <$> normalise ty
+--     normalise (Solver.Var tvar) = Solver.Var <$> normalise tvar
+
+
+--     -- normalise it = crash . NotYetImplemented $ "Normalisation for item: " ++ show it

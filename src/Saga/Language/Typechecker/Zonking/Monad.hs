@@ -21,7 +21,7 @@ import           Saga.Language.Typechecker.Solving.Constraints (Constraint)
 import           Saga.Language.Typechecker.Solving.Monad       (Solution)
 
 
-type Zonking es =   ( Eff.Reader (CompilerState Zonked) :> es
+type Zonking es =   ( Eff.Reader (CompilerState Elaborated) :> es
                     , Eff.Writer Info :> es
                     , Eff.Error SagaError :> es
                     , Eff.Fail :> es

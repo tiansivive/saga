@@ -44,18 +44,18 @@ import           Saga.Language.Typechecker.Variables           (Variable)
 import           Saga.Utils.Operators                          ((||>))
 import           Saga.Utils.TypeLevel                          (type (§))
 
-run :: Zonking es => AST Elaborated NT.Expression -> Context -> Eff es (AST Zonked NT.Expression, AST Zonked NT.Type)
+run :: Zonking es => AST Elaborated NT.Expression -> Context -> Eff es (AST Elaborated NT.Expression)
 run ast context@(Context { residuals, solution }) = do
-    zonked <- Eff.runReader context $ zonk ast
+    zonked <- Eff.runReader context $ zonkE ast
     pTraceM $ "Zonked\n" ++ show zonked
-    let f = mapping zonked
+
     ast' <- normalise zonked
     -- residuals' <- Eff.runReader (mapping zonked) $ forM residuals normalise
 
     -- qt <- Eff.inject $ qualify zonked residuals
 
 
-    return (_ast', _qt)
+    return (ast')
 
 
 
@@ -64,8 +64,9 @@ normalise node = Eff.runReader env $ normT node >>= normK
     where
         env = mapping node
 
-collect node = unzip $ [ (t, k) | ZT.Var t <- universeBi node | ZK.Var k <- universeBi node]
 
 mapping zonked =  collect zonked ||> bimap make make
-    where  make (List.nub -> set) = Map.fromList $ zip set Shared.letters
+    where
+        collect node = unzip $ [ (t, k) | ZT.Var t <- universeBi node | ZK.Var k <- universeBi node]
+        make (List.nub -> set) = Map.fromList $ zip set Shared.letters
 

@@ -44,9 +44,9 @@ solve (Solver.Implementation (Solver.Evidence ev) t@(T.Polymorphic poly) prtcl) 
 
 solve (Solver.Implementation e@(Solver.Evidence ev) ty prtcl) =
     case ty of
-        T.Var (T.Poly {})           -> return (Deferred, Solver.Implementation e ty prtcl)
         T.Var (T.Existential id k)  -> crash $ NotYetImplemented "Solving Implementation constraint for existential type Vars"
         T.Var (T.Local id k)        -> crash $ NotYetImplemented "Solving Implementation for locally scoped type Vars"
+        T.Var {}                    -> return (Deferred, Solver.Implementation e ty prtcl)
 
         t -> do
             impl <- Eff.asks @(CompilerState Elaborated) $ protocols

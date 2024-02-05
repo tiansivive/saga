@@ -7,6 +7,7 @@ module Saga.Language.Syntax.Liquids where
 
 import qualified Saga.Language.Syntax.AST            as NT (NodeType (..))
 
+import           Data.Data                           (Data)
 import           Data.Map                            (Map)
 import           Saga.Language.Syntax.Literals
 import           Saga.Language.Typechecker.Variables (Variable)
@@ -27,15 +28,17 @@ data Liquid where
 deriving instance Show Liquid
 deriving instance Ord Liquid
 deriving instance Eq Liquid
+deriving instance Data Liquid
 
 data instance Variable Liquid where
     Poly :: String -> Variable Liquid
 deriving instance Show (Variable Liquid)
 deriving instance Eq (Variable Liquid)
 deriving instance Ord (Variable Liquid)
+deriving instance Data (Variable Liquid)
 
 data Op = EQ | AND | OR | GT | GTE | LT | LTE | ADD | SUB | MUL | DIV | MOD | CONCAT
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Data)
 
 
 

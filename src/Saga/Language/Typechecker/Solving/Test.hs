@@ -19,6 +19,7 @@ import           Saga.Language.Typechecker.Env                 (CompilerState (.
                                                                 Info,
                                                                 Proofs (..))
 import           Saga.Language.Typechecker.Errors              (SagaError)
+import qualified Saga.Language.Typechecker.Lib                 as Lib
 import           Saga.Language.Typechecker.Solving.Constraints (Constraint (..),
                                                                 Item (..),
                                                                 Variable (Evidence))
@@ -34,7 +35,7 @@ import           Text.Pretty.Simple                            (pPrint)
 
 
 initialEnv :: CompilerState Elaborated
-initialEnv = Saga [] Map.empty Map.empty Map.empty (Proofs T.Void Map.empty)
+initialEnv = Saga [Lib.numProtocol] Map.empty Map.empty Map.empty (Proofs T.Void Map.empty)
 
 -- initialState :: State
 -- initialState = IST 0 0 0 Map.empty

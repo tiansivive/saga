@@ -4,37 +4,42 @@
 module Saga.Language.Typechecker.Lib where
 
 
-import qualified Saga.Language.Typechecker.Protocols         as P
-import           Saga.Language.Typechecker.Protocols         (Protocol (..))
+import qualified Saga.Language.Syntax.Protocols                    as P
+import           Saga.Language.Syntax.Protocols                    (Protocol (..))
 
 
-import qualified Saga.Language.Typechecker.TypeExpr          as TE
-import qualified Saga.Language.Typechecker.Variables         as Var
+import qualified Saga.Language.Typechecker.TypeExpr                as TE
+import qualified Saga.Language.Typechecker.Variables               as Var
 
-import qualified Data.Map                                    as Map
-import qualified Saga.Language.Syntax.Elaborated.Types       as T
-import           Saga.Language.Syntax.Elaborated.Types       (Type)
-import           Saga.Language.Syntax.Polymorphism           (Polymorphic (..),
-                                                              Qualified (..))
-import qualified Saga.Language.Syntax.Reduced.AST            as AST
-import qualified Saga.Language.Syntax.Reduced.Kinds          as K
-import           Saga.Language.Syntax.Reduced.Types          (TypeExpr)
-import qualified Saga.Language.Syntax.Reduced.Values         as E
+import qualified Data.Map                                          as Map
+import qualified Saga.Language.Syntax.Elaborated.AST               as EL
+import qualified Saga.Language.Syntax.Elaborated.Types             as ET
+import           Saga.Language.Syntax.Elaborated.Types             (Type)
+import qualified Saga.Language.Syntax.Elaborated.Values            as EL
+import           Saga.Language.Syntax.Polymorphism                 (Polymorphic (..),
+                                                                    Qualified (..))
+import qualified Saga.Language.Syntax.Reduced.AST                  as AST
+import qualified Saga.Language.Syntax.Reduced.Kinds                as K
+import           Saga.Language.Syntax.Reduced.Types                (TypeExpr)
+import qualified Saga.Language.Syntax.Reduced.Values               as E
 import           Saga.Language.Typechecker.Environment
 
-import qualified Saga.Language.Syntax.Polymorphism           as Q
-import qualified Saga.Language.Typechecker.Refinement.Liquid as L
+import           Saga.Language.Syntax.AST                          (Phase (Elaborated))
+import qualified Saga.Language.Syntax.Elaborated.Kinds             as EK
+import qualified Saga.Language.Syntax.Polymorphism                 as Q
+import qualified Saga.Language.Typechecker.Elaboration.Annotations as Shared
+import qualified Saga.Language.Typechecker.Refinement.Liquid       as L
 
 
 
 listConstructor, fnConstructor :: Type
-listConstructor = T.Data "List"
-fnConstructor = T.Data "->"
+listConstructor = ET.Data "List"
+fnConstructor = ET.Data "->"
 
 int, bool, string :: Type
-int = T.Data "Int"
-bool = T.Data "Bool"
-string = T.Data "String"
+int = ET.Data "Int"
+bool = ET.Data "Bool"
+string = ET.Data "String"
 
 
 -- eqProtocol :: Protocol
@@ -52,29 +57,29 @@ string = T.Data "String"
 --       protocol = T.Record [("==", AST.Annotated (tvar `T.Arrow` (tvar `T.Arrow` T.Data "Bool" K.Type)) K.Type)
 --                           ]
 
--- numProtocol :: Protocol
--- numProtocol =
---   Protocol
---     "Num"
---     (TE.KindedType
---       (TE.Lambda [var] (TE.Record
---         [ ("+", tvar `TE.Arrow` (tvar `TE.Arrow` tvar))
---         , ("-", tvar `TE.Arrow` (tvar `TE.Arrow` tvar))
---         , ("*", tvar `TE.Arrow` (tvar `TE.Arrow` tvar))
---         , ("/", tvar `TE.Arrow` (tvar `TE.Arrow` tvar))
---         ])
---       )
---       K.Type
---     )
---     [ P.Implementation (numID, Forall [] (Map.empty :| [] :=> int), E.Record [ ("+", E.Identifier "$int_$num_$add")
---                                                      , ("-", E.Identifier "$int_$num_$sub")
---                                                      , ("*", E.Identifier "$int_$num_$mul")
---                                                      , ("/", E.Identifier "$int_$num_$div")
---                                                      ])
---     ]
---     where
---       var = "t"
---       tvar = TE.Identifier var
+numProtocol :: Protocol Elaborated
+numProtocol =
+  Protocol
+    "Num"
+    ( Forall [var] (ET.Record
+        [ ("+", EL.Raw $ tvar `ET.Arrow` EL.Raw (tvar `ET.Arrow` tvar))
+        , ("-", EL.Raw $ tvar `ET.Arrow` EL.Raw (tvar `ET.Arrow` tvar))
+        , ("*", EL.Raw $ tvar `ET.Arrow` EL.Raw (tvar `ET.Arrow` tvar))
+        , ("/", EL.Raw $ tvar `ET.Arrow` EL.Raw (tvar `ET.Arrow` tvar))
+        ])
+    )
+    [ P.Implementation (numID, int, EL.Record
+            [ ("+", EL.Raw $ EL.Var $ EL.Identifier "$int_$num_$add")
+            , ("-", EL.Raw $ EL.Var $ EL.Identifier "$int_$num_$sub")
+            , ("*", EL.Raw $ EL.Var $ EL.Identifier "$int_$num_$mul")
+            , ("/", EL.Raw $ EL.Var $ EL.Identifier "$int_$num_$div")
+            ]
+        )
+    ]
+    where
+      t = "t"
+      var = ET.Poly t EK.Type
+      tvar = EL.Raw $ ET.Var var
 
 
 
