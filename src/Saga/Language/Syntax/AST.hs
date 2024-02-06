@@ -4,9 +4,9 @@
 
 
 module Saga.Language.Syntax.AST where
+import           Data.Data    (Typeable)
 import qualified Data.Kind    as GHC
 import           GHC.TypeLits (ErrorMessage (Text), TypeError)
-import Data.Data (Typeable)
 
 
 
@@ -18,7 +18,7 @@ type data NodeType
     | Case NodeType | Pattern NodeType
     | Constraint | Liquid
 
-type data Phase = Parsed | Reduced | Elaborated | Zonked | TypeChecked 
+type data Phase = Parsed | Reduced | Elaborated | TypeChecked
 
 
 type family Annotation (n :: NodeType) where
@@ -39,7 +39,3 @@ type family Annotation (n :: NodeType) where
     Annotation Liquid               = Type
 
 
-
-class Monad m => Visitor m (node :: NodeType) where
-  type Pass node :: Phase
-  visit :: (Node (Pass node) node -> m (Node (Pass node) node)) -> Node (Pass node) node -> m (Node (Pass node) node)

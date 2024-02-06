@@ -33,6 +33,6 @@ data Context = Context { solution:: Solution, residuals :: [Constraint] } derivi
 
 class Zonk (nt :: NodeType) where
     type family Effects nt (es :: [Eff.Effect]) :: GHC.Constraint
-    zonk :: Effects nt es => AST Elaborated nt -> Eff es (AST Zonked nt)
+    zonk :: Effects nt es => AST Elaborated nt -> Eff es (AST Elaborated nt)
     -- lookup :: Effects nt es => Tag a -> Variable a -> Eff es (Maybe a)
 

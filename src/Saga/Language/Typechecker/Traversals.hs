@@ -15,7 +15,7 @@ import qualified Data.Set                               as Set
 import           Control.Monad.Identity                 (Identity (runIdentity))
 import           Data.Generics.Uniplate.Data            (transform, universeBi)
 import           Debug.Pretty.Simple                    (pTrace)
-import           Saga.Language.Syntax.AST               (Node, Visitor (..))
+import           Saga.Language.Syntax.AST               (Node)
 import qualified Saga.Language.Syntax.Elaborated.Kinds  as K
 import           Saga.Language.Syntax.Elaborated.Kinds  (Kind)
 import qualified Saga.Language.Syntax.Elaborated.Types  as T

@@ -88,22 +88,3 @@ deriving instance Show (AST Elaborated NT.Constraint)
 
 type instance Qualifier Type = TypeConstraint
 
-
-instance Monad m => Visitor m NT.Type where
-  type Pass NT.Type = Elaborated
-  visit f node      = case node of
-    Tuple elems      -> Tuple <$> mapM f' elems
-    Union elems      -> Tuple <$> mapM f' elems
-    Record elems     -> Record <$> mapM2 f' elems
-    Applied cons arg -> Applied <$> visit' cons <*> visit' arg
-    Arrow in' out    -> Arrow <$> visit' in' <*> visit' out
-
-    ty               -> f ty
-
-    where
-      f' = map f
-      visit' = map $ visit f
-
-      map f (Raw node)           = Raw <$> f node
-      map f (Annotated node ann) = Annotated <$> f node <*> pure ann
-

@@ -51,20 +51,3 @@ deriving instance Data (Variable Kind)
 
 type instance Qualifier Kind = ()
 
-instance Monad m => Visitor m NT.Kind where
-  type Pass NT.Kind = Elaborated
-  visit f node      = case node of
-    Application cons args -> Application <$> visit' cons <*> forM args visit'
-    Arrow in' out         -> Arrow <$> visit' in' <*> visit' out
-
-    k                     -> f k
-    where
-      f' = map f
-      visit' = map $ visit f
-
-      map f (Raw node)           = Raw <$> f node
-      map f (Annotated node ann) = Annotated <$> f node <*> pure ann
-
-
-
-
