@@ -19,8 +19,10 @@ import           Saga.Language.Syntax.Polymorphism                   (Given (..)
 import           Saga.Language.Typechecker.Errors                    (Exception (..),
                                                                       SagaError,
                                                                       crash)
-import qualified Saga.Language.Typechecker.Solving.Constraints       as Solver
-import           Saga.Language.Typechecker.Solving.Constraints
+import qualified Saga.Language.Typechecker.Solving.Constraints       as Solver hiding
+                                                                               (evidence)
+import           Saga.Language.Typechecker.Solving.Constraints       hiding
+                                                                     (evidence)
 import           Saga.Language.Typechecker.Solving.Cycles            (Cycle)
 import           Saga.Language.Typechecker.Solving.Monad             (Proofs,
                                                                       Solution (..),

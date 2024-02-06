@@ -35,10 +35,6 @@ library
       Saga.Language.Syntax.Reduced.Types
       Saga.Language.Syntax.Reduced.Values
       Saga.Language.Syntax.Source.Values
-      Saga.Language.Syntax.Zonked.AST
-      Saga.Language.Syntax.Zonked.Kinds
-      Saga.Language.Syntax.Zonked.Types
-      Saga.Language.Syntax.Zonked.Values
       Saga.Language.Typechecker.Elaboration.Annotations
       Saga.Language.Typechecker.Elaboration.Effects
       Saga.Language.Typechecker.Elaboration.Generalization
@@ -104,7 +100,6 @@ library
       Saga.Language.Typechecker.Variables
       Saga.Language.Typechecker.Zonking.Expressions
       Saga.Language.Typechecker.Zonking.Monad
-      Saga.Language.Typechecker.Zonking.Norm
       Saga.Language.Typechecker.Zonking.Normalisation
       Saga.Language.Typechecker.Zonking.Qualification
       Saga.Language.Typechecker.Zonking.Run

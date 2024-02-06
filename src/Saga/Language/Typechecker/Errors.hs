@@ -12,7 +12,8 @@ import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
 import           Saga.Language.Typechecker.Variables           (Variable)
 
 
-import           Saga.Language.Syntax.AST                      (Phase (..))
+import qualified Saga.Language.Syntax.AST                      as NT (NodeType (..))
+import           Saga.Language.Syntax.AST                      (AST, Phase (..))
 import qualified Saga.Language.Syntax.Elaborated.Kinds         as EL
 import qualified Saga.Language.Syntax.Elaborated.Types         as EL
 import qualified Saga.Language.Syntax.Reduced.Types            as RD
@@ -29,7 +30,7 @@ data SagaError where
   UnexpectedInstantiationVariable     :: (Show a, Show (Variable a)) =>  Variable a -> SagaError
   UnexpectedVariable                  :: (Show a, Show (Variable a)) =>  Variable a -> SagaError
 
-  UntypedInferredExpr :: Expr -> SagaError
+  UntypedInferredExpr :: AST Elaborated NT.Expression -> SagaError
 
   -- | TYPECHECKING
   PolymorphicToConcreteMismatch :: Polymorphic Type -> Polymorphic Type -> SagaError

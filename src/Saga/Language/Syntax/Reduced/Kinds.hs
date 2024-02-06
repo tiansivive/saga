@@ -15,6 +15,7 @@ import           Saga.Language.Syntax.Reduced.AST
 
 import           Saga.Language.Typechecker.Variables (Variable)
 
+import           Data.Data                           (Data)
 import           Data.Map                            (Map)
 import           Saga.Utils.TypeLevel                (type (§))
 
@@ -31,3 +32,5 @@ deriving instance Eq KindExpr
 deriving instance Eq (AST Reduced NT.Kind)
 deriving instance Ord KindExpr
 deriving instance Ord (AST Reduced NT.Kind)
+deriving instance Data KindExpr
+deriving instance Data (AST Reduced NT.Kind)

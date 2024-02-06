@@ -11,7 +11,7 @@ import qualified Saga.Language.Syntax.AST                as NT (NodeType (..))
 import qualified Saga.Language.Syntax.Elaborated.AST     as AST
 import qualified Saga.Language.Syntax.Elaborated.Kinds   as EK
 import qualified Saga.Language.Syntax.Elaborated.Types   as ET
-import qualified Saga.Language.Syntax.Zonked.AST         as Z
+
 
 import           Control.Monad                           (forM)
 import           Data.Data                               (Data)
@@ -21,8 +21,6 @@ import           Effectful                               (Eff)
 import           Saga.Language.Syntax.AST                (Phase (Elaborated))
 import           Saga.Language.Syntax.Elaborated.AST     (AST)
 import           Saga.Language.Syntax.Polymorphism       (Polymorphic (..))
-import qualified Saga.Language.Syntax.Zonked.Kinds       as ZK
-import qualified Saga.Language.Syntax.Zonked.Types       as Z
 import           Saga.Language.Typechecker.Errors        (Exception (NotYetImplemented, Unexpected),
                                                           crash)
 import           Saga.Language.Typechecker.Solving.Monad (Solution (..))

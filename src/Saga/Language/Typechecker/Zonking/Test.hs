@@ -17,6 +17,7 @@ import qualified Effectful.Writer.Static.Local                 as Eff
 import           Prelude                                       hiding (print)
 import           Saga.Language.Syntax.AST                      (Phase (Elaborated))
 import           Saga.Language.Syntax.Literals                 (Literal (LString))
+import qualified Saga.Language.Syntax.Protocols                as P
 import           Saga.Language.Typechecker.Env                 (CompilerState (..),
                                                                 Info,
                                                                 Proofs (..))
@@ -33,7 +34,7 @@ import           Text.Pretty.Simple                            (pPrint)
 
 
 initialEnv :: CompilerState Elaborated
-initialEnv = Saga [Lib.numProtocol] Map.empty Map.empty Map.empty (Proofs ZT.Void Map.empty)
+initialEnv = Saga [protocol] Map.empty Map.empty Map.empty (Proofs ZT.Void Map.empty)
 
 
 test = Run.run ast ||> run >>= print
@@ -56,44 +57,33 @@ print (Right (Left (callstack, err))) = do
     pPrint callstack
     return ()
 print (Right (Right res)) = do
-    let (zonked, info) = res
+    let ((zonked, qualified), info) = res
     putStrLn "\n--------------------- INFO --------------------- "
     pPrint info
     putStrLn "\n--------------------- ZONKED --------------------- "
     pPrint zonked
+    putStrLn "\n--------------------- QUALIFIED TYPE --------------------- "
+    pPrint qualified
 
     return ()
 
 
 
 ast = Z.Annotated
-    (Z.Literal $ LString "Hello, World!" )
-    (Z.Raw $ ZT.Polymorphic
-                ( Forall
-                    [ ZT.Poly "g4" ZK.Type ]
-                    (  ZT.Arrow
-                                ( Z.Annotated
-                                    ( ZT.Var
-                                        ( ZT.Poly "g4" ZK.Type )
-                                    ) ( Z.Raw ZK.Type )
-                                )
-                                ( Z.Annotated
-                                    ( ZT.Var
-                                        ( ZT.Poly "t3"
-                                            ( ZK.Var
-                                                ( ZK.Poly "k3" )
-                                            )
-                                        )
-                                    )
-                                    ( Z.Raw
-                                        ( ZK.Var
-                                            ( ZK.Poly "k3" )
-                                        )
-                                    )
-                                )
+    ( Z.Var $ Z.Identifier "f")
+    ( Z.Annotated
+        ( ZT.Arrow
+            ( Z.Annotated
+                ( ZT.Var $ ZT.Poly "t1" ZK.Type )
+                ( Z.Raw ZK.Type )
+            )
+            ( Z.Annotated
+                ( ZT.Var $ ZT.Poly "t2" ( ZK.Var $ ZK.Poly "k1" ))
+                ( Z.Raw $ ZK.Var ( ZK.Poly "k1" ))
+            )
+        )
+        ( Z.Raw ZK.Type ))
 
-                        )
-                    ))
 
 
 
@@ -101,57 +91,47 @@ sol = S.Solution
     { evidence = mempty
     , tvars = Map.fromList
         [
-            ( ZT.Poly "g4" ZK.Type
-            , ZT.Var
-                ( ZT.Unification "soT2"
-                    ( ZK.Var
-                        ( ZK.Unification "soK2" )
-                    )
+            ( ZT.Poly "t1" ZK.Type
+            , ZT.Arrow
+                ( Z.Annotated
+                    ( ZT.Var $ ZT.Poly "t3" ZK.Type )
+                    ( Z.Raw ZK.Type )
+                )
+                ( Z.Annotated
+                    ( ZT.Data "Int" )
+                    ( Z.Raw ZK.Type )
                 )
             )
         ,
-            ( ZT.Unification "t2"
-                ( ZK.Var
-                    ( ZK.Unification "k2" )
-                )
-            , ZT.Arrow
-                ( Z.Annotated
-                    ( ZT.Var
-                        ( ZT.Unification "soT2"
-                            ( ZK.Var
-                                ( ZK.Unification "soK2" )
-                            )
-                        )
-                    ) ( Z.Raw ZK.Type )
-                )
-                ( Z.Annotated
-                    ( ZT.Var
-                        ( ZT.Unification "t3"
-                            ( ZK.Var
-                                ( ZK.Unification "k3" )
-                            )
-                        )
-                    )
-                    ( Z.Raw
-                        ( ZK.Var
-                            ( ZK.Unification "k3" )
-                        )
-                    )
-                )
+            ( ZT.Poly "t2" ( ZK.Var $ ZK.Poly "k1" )
+            , ZT.Data "Int"
             )
         ]
-    , kvars = mempty
+    , kvars = Map.fromList
+        [ ( ZK.Poly "k1", ZK.Type )
+        ]
     , witnessed = mempty
     , proofs = mempty
     }
 
+
 residuals = [ Constraint.Implementation
-    ( Constraint.Evidence "ev3" )
-    ( ZT.Var
-        ( ZT.Unification "soT2"
-            ( ZK.Var
-                ( ZK.Unification "soK2" )
-            )
-        )
-    ) "Num"
+    ( Constraint.Evidence "ev" )
+    ( ZT.Var $ ZT.Poly "t3" ZK.Type)
+    "Show"
     ]
+
+
+
+protocol =
+  P.Protocol
+    "Show"
+    ( Forall [var] (ZT.Record
+        [ ("show", Z.Raw $ tvar `ZT.Arrow` Z.Raw (ZT.Data "String"))
+        ])
+    )
+    []
+    where
+      t = "z"
+      var = ZT.Poly t ZK.Type
+      tvar = Z.Raw $ ZT.Var var

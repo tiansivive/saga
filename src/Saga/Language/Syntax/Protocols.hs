@@ -11,6 +11,7 @@ import qualified Saga.Language.Syntax.AST                as NT (NodeType (..))
 import           Saga.Language.Syntax.AST                hiding (NodeType (..))
 import           Saga.Language.Syntax.Polymorphism       (Polymorphic)
 
+import           Data.Data                               (Data)
 import           Saga.Language.Syntax.Elaborated.Types   (Type)
 import           Saga.Language.Syntax.Reduced.Types      (TypeExpr)
 import           Saga.Language.Syntax.Reduced.Values     (Expr)
@@ -32,6 +33,7 @@ instance Eq (Protocol phase) where
 newtype Implementation phase = Implementation (Name, Node phase NT.Type, Node phase NT.Expression)
 
 deriving instance (Show (Node phase NT.Type), Show (Node phase NT.Expression)) => (Show (Implementation phase))
+
 instance Eq (Implementation phase) where
   Implementation (name, _, _) == Implementation (name', _, _) = name == name'
 instance Ord (Implementation phase) where
@@ -39,7 +41,7 @@ instance Ord (Implementation phase) where
 
 
 type Method = (Name, TypeExpr)
-newtype Name = Name String deriving (Show, Eq, Ord)
+newtype Name = Name String deriving (Show, Eq, Ord, Data)
 
 type ProtocolID = String
 

@@ -6,6 +6,7 @@
 module Saga.Language.Syntax.AST where
 import qualified Data.Kind    as GHC
 import           GHC.TypeLits (ErrorMessage (Text), TypeError)
+import Data.Data (Typeable)
 
 
 
@@ -17,7 +18,8 @@ type data NodeType
     | Case NodeType | Pattern NodeType
     | Constraint | Liquid
 
-type data Phase = Parsed | Reduced | Elaborated | Zonked | TypeChecked
+type data Phase = Parsed | Reduced | Elaborated | Zonked | TypeChecked 
+
 
 type family Annotation (n :: NodeType) where
     Annotation Expression           = Type

@@ -27,6 +27,7 @@ import           Saga.Language.Typechecker.Substitution (Substitutable (..))
 import           Saga.Language.Typechecker.Variables    (Variable)
 import           Saga.Utils.Operators                   ((|>), (||>))
 
+import           Data.Data                              (Data)
 import           Saga.Language.Syntax.Reduced.Types     (TypeExpr)
 import           Saga.Language.Typechecker.Traversals
 
@@ -34,7 +35,7 @@ data Constraint where
     Empty           :: Constraint
     Conjunction     :: Constraint -> Constraint -> Constraint
     Equality        :: Variable Constraint -> Item -> Item -> Constraint
-    Implementation  :: Variable Constraint -> Type -> ProtocolID -> Constraint
+    Implementation  :: { evidence :: Variable Constraint, target :: Type, protocol :: ProtocolID } -> Constraint
     OneOf           :: { source :: Type, union :: Type } -> Constraint
     Refinement      :: Bindings -> Type -> Liquid -> Constraint
     Proof           :: { source :: Type, narrowed :: Type } -> Constraint
@@ -45,37 +46,39 @@ data Constraint where
     Evaluate        :: { result :: Type, expr :: Expression } -> Constraint
 deriving instance Show Constraint
 deriving instance Eq Constraint
+deriving instance Data Constraint
 
 data Expression
     = Application Type Type
     | Match TypeExpr Scope
-    deriving (Show, Eq)
+    deriving (Show, Eq, Data)
 
 data Scope = Scope
     { types :: Map String (AST Elaborated NT.Type)
     , kinds :: Map String (AST Elaborated NT.Kind)
-    } deriving (Show, Eq)
+    } deriving (Show, Eq, Data)
 
 data Item
     = Ty Type
     | K K.Kind
-    deriving (Show, Eq)
+    deriving (Show, Eq, Data)
 
 data instance Variable Constraint where
     Evidence :: String -> Variable Constraint
 deriving instance Show (Variable Constraint)
 deriving instance Eq (Variable Constraint)
 deriving instance Ord (Variable Constraint)
+deriving instance Data (Variable Constraint)
 
 data Evidence
     = Protocol (Implementation Elaborated)
     | Coercion Mechanism
     deriving (Show, Eq, Ord)
-data Mechanism = Nominal | Structural deriving (Show, Eq, Ord)
+data Mechanism = Nominal | Structural deriving (Show, Eq, Ord, Data)
 
 newtype Assumption
     = Assume Constraint
-    deriving (Show, Eq)
+    deriving (Show, Eq, Data)
 
 
 type Bindings = Map (Variable Liquid) Type

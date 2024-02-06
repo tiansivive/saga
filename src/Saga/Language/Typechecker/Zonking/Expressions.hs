@@ -20,10 +20,7 @@ import qualified Saga.Language.Syntax.Elaborated.Values        as EX
 import qualified Saga.Language.Syntax.Protocols                as P
 import           Saga.Language.Syntax.Protocols                (Protocol (spec),
                                                                 ProtocolID, id)
-import qualified Saga.Language.Syntax.Zonked.AST               as Z
-import qualified Saga.Language.Syntax.Zonked.Kinds             as ZK
-import qualified Saga.Language.Syntax.Zonked.Types             as ZT
-import qualified Saga.Language.Syntax.Zonked.Values            as Z
+
 import           Saga.Language.Typechecker.Env                 (CompilerState (..))
 import           Saga.Language.Typechecker.Errors              (Exception (..),
                                                                 SagaError (..),
@@ -49,7 +46,7 @@ import           Saga.Language.Typechecker.Zonking.Types
 
 
 zonkE :: (Zonking es) => AST Elaborated NT.Expression -> Eff es (AST Elaborated NT.Expression)
---zonkE node | pTrace ("\n-------------------\nZonking\n---------------------\n " ++ show node) False = undefined
+zonkE node | pTrace ("\n---------------------\nZonking\n---------------------\n " ++ show node) False = undefined
 zonkE node = do
     z <- transformM subs node
     --pTraceM $ "Zonked\n" ++ show z
@@ -57,7 +54,7 @@ zonkE node = do
 
     where
         subs :: Zonking es => AST Elaborated NT.Expression -> Eff es (AST Elaborated NT.Expression)
-        --subs ast | pTrace ("\n-------------------\nSubstituting\n---------------------\n" ++ show ast) False = undefined
+        subs ast | pTrace ("\n---------------------\nSubstituting\n---------------------\n" ++ show ast) False = undefined
         subs ast@(AST.Annotated (EX.Var (EX.Identifier x)) ann) = do
             ann' <- zonkT ann
             Context { solution, residuals } <- Eff.ask
@@ -90,9 +87,9 @@ zonkE node = do
                             ( prtcl
                             , protocols ||> List.find (\P.Protocol { id } -> id == prtcl)
                                         |$> \P.Protocol { spec } -> do
-                                            zt <- zonkT $ AST.Raw t
+
                                             -- | HACK This needs to evaluate the application of the types, but we don't have that yet
-                                            return $ AST.Annotated (ET.Applied (AST.Raw $ ET.Polymorphic spec) zt) (AST.Raw EK.Kind)))
+                                            return $ AST.Annotated (ET.Applied (AST.Raw $ ET.Polymorphic spec) (AST.Raw t)) (AST.Raw EK.Kind)))
                         |> mapM2 sequence
                 types' <- forM types $ \(prtcl, t) ->
                         let err = Eff.throwError $ MissingProtocol prtcl

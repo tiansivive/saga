@@ -17,6 +17,7 @@ import           Saga.Language.Syntax.Reduced.Kinds
 import           Saga.Language.Typechecker.Variables (Variable)
 
 import           Saga.Utils.TypeLevel                (type (§))
+import Data.Data (Data)
 
 
 type TypeExpr = Node Reduced NT.Type
@@ -43,6 +44,8 @@ deriving instance Eq TypeExpr
 deriving instance Eq (AST Reduced NT.Type)
 deriving instance Ord TypeExpr
 deriving instance Ord (AST Reduced NT.Type)
+deriving instance Data TypeExpr
+deriving instance Data (AST Reduced NT.Type)
 
 
 data instance Node Reduced (NT.Case NT.Type) where
@@ -53,6 +56,8 @@ deriving instance Eq (Node Reduced (NT.Case NT.Type))
 deriving instance Eq (AST Reduced (NT.Case NT.Type))
 deriving instance Ord (Node Reduced (NT.Case NT.Type))
 deriving instance Ord (AST Reduced (NT.Case NT.Type))
+deriving instance Data (Node Reduced (NT.Case NT.Type))
+deriving instance Data (AST Reduced (NT.Case NT.Type))
 
 data instance Node Reduced (NT.Pattern NT.Type) where
   Wildcard  :: Node Reduced (NT.Pattern NT.Type)
@@ -69,6 +74,8 @@ deriving instance Eq (Node Reduced (NT.Pattern NT.Type))
 deriving instance Eq (AST Reduced (NT.Pattern NT.Type))
 deriving instance Ord (Node Reduced (NT.Pattern NT.Type))
 deriving instance Ord (AST Reduced (NT.Pattern NT.Type))
+deriving instance Data (Node Reduced (NT.Pattern NT.Type))
+deriving instance Data (AST Reduced (NT.Pattern NT.Type))
 
 
 
@@ -76,7 +83,7 @@ deriving instance Ord (AST Reduced (NT.Pattern NT.Type))
 data Binding
   = Bind String TypeExpr
   | Constraint TypeConstraint
-    deriving (Show, Eq, Ord)
+    deriving (Show, Eq, Ord, Data)
 
 type TypeConstraint = Node Reduced NT.Constraint
 data instance Node Reduced NT.Constraint where
@@ -88,6 +95,8 @@ deriving instance Eq (Node Reduced NT.Constraint)
 deriving instance Eq (AST Reduced NT.Constraint)
 deriving instance Ord (Node Reduced NT.Constraint)
 deriving instance Ord (AST Reduced NT.Constraint)
+deriving instance Data (Node Reduced NT.Constraint)
+deriving instance Data (AST Reduced NT.Constraint)
 
 type Bindings = Map (Variable Liquid) TypeExpr
 type ProtocolID = String
