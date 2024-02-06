@@ -94,6 +94,7 @@ library
       Saga.Language.Typechecker.Solving.Test
       Saga.Language.Typechecker.Solving.Unification
       Saga.Language.Typechecker.Substitution
+      Saga.Language.Typechecker.Test
       Saga.Language.Typechecker.Traversals
       Saga.Language.Typechecker.Type
       Saga.Language.Typechecker.TypeExpr
@@ -105,7 +106,6 @@ library
       Saga.Language.Typechecker.Zonking.Run
       Saga.Language.Typechecker.Zonking.Test
       Saga.Language.Typechecker.Zonking.Types
-      Saga.Language.Typechecker.Zonking.Zonking
       Saga.Lexer.Lexer
       Saga.Lexer.Tokens
       Saga.Parser.Desugar

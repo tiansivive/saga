@@ -14,6 +14,7 @@ import qualified Data.Map                                      as Map
 import           Data.Maybe                                    (fromMaybe)
 import           Data.Set                                      (Set)
 import qualified Data.Set                                      as Set
+import           Debug.Pretty.Simple                           (pTraceM)
 import           Effectful                                     (Eff, (:>))
 import qualified Effectful                                     as Eff
 import qualified Effectful.Error.Static                        as Eff
@@ -64,8 +65,15 @@ instance Normalisation (Z.Node Elaborated NT.Type) where
 instance Normalisation (Z.Node Elaborated NT.Kind) where
     normalise (ZK.Var v) = do
         (_, mapping) <- Eff.ask @(Mapping ZT.Type, Mapping ZK.Kind)
-        let replaced = Map.lookup v mapping ||> fmap (\id -> case v of ZK.Poly k -> ZK.Poly (id ++ "k"))
+        let replaced = Map.lookup v mapping ||> fmap (\id ->
+                case v of
+                    ZK.Poly k        -> ZK.Poly (id ++ "k")
+                    ZK.Unification k -> ZK.Poly (id ++ "k")
+                    ZK.Rigid k       -> ZK.Poly (id ++ "k")
+                )
         return . ZK.Var $ fromMaybe v replaced
+
+
     normalise k = return k
 
 instance Normalisation Solver.Constraint where
