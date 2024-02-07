@@ -10,7 +10,7 @@ import qualified Data.Map                                      as Map
 import qualified Effectful.State.Static.Local                  as Eff
 
 import           Saga.Language.Typechecker.Errors              (SagaError)
-import           Saga.Language.Typechecker.Monad               (TypeCheck)
+
 import           Saga.Language.Typechecker.Solving.Constraints (Constraint,
                                                                 Evidence,
                                                                 Variable)
@@ -25,7 +25,6 @@ import qualified Effectful                                     as Eff
 import qualified Effectful.Reader.Static                       as Eff
 
 
-import qualified Saga.Language.Typechecker.Monad               as TC
 import           Saga.Language.Typechecker.Solving.Cycles      (Cycle)
 
 import           Saga.Language.Syntax.Elaborated.Types         (Type)

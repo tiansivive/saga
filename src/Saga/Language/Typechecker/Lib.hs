@@ -8,7 +8,7 @@ import qualified Saga.Language.Syntax.Protocols                    as P
 import           Saga.Language.Syntax.Protocols                    (Protocol (..))
 
 
-import qualified Saga.Language.Typechecker.TypeExpr                as TE
+
 import qualified Saga.Language.Typechecker.Variables               as Var
 
 import qualified Data.Map                                          as Map
@@ -22,13 +22,13 @@ import qualified Saga.Language.Syntax.Reduced.AST                  as AST
 import qualified Saga.Language.Syntax.Reduced.Kinds                as K
 import           Saga.Language.Syntax.Reduced.Types                (TypeExpr)
 import qualified Saga.Language.Syntax.Reduced.Values               as E
-import           Saga.Language.Typechecker.Environment
+import           Saga.Language.Typechecker.Env
 
 import           Saga.Language.Syntax.AST                          (Phase (Elaborated))
 import qualified Saga.Language.Syntax.Elaborated.Kinds             as EK
 import qualified Saga.Language.Syntax.Polymorphism                 as Q
 import qualified Saga.Language.Typechecker.Elaboration.Annotations as Shared
-import qualified Saga.Language.Typechecker.Refinement.Liquid       as L
+
 
 
 

@@ -13,8 +13,8 @@ import qualified Saga.Language.Syntax.Polymorphism                 as Q
 import           Saga.Language.Syntax.Polymorphism                 (Given (..),
                                                                     Polymorphic (..),
                                                                     Qualified (..))
+import           Saga.Language.Syntax.Protocols                    (ProtocolID)
 import           Saga.Language.Typechecker.Elaboration.Monad       (Generalize (..))
-import           Saga.Language.Typechecker.Protocols               (ProtocolID)
 
 import           Control.Monad                                     (forM)
 import           Data.List                                         (nub)

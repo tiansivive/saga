@@ -1,57 +1,22 @@
 module Saga.Language.Typechecker.Test where
 
 
-import           Saga.Language.Typechecker.Elaboration.Monad              (Elaboration (..),
-                                                                           elaborate)
-import qualified Saga.Language.Typechecker.Solving.Constraints            as Solver
 
-import           Effectful                                                (Eff)
-import qualified Effectful.Reader.Static                                  as Eff
-import qualified Effectful.State.Static.Local                             as Eff
-import qualified Effectful.Writer.Static.Local                            as Eff
-import qualified Saga.Language.Syntax.AST                                 as NT (NodeType (..))
-import           Saga.Language.Syntax.AST                                 (AST,
-                                                                           Phase (..))
-import qualified Saga.Language.Syntax.Elaborated.Kinds                    as EK
-import qualified Saga.Language.Syntax.Elaborated.Types                    as EL
-import qualified Saga.Language.Typechecker.Elaboration.Effects            as Effs hiding
-                                                                                  (kvars,
-                                                                                   tvars)
-import           Saga.Language.Typechecker.Elaboration.Effects            (State (..))
-import           Saga.Language.Typechecker.Env                            (CompilerState (..),
-                                                                           Info,
-                                                                           Proofs (..))
-import qualified Saga.Language.Typechecker.Lib                            as Lib
-import           Saga.Language.Typechecker.Solving.Cycles                 (Cycle)
-import qualified Saga.Language.Typechecker.Solving.Monad                  as Solver
-import           Saga.Language.Typechecker.Solving.Monad                  (Count (..),
-                                                                           Levels,
-                                                                           Solution (..))
-import qualified Saga.Language.Typechecker.Solving.Run                    as Solver
-import qualified Saga.Language.Typechecker.Variables                      as Var
-import           Saga.Language.Typechecker.Zonking.Monad                  (Context (..))
-import qualified Saga.Language.Typechecker.Zonking.Run                    as Zonk
-import           Saga.Utils.Operators                                     ((|>))
+import qualified Saga.Language.Syntax.Elaborated.Kinds as EK
+import qualified Saga.Language.Syntax.Elaborated.Types as EL
 
-import qualified Effectful                                                as Eff
-import qualified Effectful.Error.Static                                   as Eff
-import qualified Effectful.Fail                                           as Eff
-import           Prelude                                                  hiding
-                                                                          (print)
-import qualified Saga.Language.Syntax.Elaborated.AST                      as AST
-import           Saga.Language.Syntax.Literals                            (Literal (..))
-import qualified Saga.Language.Syntax.Reduced.AST                         as RD
-import qualified Saga.Language.Syntax.Reduced.Values                      as RD
-import           Saga.Language.Typechecker.Elaboration.Values.Expressions
-import           Saga.Language.Typechecker.Errors                         (SagaError)
-import           Text.Pretty.Simple                                       (pPrint)
+import qualified Saga.Language.Syntax.Elaborated.AST   as AST
+import           Saga.Language.Syntax.Literals         (Literal (..))
+import qualified Saga.Language.Syntax.Reduced.AST      as RD
+import qualified Saga.Language.Syntax.Reduced.Values   as RD
 
 
-import           Control.Monad                                            (foldM)
-import           Saga.Language.Typechecker.Solving.Cycles                 (collapse)
-import           Saga.Language.Typechecker.Substitution                   (Substitutable (..))
-import           Saga.Language.Typechecker.Traversals
 
+
+import qualified Saga.Language.Typechecker.Run         as Run
+
+import           Prelude                               hiding (print)
+import           Text.Pretty.Simple                    (pPrint)
 
 
 
@@ -63,73 +28,13 @@ fn = RD.Raw $
             [RD.Raw (RD.Literal $ LInt 1)]
             )
 
-g = ftv tvar
-tvar =
-        ( EL.Var
-            ( EL.Poly "α"
-                ( EK.Var
-                    ( EK.Poly "αk" )
-                )
-            )
-        )
+
+tvar = EL.Var
+        ( EL.Poly "α" ( EK.Var $ EK.Poly "αk" ))
 
 
 
-test = typecheck fn >>= print
-
-
-
-typecheck e = run pipeline
-
-    where
-        pipeline = do
-            ((ast, constraint), state) <- runElaboration $ elaborate e
-            (((residuals, solution), count), cycles) <- runSolver $ Solver.process constraint
-            tvars' <- foldM collapse (Solver.tvars solution) cycles
-            let sol = solution { Solver.tvars = tvars' }
-            (zonked, ty) <- runZonking sol residuals $ Zonk.run ast
-
-
-            return (ast, constraint, state, residuals, sol, cycles, zonked, ty)
-
-
-
-run =  Eff.runReader @(CompilerState Elaborated) initialEnv
-        |> Eff.runWriter @Info
-        |> Eff.runError @SagaError
-        |> Eff.runFail
-        |> Eff.runEff
-        where
-            initialEnv :: CompilerState Elaborated
-            initialEnv = Saga [Lib.numProtocol] mempty mempty mempty (Proofs EL.Void mempty)
-
-
-
-
-runElaboration = Eff.runWriter @Solver.Constraint
-            |> Eff.runState initialState
-            |> Eff.runReader (Var.Level 0)
-
-        where
-            initialState :: State
-            initialState = IST 0 0 0 mempty
-
-
-
-runSolver = Eff.runState initialSolution
-        |> Eff.runState (Count 0 0 0)
-        |> Eff.runState @[Cycle EL.Type] []
-        |> Eff.runReader @Levels mempty
-        |> Eff.runReader (Var.Level 0)
-
-        where
-            initialSolution :: Solution
-            initialSolution = Solution mempty mempty mempty mempty mempty
-            initialCount :: Count
-            initialCount = Count 0 0 0
-
-runZonking sol residuals = Eff.runReader (Context sol residuals)
-
+test = Run.typecheck fn >>= print
 
 
 print (Left fail) = do
@@ -164,5 +69,43 @@ print (Right (Right res)) = do
     pPrint ty
 
     return ()
+
+
+
+
+
+-- int = E.Literal . LInt
+
+-- str = E.Literal . LString
+
+
+-- gt x y = E.FnApp (E.Identifier ">") [x, y]
+-- gte x y = E.FnApp (E.Identifier ">=") [x, y]
+-- lt x y = E.FnApp (E.Identifier "<") [x, y]
+-- lte x y = E.FnApp (E.Identifier "<=") [x, y]
+
+
+-- op x = E.FnApp (E.Identifier "/") [E.Literal $ LInt 1, x]
+
+-- cases = E.Lambda ["x"] $
+--         E.Match (E.Identifier "x")
+--             [ E.Case (E.Lit $ LInt 1) (E.Identifier "x")
+--             , E.Case (E.Lit $ LString "Hello") (E.Literal $ LString "World")
+--             ]
+
+-- hofType = T.Forall [T.Poly "a" K.Type] $ Q.none :=> (T.Data "Int" K.Type `T.Arrow` T.Data "Int" K.Type) `T.Arrow` T.Data "Int" K.Type
+-- hofTypeExpr = (TE.Identifier "Int" `TE.Arrow` TE.Identifier "Int") `TE.Arrow` TE.Identifier "Int"
+-- hof = E.Lambda ["f"] $ E.FnApp (E.Identifier "f") [E.Literal $ LInt 1]
+
+-- dec = Let "hof" (Just hofTypeExpr) Nothing hof
+
+
+-- tc d = run $ typecheck d
+
+-- test e = run $ do
+--     ((e, st), cs) <- TI.run e
+--     Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState @[Cycle Type] [] . Eff.runReader (Var.Level 0) . Eff.runReader (levels st) $ simplified cs
+--         where
+--             simplified = mapM simplify . Shared.flatten
 
 

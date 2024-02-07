@@ -3,20 +3,20 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Saga.Language.Syntax.Protocols where
 
-import           Prelude                                 hiding (id)
+import           Prelude                                hiding (id)
 
 
-import qualified Data.Set                                as Set
-import qualified Saga.Language.Syntax.AST                as NT (NodeType (..))
-import           Saga.Language.Syntax.AST                hiding (NodeType (..))
-import           Saga.Language.Syntax.Polymorphism       (Polymorphic)
+import qualified Data.Set                               as Set
+import qualified Saga.Language.Syntax.AST               as NT (NodeType (..))
+import           Saga.Language.Syntax.AST               hiding (NodeType (..))
+import           Saga.Language.Syntax.Polymorphism      (Polymorphic)
 
-import           Data.Data                               (Data)
-import           Saga.Language.Syntax.Elaborated.Types   (Type)
-import           Saga.Language.Syntax.Reduced.Types      (TypeExpr)
-import           Saga.Language.Syntax.Reduced.Values     (Expr)
-import           Saga.Language.Typechecker.Qualification (Qualified ((:=>)))
-import           Saga.Language.Typechecker.Substitution  (Substitutable (..))
+import           Data.Data                              (Data)
+import           Saga.Language.Syntax.Elaborated.Types  (Type)
+import           Saga.Language.Syntax.Reduced.Types     (TypeExpr)
+import           Saga.Language.Syntax.Reduced.Values    (Expr)
+
+import           Saga.Language.Typechecker.Substitution (Substitutable (..))
 
 
 data Protocol phase = Protocol

@@ -1,144 +1,99 @@
-{-# LANGUAGE DataKinds          #-}
-{-# LANGUAGE ExplicitNamespaces #-}
-{-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE DataKinds    #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Saga.Language.Typechecker.Run where
-import qualified Saga.Language.Core.Expr                                 as E
-import           Saga.Language.Core.Expr                                 (Declaration (..),
-                                                                          Expr,
-                                                                          Script (..))
-import           Saga.Language.Typechecker.Inference.Inference           (Inference (Effects, infer))
 
-import           Saga.Language.Typechecker.Inference.Type.Generalization
-import           Saga.Language.Typechecker.Inference.Type.Instantiation
-
-import           Debug.Pretty.Simple                                     (pTrace,
-                                                                          pTraceM)
-import           Effectful                                               (Eff)
-import qualified Effectful                                               as Eff
-import qualified Effectful.Error.Static                                  as Eff
-import qualified Effectful.Fail                                          as Eff
-import qualified Effectful.Reader.Static                                 as Eff
-import qualified Effectful.State.Static.Local                            as Eff
-import qualified Effectful.Writer.Static.Local                           as Eff
-import           Saga.Language.Core.Literals                             (Literal (..))
-import           Saga.Language.Typechecker.Environment                   (CompilerState,
-                                                                          Info)
-import           Saga.Language.Typechecker.Errors                        (SagaError (PolymorphicToConcreteMismatch))
-import qualified Saga.Language.Typechecker.Inference.Inference           as I
-import qualified Saga.Language.Typechecker.Inference.Type.Expr           as TI
-import qualified Saga.Language.Typechecker.Inference.Type.Shared         as TI
-
-import           Control.Monad                                           (when)
-import           Data.Maybe                                              (fromMaybe)
-import           Saga.Language.Typechecker.Evaluation.Types              (Evaluate (evaluate))
-import           Saga.Language.Typechecker.Inference.Type.Shared         (State (levels))
-import qualified Saga.Language.Typechecker.Kind                          as K
-import           Saga.Language.Typechecker.Lib                           (defaultEnv)
-import           Saga.Language.Typechecker.Monad                         (TypeCheck,
-                                                                          run)
-import qualified Saga.Language.Typechecker.Qualification                 as Q
-import           Saga.Language.Typechecker.Qualification                 (Qualified (..))
-import qualified Saga.Language.Typechecker.Solver.Constraints            as CST
-import           Saga.Language.Typechecker.Solver.Cycles                 (Cycle)
-import           Saga.Language.Typechecker.Solver.Monad                  (Count (..),
-                                                                          Solve (..),
-                                                                          initialCount,
-                                                                          initialSolution)
-import qualified Saga.Language.Typechecker.Solver.Run                    as Solver
-import qualified Saga.Language.Typechecker.Solver.Shared                 as Shared
-import qualified Saga.Language.Typechecker.Type                          as T
-import           Saga.Language.Typechecker.Type                          (Polymorphic,
-                                                                          Type)
-import qualified Saga.Language.Typechecker.TypeExpr                      as TE
-import qualified Saga.Language.Typechecker.Variables                     as Var
-import qualified Saga.Language.Typechecker.Zonking.Run                   as Zonking
-import           Saga.Utils.Operators                                    ((|>))
-import           Saga.Utils.TypeLevel                                    (type (§))
+import           Effectful                                                (Eff)
+import qualified Effectful                                                as Eff
+import qualified Effectful.Error.Static                                   as Eff
+import qualified Effectful.Fail                                           as Eff
+import qualified Effectful.Reader.Static                                  as Eff
+import qualified Effectful.State.Static.Local                             as Eff
+import qualified Effectful.Writer.Static.Local                            as Eff
 
 
-class Typecheck e where
-    type Out e
-    typecheck :: TypeCheck es => e -> Eff es (e, Out e)
+import qualified Saga.Language.Syntax.AST                                 as NT (NodeType (..))
+import           Saga.Language.Syntax.AST                                 (AST,
+                                                                           Phase (..))
 
+import qualified Saga.Language.Syntax.Elaborated.Types                    as EL
 
-instance Typecheck Expr where
-    type Out Expr = Polymorphic Type
-    typecheck expr  = do
-        ((ast, st), constraint) <- infer' expr
-        pTraceM $ "\nAST:\n" ++ show ast
+import           Saga.Language.Typechecker.Elaboration.Effects            (State (..))
+import           Saga.Language.Typechecker.Elaboration.Monad              (Elaboration (..),
+                                                                           elaborate)
+import           Saga.Language.Typechecker.Elaboration.Values.Expressions
 
-        context <- Eff.inject $ Solver.run (constraint, levels st)
-        pTraceM $ "\nCONTEXT::\n" ++ show context
-        (ast', ty) <- Zonking.run ast context
+import           Saga.Language.Typechecker.Env                            (CompilerState (..),
+                                                                           Info,
+                                                                           Proofs (..))
+import           Saga.Language.Typechecker.Errors                         (SagaError)
+import qualified Saga.Language.Typechecker.Lib                            as Lib
 
-        return (ast', ty)
+import qualified Saga.Language.Typechecker.Solving.Constraints            as Solver
+import           Saga.Language.Typechecker.Solving.Cycles                 (Cycle,
+                                                                           collapse)
+import qualified Saga.Language.Typechecker.Solving.Monad                  as Solver
+import           Saga.Language.Typechecker.Solving.Monad                  (Count (..),
+                                                                           Levels,
+                                                                           Solution (..))
+import qualified Saga.Language.Typechecker.Solving.Run                    as Solver
 
-instance Typecheck Script where
-    type Out Script = Polymorphic Type
-    typecheck (Script [decs]) = do
-        return _f
+import qualified Saga.Language.Typechecker.Variables                      as Var
 
-instance Typecheck Declaration where
-
-    --typecheck :: TypeCheck es => Declaration -> Eff es (Declaration, Out Declaration)
-    type Out Declaration = Polymorphic Type
-    typecheck d@(Let id tyExpr k expr) = do
-        ty <- mapM evaluate tyExpr
-        (ast, ty'@(T.Forall tvars' qt')) <- typecheck expr
-
-        case ty of
-            Nothing         -> return (Let id tyExpr k ast, ty')
-            Just annotated@(T.Forall tvars qt)  -> do
-                -- TODO:FIXME: This is incomplete.
-                -- We need to check that the annotated type is a subtype of the inferred type.
-                -- This should be done by rigifying the annotated type and then unifying with the inferred type
-                -- Protocol implementations should be checked as well.
-                -- SUGGESTION: Perhaps the best way is by copying the `Stmt` inference code and using the same machinery.
-                when (length tvars > length tvars') (Eff.throwError $ PolymorphicToConcreteMismatch annotated ty')
-                return (Let id tyExpr k ast, annotated)
+import           Saga.Language.Typechecker.Zonking.Monad                  (Context (..))
+import qualified Saga.Language.Typechecker.Zonking.Run                    as Zonk
 
 
 
+import           Control.Monad                                            (foldM)
+import           Saga.Utils.Operators                                     ((|>))
+
+
+typecheck e = run pipeline
+
+    where
+        pipeline = do
+            ((ast, constraint), state) <- runElaboration $ elaborate e
+            (((residuals, solution), count), cycles) <- runSolver $ Solver.process constraint
+            tvars' <- foldM collapse (Solver.tvars solution) cycles
+            let sol = solution { Solver.tvars = tvars' }
+            (zonked, ty) <- runZonking sol residuals $ Zonk.run ast
+
+
+            return (ast, constraint, state, residuals, sol, cycles, zonked, ty)
 
 
 
-infer' :: (Eff.Reader CompilerState Eff.:> es, Eff.Writer Info Eff.:> es, Eff.Error SagaError Eff.:> es, Eff.IOE Eff.:> es, Eff.Fail Eff.:> es) => Expr -> Eff es ((Expr, State), CST.Constraint)
-infer' = Eff.runWriter @CST.Constraint . Eff.runState TI.initialState . Eff.runReader (Var.Level 0) . infer
-
-
-int = E.Literal . LInt
-
-str = E.Literal . LString
-
-
-gt x y = E.FnApp (E.Identifier ">") [x, y]
-gte x y = E.FnApp (E.Identifier ">=") [x, y]
-lt x y = E.FnApp (E.Identifier "<") [x, y]
-lte x y = E.FnApp (E.Identifier "<=") [x, y]
-
-
-op x = E.FnApp (E.Identifier "/") [E.Literal $ LInt 1, x]
-
-cases = E.Lambda ["x"] $
-        E.Match (E.Identifier "x")
-            [ E.Case (E.Lit $ LInt 1) (E.Identifier "x")
-            , E.Case (E.Lit $ LString "Hello") (E.Literal $ LString "World")
-            ]
-
-hofType = T.Forall [T.Poly "a" K.Type] $ Q.none :=> (T.Data "Int" K.Type `T.Arrow` T.Data "Int" K.Type) `T.Arrow` T.Data "Int" K.Type
-hofTypeExpr = (TE.Identifier "Int" `TE.Arrow` TE.Identifier "Int") `TE.Arrow` TE.Identifier "Int"
-hof = E.Lambda ["f"] $ E.FnApp (E.Identifier "f") [E.Literal $ LInt 1]
-
-dec = Let "hof" (Just hofTypeExpr) Nothing hof
-
-
-tc d = run $ typecheck d
-
-test e = run $ do
-    ((e, st), cs) <- TI.run e
-    Eff.runState initialSolution . Eff.evalState initialCount .  Eff.runState @[Cycle Type] [] . Eff.runReader (Var.Level 0) . Eff.runReader (levels st) $ simplified cs
+run =  Eff.runReader @(CompilerState Elaborated) initialEnv
+        |> Eff.runWriter @Info
+        |> Eff.runError @SagaError
+        |> Eff.runFail
+        |> Eff.runEff
         where
-            simplified = mapM simplify . Shared.flatten
+            initialEnv :: CompilerState Elaborated
+            initialEnv = Saga [Lib.numProtocol] mempty mempty mempty (Proofs EL.Void mempty)
+
+
+runElaboration = Eff.runWriter @Solver.Constraint
+            |> Eff.runState initialState
+            |> Eff.runReader (Var.Level 0)
+
+        where
+            initialState :: State
+            initialState = IST 0 0 0 mempty
 
 
 
+runSolver = Eff.runState initialSolution
+        |> Eff.runState (Count 0 0 0)
+        |> Eff.runState @[Cycle EL.Type] []
+        |> Eff.runReader @Levels mempty
+        |> Eff.runReader (Var.Level 0)
+
+        where
+            initialSolution :: Solution
+            initialSolution = Solution mempty mempty mempty mempty mempty
+            initialCount :: Count
+            initialCount = Count 0 0 0
+
+runZonking sol residuals = Eff.runReader (Context sol residuals)

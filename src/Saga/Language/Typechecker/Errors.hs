@@ -1,14 +1,6 @@
 module Saga.Language.Typechecker.Errors where
-import           Saga.Language.Core.Expr                       (Expr)
-import           Saga.Language.Core.Literals                   (Literal)
-import           Saga.Language.Typechecker.Kind                (Kind)
-import           Saga.Language.Typechecker.Protocols           (ProtocolID)
-import           Saga.Language.Typechecker.Refinement.Liquid   (Liquid, Op)
-import           Saga.Language.Typechecker.Solver.Constraints  (Constraint,
-                                                                Evidence, Item)
-import           Saga.Language.Typechecker.Type                (Polymorphic,
-                                                                Type)
-import           Saga.Language.Typechecker.TypeExpr            (TypeExpr)
+
+
 import           Saga.Language.Typechecker.Variables           (Variable)
 
 
@@ -16,6 +8,10 @@ import qualified Saga.Language.Syntax.AST                      as NT (NodeType (
 import           Saga.Language.Syntax.AST                      (AST, Phase (..))
 import qualified Saga.Language.Syntax.Elaborated.Kinds         as EL
 import qualified Saga.Language.Syntax.Elaborated.Types         as EL
+import           Saga.Language.Syntax.Liquids                  (Liquid, Op)
+import           Saga.Language.Syntax.Literals                 (Literal)
+import           Saga.Language.Syntax.Polymorphism             (Polymorphic)
+import           Saga.Language.Syntax.Protocols                (ProtocolID)
 import qualified Saga.Language.Syntax.Reduced.Types            as RD
 import qualified Saga.Language.Syntax.Reduced.Values           as RD
 import qualified Saga.Language.Typechecker.Solving.Constraints as Solver
@@ -25,15 +21,15 @@ data SagaError where
   UndefinedIdentifier :: String-> SagaError
 
   UnexpectedType                      :: RD.TypeExpr -> String -> SagaError
-  UnexpectedKind                      :: Kind -> String -> SagaError
+  UnexpectedKind                      :: EL.Kind -> String -> SagaError
   UnexpectedPolymorphicVariable       :: (Show a, Show (Variable a)) => Variable a -> SagaError
   UnexpectedInstantiationVariable     :: (Show a, Show (Variable a)) =>  Variable a -> SagaError
   UnexpectedVariable                  :: (Show a, Show (Variable a)) =>  Variable a -> SagaError
 
   UntypedInferredExpr :: AST Elaborated NT.Expression -> SagaError
 
-  -- | TYPECHECKING
-  PolymorphicToConcreteMismatch :: Polymorphic Type -> Polymorphic Type -> SagaError
+  -- | EL.TypeCHECKING
+  PolymorphicToConcreteMismatch :: Polymorphic EL.Type -> Polymorphic EL.Type -> SagaError
 
   -- | REFINEMENTS
   UnexpectedLiquidNegation :: Liquid -> SagaError
@@ -44,16 +40,16 @@ data SagaError where
   TooManyInstantiationArguments :: (Show t, Show (Variable t)) => Polymorphic t -> [t] -> SagaError
 
   -- | UNIFICATION
-  UnificationMismatch :: [Type] -> [Type]-> SagaError
+  UnificationMismatch :: [EL.Type] -> [EL.Type]-> SagaError
   UnificationFail     :: EL.Type -> EL.Type-> SagaError
-  UnificationKindFail :: Kind -> Kind -> SagaError
+  UnificationKindFail :: EL.Kind -> EL.Kind -> SagaError
 
-  KindMismatch :: Kind -> Kind -> SagaError
+  KindMismatch :: EL.Kind -> EL.Kind -> SagaError
 
 
   InfiniteType :: (Show a, Show (Variable a)) => (Variable a) -> EL.Type -> SagaError
   InfiniteKind :: (Show a, Show (Variable a)) => Variable a -> EL.Kind -> SagaError
-  CircularKind :: Kind -> Kind -> SagaError
+  CircularKind :: EL.Kind -> EL.Kind -> SagaError
 
   RigidUnification :: (Show a, Show (Variable a), Show (EL.Node Elaborated nt)) => Variable a -> EL.Node Elaborated nt  -> SagaError
 
@@ -68,7 +64,7 @@ data SagaError where
   UnsatisfiableRefinement :: Solver.Constraint -> SagaError
 
   -- | EVALUATION
-  UnexpectedLocalPolymorphicType :: Polymorphic Type -> SagaError
+  UnexpectedLocalPolymorphicType :: Polymorphic EL.Type -> SagaError
   TooManyArguments :: RD.TypeExpr-> [RD.TypeExpr]-> SagaError
 
   SubtypeFailure  :: EL.Type -> EL.Type -> SagaError
