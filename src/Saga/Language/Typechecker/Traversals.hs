@@ -30,7 +30,6 @@ import           Saga.Utils.Operators                   ((||>))
 import           Saga.Utils.TypeLevel                   (type (§))
 
 
-
 instance Substitutable Type where
     type Target Type = Type
 
@@ -40,36 +39,7 @@ instance Substitutable Type where
             apply' (T.Qualified (bs :| cs :=> ty)) = T.Qualified $ (apply sub <$> bs) :| (apply sub <$> cs) :=> ty
             apply' t         = t
 
-    ftv t = Set.fromList $ concat
-            [ v:vs | T.Var v <- all
-                   | T.Polymorphic (Forall vs _) <- all
-            ] where all = universeBi t
-
-
-
-    -- apply sub t@(T.Var v)                      = Map.findWithDefault t v sub
-    -- apply sub ty = runIdentity $ case ty of
-    --     T.Polymorphic (Forall tvars ty') -> T.Polymorphic . Forall tvars <$> visit substitute ty'
-    --     T.Qualified (bs :| cs :=> ty') -> do
-    --         t <- visit substitute ty'
-    --         return . T.Qualified $ (apply sub <$> bs) :| (apply sub <$> cs) :=> t
-    --     _ -> visit substitute ty
-    --     where
-    --         substitute = return . apply sub
-
-    -- ftv (T.Var v) = Set.singleton v
-    -- ftv t = execWriter $ case t of
-    --     T.Polymorphic (Forall tvars ty) -> do
-    --         tell $ Set.fromList tvars
-    --         visit ftv' ty
-    --     T.Qualified (_ :=> ty) -> visit ftv' ty
-    --     ty -> visit ftv' ty
-
-    --     where
-    --         ftv' t = do
-    --             tell $ ftv t
-    --             return t
-
+    ftv t = Set.fromList $ [ v | T.Var v <-  universeBi t ]
 
 
 instance Substitutable T.TypeConstraint where

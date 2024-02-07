@@ -89,7 +89,7 @@ zonkE node = do
                                         |$> \P.Protocol { spec } -> do
 
                                             -- | HACK This needs to evaluate the application of the types, but we don't have that yet
-                                            return $ AST.Annotated (ET.Applied (AST.Raw $ ET.Polymorphic spec) (AST.Raw t)) (AST.Raw EK.Kind)))
+                                            return $ AST.Annotated (ET.Applied (AST.Raw $ ET.Polymorphic spec) (AST.Raw t)) (AST.Raw EK.Type)))
                         |> mapM2 sequence
                 types' <- forM types $ \(prtcl, t) ->
                         let err = Eff.throwError $ MissingProtocol prtcl

@@ -12,6 +12,7 @@ import qualified Effectful.Writer.Static.Local                            as Eff
 import qualified Saga.Language.Syntax.AST                                 as NT (NodeType (..))
 import           Saga.Language.Syntax.AST                                 (AST,
                                                                            Phase (..))
+import qualified Saga.Language.Syntax.Elaborated.Kinds                    as EK
 import qualified Saga.Language.Syntax.Elaborated.Types                    as EL
 import qualified Saga.Language.Typechecker.Elaboration.Effects            as Effs hiding
                                                                                   (kvars,
@@ -36,6 +37,7 @@ import qualified Effectful.Error.Static                                   as Eff
 import qualified Effectful.Fail                                           as Eff
 import           Prelude                                                  hiding
                                                                           (print)
+import qualified Saga.Language.Syntax.Elaborated.AST                      as AST
 import           Saga.Language.Syntax.Literals                            (Literal (..))
 import qualified Saga.Language.Syntax.Reduced.AST                         as RD
 import qualified Saga.Language.Syntax.Reduced.Values                      as RD
@@ -43,6 +45,9 @@ import           Saga.Language.Typechecker.Elaboration.Values.Expressions
 import           Saga.Language.Typechecker.Errors                         (SagaError)
 import           Text.Pretty.Simple                                       (pPrint)
 
+
+import           Saga.Language.Typechecker.Substitution                   (Substitutable (..))
+import           Saga.Language.Typechecker.Traversals
 
 
 
@@ -54,6 +59,18 @@ fn = RD.Raw $
             (RD.Raw (RD.Var "x"))
             [RD.Raw (RD.Literal $ LInt 1)]
             )
+
+g = ftv tvar
+tvar =
+        ( EL.Var
+            ( EL.Poly "α"
+                ( EK.Var
+                    ( EK.Poly "αk" )
+                )
+            )
+        )
+
+
 
 test = typecheck fn >>= print
 
@@ -142,4 +159,5 @@ print (Right (Right res)) = do
     pPrint ty
 
     return ()
+
 
