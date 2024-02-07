@@ -23,6 +23,7 @@ import           Saga.Language.Typechecker.Env                            (Compi
                                                                            Proofs (..))
 import qualified Saga.Language.Typechecker.Lib                            as Lib
 import           Saga.Language.Typechecker.Solving.Cycles                 (Cycle)
+import qualified Saga.Language.Typechecker.Solving.Monad                  as Solver
 import           Saga.Language.Typechecker.Solving.Monad                  (Count (..),
                                                                            Levels,
                                                                            Solution (..))
@@ -46,6 +47,8 @@ import           Saga.Language.Typechecker.Errors                         (SagaE
 import           Text.Pretty.Simple                                       (pPrint)
 
 
+import           Control.Monad                                            (foldM)
+import           Saga.Language.Typechecker.Solving.Cycles                 (collapse)
 import           Saga.Language.Typechecker.Substitution                   (Substitutable (..))
 import           Saga.Language.Typechecker.Traversals
 
@@ -82,10 +85,12 @@ typecheck e = run pipeline
         pipeline = do
             ((ast, constraint), state) <- runElaboration $ elaborate e
             (((residuals, solution), count), cycles) <- runSolver $ Solver.process constraint
-            (zonked, ty) <- runZonking solution residuals $ Zonk.run ast
+            tvars' <- foldM collapse (Solver.tvars solution) cycles
+            let sol = solution { Solver.tvars = tvars' }
+            (zonked, ty) <- runZonking sol residuals $ Zonk.run ast
 
 
-            return (ast, constraint, state, residuals, solution, cycles, zonked, ty)
+            return (ast, constraint, state, residuals, sol, cycles, zonked, ty)
 
 
 
