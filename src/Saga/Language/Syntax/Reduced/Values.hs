@@ -24,7 +24,7 @@ data instance Node Reduced Expression where
   Tuple       :: [AST Reduced Expression] -> Node Reduced Expression
   Record      :: [(String,  AST Reduced Expression)] -> Node Reduced Expression
   Match       :: AST Reduced Expression -> [AST Reduced (NT.Case Expression)] -> Node Reduced Expression
-  Lambda      :: [String] ->   AST Reduced Expression ->  Node Reduced Expression
+  Lambda      :: [String] -> AST Reduced Expression ->  Node Reduced Expression
   Application ::  AST Reduced Expression -> [AST Reduced Expression] -> Node Reduced Expression
   Block       :: [AST Reduced Statement] -> Node Reduced Expression
 deriving instance Show (Node Reduced NT.Expression)

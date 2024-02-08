@@ -3,11 +3,12 @@ module Saga.Language.Typechecker.Test where
 
 
 import qualified Saga.Language.Syntax.Elaborated.Kinds as EK
-import qualified Saga.Language.Syntax.Elaborated.Types as EL
+import qualified Saga.Language.Syntax.Elaborated.Types as ET
 
-import qualified Saga.Language.Syntax.Elaborated.AST   as AST
+import qualified Saga.Language.Syntax.Elaborated.AST   as EL
 import           Saga.Language.Syntax.Literals         (Literal (..))
 import qualified Saga.Language.Syntax.Reduced.AST      as RD
+import qualified Saga.Language.Syntax.Reduced.Types    as RT
 import qualified Saga.Language.Syntax.Reduced.Values   as RD
 
 
@@ -15,26 +16,17 @@ import qualified Saga.Language.Syntax.Reduced.Values   as RD
 
 import qualified Saga.Language.Typechecker.Run         as Run
 
+import           Control.Monad                         ((>=>))
 import           Prelude                               hiding (print)
+import           Saga.Language.Syntax.Polymorphism     (Polymorphic (..))
 import           Text.Pretty.Simple                    (pPrint)
 
 
 
 
-fn = RD.Raw $
-    RD.Lambda ["x"] $
-        RD.Raw (RD.Application
-            (RD.Raw (RD.Var "x"))
-            [RD.Raw (RD.Literal $ LInt 1)]
-            )
 
 
-tvar = EL.Var
-        ( EL.Poly "α" ( EK.Var $ EK.Poly "αk" ))
-
-
-
-test = Run.typecheck fn >>= print
+test = Run.typecheck >=> print
 
 
 print (Left fail) = do
@@ -71,33 +63,46 @@ print (Right (Right res)) = do
     return ()
 
 
+fn = RD.Raw $
+    RD.Lambda ["x"] $
+        RD.Raw (RD.Application
+            (RD.Raw (RD.Var "x"))
+            [RD.Raw (RD.Literal $ LInt 1)]
+            )
+
+
+tvar = ET.Var
+        ( ET.Poly "α" ( EK.Var $ EK.Poly "αk" ))
 
 
 
--- int = E.Literal . LInt
 
--- str = E.Literal . LString
+int = RD.Literal . LInt
 
-
--- gt x y = E.FnApp (E.Identifier ">") [x, y]
--- gte x y = E.FnApp (E.Identifier ">=") [x, y]
--- lt x y = E.FnApp (E.Identifier "<") [x, y]
--- lte x y = E.FnApp (E.Identifier "<=") [x, y]
+str = RD.Literal . LString
 
 
--- op x = E.FnApp (E.Identifier "/") [E.Literal $ LInt 1, x]
+gt x y = RD.Application (RD.Raw $ RD.Var ">") [x, y]
+gte x y = RD.Application (RD.Raw $ RD.Var ">=") [x, y]
+lt x y = RD.Application (RD.Raw $ RD.Var "<") [x, y]
+lte x y = RD.Application (RD.Raw $ RD.Var "<=") [x, y]
 
--- cases = E.Lambda ["x"] $
---         E.Match (E.Identifier "x")
---             [ E.Case (E.Lit $ LInt 1) (E.Identifier "x")
---             , E.Case (E.Lit $ LString "Hello") (E.Literal $ LString "World")
---             ]
 
--- hofType = T.Forall [T.Poly "a" K.Type] $ Q.none :=> (T.Data "Int" K.Type `T.Arrow` T.Data "Int" K.Type) `T.Arrow` T.Data "Int" K.Type
--- hofTypeExpr = (TE.Identifier "Int" `TE.Arrow` TE.Identifier "Int") `TE.Arrow` TE.Identifier "Int"
--- hof = E.Lambda ["f"] $ E.FnApp (E.Identifier "f") [E.Literal $ LInt 1]
+divide x = RD.Raw $ RD.Application (RD.Raw $ RD.Var "/") [RD.Raw $ int 1, RD.Raw $ int x]
 
--- dec = Let "hof" (Just hofTypeExpr) Nothing hof
+cases = RD.Lambda ["x"] $
+            RD.Raw (RD.Match (RD.Raw $ RD.Var "x")
+                [ RD.Raw $ RD.Case (RD.Raw . RD.PatLit $ LInt 1) (RD.Raw $ RD.Var "x")
+                , RD.Raw $ RD.Case (RD.Raw . RD.PatLit $ LString "Hello") (RD.Raw $ str "World")
+                ])
+
+-- hofType = RT.Polymorphic ["a"] $ (RT.Identifier "a" `RT.Arrow` RT.Identifier "a") `RT.Arrow` RT.Identifier "a"
+
+--ET.Data "Int" K.Type `T.Arrow` T.Data "Int" K.Type) `T.Arrow` T.Data "Int" K.Type
+hofTypeExpr = RT.Lambda ["a"] $ (RT.Identifier "a" `RT.Arrow` RT.Identifier "a") `RT.Arrow` RT.Identifier "a"
+hof = RD.Lambda ["f"] $ RD.Raw (RD.Application (RD.Raw $ RD.Var "f") [RD.Raw $ int 1])
+
+dec = RD.Let "hof" (RD.Annotated hof (RD.Raw hofTypeExpr))
 
 
 -- tc d = run $ typecheck d

@@ -18,7 +18,6 @@ library
       Main
       REPL.Repl
       Saga.Language.CodeGen.JS
-      Saga.Language.Evaluation
       Saga.Language.Syntax.AST
       Saga.Language.Syntax.Elaborated.AST
       Saga.Language.Syntax.Elaborated.Kinds
@@ -48,7 +47,6 @@ library
       Saga.Language.Typechecker.Env
       Saga.Language.Typechecker.Errors
       Saga.Language.Typechecker.Lib
-      Saga.Language.Typechecker.Monad
       Saga.Language.Typechecker.Run
       Saga.Language.Typechecker.Shared
       Saga.Language.Typechecker.Solving.Constraints
