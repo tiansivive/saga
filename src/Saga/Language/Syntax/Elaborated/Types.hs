@@ -27,15 +27,16 @@ import           Saga.Utils.TypeLevel                  (type (§))
 type Type = Node Elaborated NT.Type
 data instance Node Elaborated NT.Type where
     Singleton   :: Literal                                              -> Type
+    Data        :: String                                               -> Type
+    Var         :: Variable Type                                        -> Type
     Tuple       :: [AST Elaborated NT.Type]                             -> Type
     Record      :: [(String, AST Elaborated NT.Type)]                   -> Type
-    Union       :: [AST Elaborated NT.Type]                             -> Type
     Arrow       :: AST Elaborated NT.Type -> AST Elaborated NT.Type     -> Type
-    Data        :: String                                                -> Type
-    Applied     :: AST Elaborated NT.Type -> AST Elaborated NT.Type     -> Type
-    Var         :: Variable Type                                        -> Type
+    Union       :: [AST Elaborated NT.Type]                             -> Type
+    Closure     :: [String] -> TypeExpr -> Scope                 -> Type
     Polymorphic :: Polymorphic Type                                     -> Type
     Qualified   :: Qualified Type                                       -> Type
+    Applied     :: AST Elaborated NT.Type -> AST Elaborated NT.Type     -> Type
     Void        :: Type
     Any         :: Type
 deriving instance Show Type
@@ -51,7 +52,7 @@ deriving instance Data (AST Elaborated NT.Type)
 data Scope = Scope
   { types :: Map String (AST Elaborated NT.Type)
   , kinds :: Map String (AST Elaborated NT.Kind)
-  } deriving (Show, Eq, Ord)
+  } deriving (Show, Eq, Ord, Data)
 
 
 data instance Variable Type where

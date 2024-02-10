@@ -25,6 +25,7 @@ import qualified Saga.Language.Typechecker.Solving.Shared       as Shared
 import           Saga.Language.Typechecker.Substitution         (Substitutable (..))
 import qualified Saga.Language.Typechecker.Variables            as Var
 
+import qualified Saga.Language.Typechecker.Solving.Evaluation   as Evaluation
 import qualified Saga.Language.Typechecker.Solving.Implications as Implications
 import qualified Saga.Language.Typechecker.Solving.Refinements  as Refinements
 import           Saga.Utils.Operators                           ((|>), (||>))
@@ -126,8 +127,10 @@ instance Solve Solver.Constraint where
         let cs = [ c | Solver.Assume c <- as ]
         return (Deferred, Shared.merge $ cs ++ residuals)
 
-    solve Solver.Empty                                   = return (Solved, Solver.Empty)
-    solve c                            = return (Deferred, c)
+
+    solve c@(Solver.Evaluate {})          = Evaluation.solve c
+    solve Solver.Empty                    = return (Solved, Solver.Empty)
+    solve c                               = return (Deferred, c)
     -- solve c                                         = crash $ NotYetImplemented $ "Solving constraint: " ++ show c
 
     simplify :: Solving es => Constraint -> Eff es Constraint
@@ -135,6 +138,7 @@ instance Solve Solver.Constraint where
     simplify c@(Solver.Implementation {})  = Protocols.simplify c
     simplify c@(Solver.Refinement {})      = Refinements.simplify c
     simplify c@(Solver.Implication {})     = Implications.simplify c
+    simplify c@(Solver.Evaluate {})        = Evaluation.simplify c
 
     simplify c@(Solver.Conjunction {})     = return c
     simplify c@Solver.Empty                = return c

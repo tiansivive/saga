@@ -52,6 +52,7 @@ library
       Saga.Language.Typechecker.Solving.Constraints
       Saga.Language.Typechecker.Solving.Cycles
       Saga.Language.Typechecker.Solving.Equalities
+      Saga.Language.Typechecker.Solving.Evaluation
       Saga.Language.Typechecker.Solving.Implications
       Saga.Language.Typechecker.Solving.Monad
       Saga.Language.Typechecker.Solving.Protocols

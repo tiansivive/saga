@@ -132,8 +132,9 @@ instance Elaboration NT.Type where
       Eff.tell $ Solver.Equality evidence (Solver.K $ Shared.extract f') (Solver.K $ EK.Polymorphic inferred)
       Eff.tell $ Solver.Equality evidence (Solver.K out) (Solver.K k)
 
-      Eff.tell $ Solver.Evaluate (EL.Var sub) (Solver.Application (EL.node f') (EL.node arg'))
-      return $ EL.Annotated (EL.Var sub) (EL.Raw out)
+      let ast = EL.Annotated (EL.Var sub) (EL.Raw out)
+      Eff.tell $ Solver.Evaluate ast (EL.Applied f' arg')
+      return ast
 
       where
         generalize' k = do
@@ -148,15 +149,18 @@ instance Elaboration NT.Type where
                 curried = RD.Raw $ foldl (\f' a -> RD.Application f' [a]) partial as
 
 
-    RD.Match (RD.Raw -> subject) _  -> do
+    RD.Match (RD.Raw -> subject) cases  -> do
       Saga { types, kinds } <- Eff.ask
-
       subject' <- elaborate subject
-      sub@(EL.Unification _ k) <- Shared.fresh' T
-      -- | TODO: Most likely we need a specific structure for the match clause rather than a closure
-      Eff.tell $ Solver.Evaluate (EL.Var sub) (Solver.Match node (Solver.Scope types kinds))
 
-      return $ EL.Annotated (EL.Var sub) (EL.Raw k)
+      EL.Unification id _ <- Shared.fresh' T -- only for string gen
+      let match' =  RD.Match (RD.Identifier id) cases
+      let closure = EL.Closure [id] match' (EL.Scope types kinds)
+
+      sub@(EL.Unification _ k) <- Shared.fresh' T
+      let annotated = EL.Annotated (EL.Var sub) (EL.Raw k)
+      Eff.tell $ Solver.Evaluate annotated (EL.Applied (EL.Raw closure) subject')
+      return annotated
 
     RD.Union tys -> do
       tys' <- forM tys (elaborate . RD.Raw)

@@ -35,28 +35,24 @@ data Constraint where
     Empty           :: Constraint
     Conjunction     :: Constraint -> Constraint -> Constraint
     Equality        :: Variable Constraint -> Item -> Item -> Constraint
+    -- OneOf           :: { source :: Type, union :: Type } -> Constraint
     Implementation  :: { evidence :: Variable Constraint, target :: Type, protocol :: ProtocolID } -> Constraint
-    OneOf           :: { source :: Type, union :: Type } -> Constraint
     Refinement      :: Bindings -> Type -> Liquid -> Constraint
-    Proof           :: { source :: Type, narrowed :: Type } -> Constraint
+    -- Proof           :: { source :: Type, narrowed :: Type } -> Constraint
     -- Consumed    :: Item -> Constraint
     -- Pure        :: Item -> Constraint
     -- Impure      :: Item -> Constraint
     Implication     :: [Variable Type] -> [Assumption] -> Constraint -> Constraint
-    Evaluate        :: { result :: Type, expr :: Expression } -> Constraint
+    Evaluate        :: { result :: AST Elaborated NT.Type, ty :: Type } -> Constraint
 deriving instance Show Constraint
 deriving instance Eq Constraint
 deriving instance Data Constraint
 
-data Expression
-    = Application Type Type
-    | Match TypeExpr Scope
-    deriving (Show, Eq, Data)
 
-data Scope = Scope
-    { types :: Map String (AST Elaborated NT.Type)
-    , kinds :: Map String (AST Elaborated NT.Kind)
-    } deriving (Show, Eq, Data)
+-- data Scope = Scope
+--     { types :: Map String (AST Elaborated NT.Type)
+--     , kinds :: Map String (AST Elaborated NT.Kind)
+--     } deriving (Show, Eq, Data)
 
 data Item
     = Ty Type
