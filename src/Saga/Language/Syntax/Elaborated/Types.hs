@@ -33,7 +33,9 @@ data instance Node Elaborated NT.Type where
     Record      :: [(String, AST Elaborated NT.Type)]                   -> Type
     Arrow       :: AST Elaborated NT.Type -> AST Elaborated NT.Type     -> Type
     Union       :: [AST Elaborated NT.Type]                             -> Type
-    Closure     :: [String] -> TypeExpr -> Scope                 -> Type
+   -- Closure     :: [String] -> TypeExpr -> Scope                 -> Type
+    -- Computed    :: [String] -> AST Elaborated NT.Type                   -> Type
+    Match       :: { subject :: AST Elaborated NT.Type, cases :: [AST Elaborated (NT.Case NT.Type)] } -> Type
     Polymorphic :: Polymorphic Type                                     -> Type
     Qualified   :: Qualified Type                                       -> Type
     Applied     :: AST Elaborated NT.Type -> AST Elaborated NT.Type     -> Type
@@ -69,6 +71,35 @@ deriving instance Show (Variable Type)
 deriving instance Eq (Variable Type)
 deriving instance Ord (Variable Type)
 deriving instance Data (Variable Type)
+
+data instance Node Elaborated (NT.Case NT.Type) where
+  Case :: AST Elaborated (NT.Pattern NT.Type) -> AST Elaborated NT.Type -> Node Elaborated (NT.Case NT.Type)
+deriving instance Show (Node Elaborated (NT.Case NT.Type))
+deriving instance Show (AST Elaborated (NT.Case NT.Type))
+deriving instance Eq (Node Elaborated (NT.Case NT.Type))
+deriving instance Eq (AST Elaborated (NT.Case NT.Type))
+deriving instance Ord (Node Elaborated (NT.Case NT.Type))
+deriving instance Ord (AST Elaborated (NT.Case NT.Type))
+deriving instance Data (Node Elaborated (NT.Case NT.Type))
+deriving instance Data (AST Elaborated (NT.Case NT.Type))
+
+data instance Node Elaborated (NT.Pattern NT.Type) where
+  Wildcard  :: Node Elaborated (NT.Pattern NT.Type)
+  Id        :: String -> Node Elaborated (NT.Pattern NT.Type)
+  PatHole   :: String -> Node Elaborated (NT.Pattern NT.Type)
+  PatLit    :: Literal  -> Node Elaborated (NT.Pattern NT.Type)
+  PatTuple  :: [AST Elaborated (NT.Pattern NT.Type)] -> Maybe String  -> Node Elaborated (NT.Pattern NT.Type)
+  PatRecord :: [(String, AST Elaborated (NT.Pattern NT.Type))] -> Maybe String  -> Node Elaborated (NT.Pattern NT.Type)
+  PatData   :: String -> [AST Elaborated (NT.Pattern NT.Type)]  -> Node Elaborated (NT.Pattern NT.Type)
+deriving instance Show (Node Elaborated (NT.Pattern NT.Type))
+deriving instance Show (AST Elaborated (NT.Pattern NT.Type))
+deriving instance Eq (Node Elaborated (NT.Pattern NT.Type))
+deriving instance Eq (AST Elaborated (NT.Pattern NT.Type))
+deriving instance Ord (Node Elaborated (NT.Pattern NT.Type))
+deriving instance Ord (AST Elaborated (NT.Pattern NT.Type))
+deriving instance Data (Node Elaborated (NT.Pattern NT.Type))
+deriving instance Data (AST Elaborated (NT.Pattern NT.Type))
+
 
 
 type TypeConstraint = Node Elaborated NT.Constraint

@@ -66,6 +66,7 @@ data SagaError where
   -- | EVALUATION
   UnexpectedLocalPolymorphicType :: Polymorphic EL.Type -> SagaError
   TooManyArguments :: RD.TypeExpr-> [RD.TypeExpr]-> SagaError
+  NoMatchingPattern :: EL.Type -> [EL.Node Elaborated (NT.Case NT.Type)]-> SagaError
 
   SubtypeFailure  :: EL.Type -> EL.Type -> SagaError
   Fail            :: String-> SagaError
