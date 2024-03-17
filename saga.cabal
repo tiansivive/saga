@@ -16,8 +16,6 @@ extra-source-files:
 library
   exposed-modules:
       Main
-      REPL.Repl
-      Saga.Language.CodeGen.JS
       Saga.Language.Syntax.AST
       Saga.Language.Syntax.Elaborated.AST
       Saga.Language.Syntax.Elaborated.Kinds
@@ -72,15 +70,6 @@ library
       Saga.Language.Typechecker.Zonking.Run
       Saga.Language.Typechecker.Zonking.Test
       Saga.Language.Typechecker.Zonking.Types
-      Saga.Lexer.Lexer
-      Saga.Lexer.Tokens
-      Saga.Parser.Desugar
-      Saga.Parser.Expr
-      Saga.Parser.Literals
-      Saga.Parser.Parser
-      Saga.Parser.ParsingInfo
-      Saga.Parser.Shared
-      Saga.Parser.Types
       Saga.Utils.Common
       Saga.Utils.Operators
       Saga.Utils.Pretty
@@ -113,11 +102,9 @@ test-suite saga-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Saga.Language.EvaluationSpec
-      Saga.Language.InferenceSpec
+      Saga.Language.Elaboration.ValuesSpec
       Saga.Language.SubtypingSpec
       Saga.Language.UnificationSpec
-      Saga.Parser.ParserSpec
       SpecHook
       Paths_saga
   hs-source-dirs:

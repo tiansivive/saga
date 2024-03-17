@@ -2,27 +2,31 @@
 
 module Saga.Language.Syntax.Elaborated.Types where
 
-import           Data.Map                              (Map)
-import qualified Saga.Language.Syntax.AST              as NT (NodeType (..))
-import           Saga.Language.Syntax.AST              hiding (NodeType (..))
+import           Data.Map                                        (Map)
+import qualified Saga.Language.Syntax.AST                        as NT (NodeType (..))
+import           Saga.Language.Syntax.AST                        hiding
+                                                                 (NodeType (..))
 import           Saga.Language.Syntax.Elaborated.AST
 import           Saga.Language.Syntax.Polymorphism
 
 import           Saga.Language.Syntax.Literals
 
-import           Saga.Language.Syntax.Elaborated.Kinds hiding (Arrow,
-                                                        Polymorphic, Qualified,
-                                                        Var)
-import           Saga.Language.Syntax.Liquids          hiding (Var)
-import           Saga.Language.Typechecker.Variables   (Variable)
+import           Saga.Language.Syntax.Elaborated.Kinds           hiding (Arrow,
+                                                                  Polymorphic,
+                                                                  Qualified,
+                                                                  Var)
+import           Saga.Language.Syntax.Liquids                    hiding (Var)
+import           Saga.Language.Typechecker.Variables             (Variable)
 
-import           Control.Monad.Identity                (Identity)
-import           Data.Data                             (Data)
-import qualified Data.Kind                             as GHC
-import           Prelude                               hiding (map, traverse)
-import           Saga.Language.Syntax.Reduced.Types    (TypeExpr)
-import           Saga.Utils.Common                     (fmap2, mapM2)
-import           Saga.Utils.TypeLevel                  (type (§))
+import           Control.Monad.Identity                          (Identity)
+import           Data.Data                                       (Data)
+import qualified Data.Kind                                       as GHC
+import           Documentation.SBV.Examples.BitPrecise.MergeSort (E)
+import           Prelude                                         hiding (map,
+                                                                  traverse)
+import           Saga.Language.Syntax.Reduced.Types              (TypeExpr)
+import           Saga.Utils.Common                               (fmap2, mapM2)
+import           Saga.Utils.TypeLevel                            (type (§))
 
 type Type = Node Elaborated NT.Type
 data instance Node Elaborated NT.Type where
@@ -41,6 +45,9 @@ data instance Node Elaborated NT.Type where
     Applied     :: AST Elaborated NT.Type -> AST Elaborated NT.Type     -> Type
     Void        :: Type
     Any         :: Type
+
+
+
 deriving instance Show Type
 deriving instance Eq Type
 deriving instance Ord Type

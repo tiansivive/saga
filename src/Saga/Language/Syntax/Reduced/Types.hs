@@ -16,8 +16,8 @@ import           Saga.Language.Syntax.Reduced.Kinds
 
 import           Saga.Language.Typechecker.Variables (Variable)
 
+import           Data.Data                           (Data)
 import           Saga.Utils.TypeLevel                (type (§))
-import Data.Data (Data)
 
 
 type TypeExpr = Node Reduced NT.Type
@@ -49,7 +49,7 @@ deriving instance Data (AST Reduced NT.Type)
 
 
 data instance Node Reduced (NT.Case NT.Type) where
-  Case :: AST Reduced (NT.Pattern NT.Type) -> AST Reduced (NT.Case NT.Type) -> Node Reduced (NT.Case NT.Type)
+  Case :: AST Reduced (NT.Pattern NT.Type) -> AST Reduced NT.Type -> Node Reduced (NT.Case NT.Type)
 deriving instance Show (Node Reduced (NT.Case NT.Type))
 deriving instance Show (AST Reduced (NT.Case NT.Type))
 deriving instance Eq (Node Reduced (NT.Case NT.Type))

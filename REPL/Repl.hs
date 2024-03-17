@@ -3,7 +3,7 @@ module REPL.Repl where
 
 import qualified Saga.Language.Evaluation      as E
 
-import qualified Saga.Parser.Parser            as P
+-- import qualified Saga.Parser.Parser            as P
 
 import           Data.Map                      (Map)
 import qualified Data.Map                      as Map
@@ -16,9 +16,9 @@ import           Saga.Language.Core.Expr       (Expr)
 import           Control.Monad.IO.Class        (MonadIO (liftIO))
 import qualified Effectful                     as Eff
 import qualified Saga.Language.Typechecker.Run as TC
-import           Saga.Parser.Desugar
-import           Saga.Parser.ParsingInfo       hiding (Term)
-import           Saga.Parser.Shared            (ParsedData (..))
+-- import           Saga.Parser.Desugar
+-- import           Saga.Parser.ParsingInfo       hiding (Term)
+-- import           Saga.Parser.Shared            (ParsedData (..))
 import           System.Console.Haskeline      (defaultSettings, getInputLine,
                                                 outputStrLn, runInputT)
 import           Text.Pretty.Simple            (pPrint)

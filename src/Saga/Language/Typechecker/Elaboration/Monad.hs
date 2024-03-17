@@ -30,3 +30,12 @@ class Generalize t where
 
 
 
+-- run initialEnv initialState = Eff.runWriter @Solver.Constraint
+--         |> Eff.runState initialState
+--         |> Eff.runReader (Var.Level 0)
+--         |> Eff.runReader @(CompilerState Elaborated) initialEnv
+--         |> Eff.runWriter @Info
+--         |> Eff.runError @SagaError
+--         |> Eff.runFail
+--         |> Eff.runEff
+

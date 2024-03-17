@@ -150,16 +150,15 @@ instance Elaboration NT.Type where
 
 
     RD.Match (RD.Raw -> subject) cases  -> do
-      Saga { types, kinds } <- Eff.ask
+
       subject' <- elaborate subject
+      cases' <- forM cases (elaborate . RD.Raw)
 
       EL.Unification id _ <- Shared.fresh' T -- only for string gen
-      let match' =  RD.Match (RD.Identifier id) cases
-      let closure = EL.Closure [id] match' (EL.Scope types kinds)
 
       sub@(EL.Unification _ k) <- Shared.fresh' T
       let annotated = EL.Annotated (EL.Var sub) (EL.Raw k)
-      Eff.tell $ Solver.Evaluate annotated (EL.Applied (EL.Raw closure) subject')
+      Eff.tell $ Solver.Evaluate annotated (EL.Match subject' cases')
       return annotated
 
     RD.Union tys -> do
@@ -173,6 +172,25 @@ instance Elaboration NT.Type where
       return $ EL.Annotated (EL.Record pairs') (EL.Raw EK.Type)
     atom  -> crash $ NotYetImplemented $ "Evaluation of type atom: " ++ show atom
 
+
+
+instance Elaboration (NT.Case NT.Type) where
+  type Effects (NT.Case NT.Type) es = Effs.Elaboration es
+
+  elaborate (RD.Raw ty) = case ty of
+    RD.Case pat body -> do
+      pat' <- elaborate pat
+      body' <- elaborate body
+      return $ EL.Raw $ EL.Case pat' body'
+
+
+instance Elaboration (NT.Pattern NT.Type) where
+  type Effects (NT.Pattern NT.Type) es = Effs.Elaboration es
+
+  elaborate (RD.Raw pat) = case pat of
+    RD.Wildcard -> return $ EL.Raw EL.Wildcard
+    RD.Id id -> return $ EL.Raw $ EL.Id id
+    pat -> crash $ NotYetImplemented $ "Pattern elaboration for: " ++ show pat
 
 instance Elaboration NT.Constraint where
   type Effects NT.Constraint es = Effs.Elaboration es

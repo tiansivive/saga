@@ -1,9 +1,7 @@
 module Saga.Language.UnificationSpec where
 
 import           Test.Hspec
-import           Saga.Language.TypeSystem.Constraints
-import           Saga.Language.TypeSystem.Types 
-import           Saga.Language.TypeSystem.Lib
+
 import           Control.Monad.Except
 import           Control.Monad.Reader                               (ReaderT (runReaderT))
 import           Debug.Trace
