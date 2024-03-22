@@ -102,6 +102,7 @@ test-suite saga-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Saga.Language.Elaboration.TypesSpec
       Saga.Language.Elaboration.ValuesSpec
       Saga.Language.SubtypingSpec
       Saga.Language.UnificationSpec
