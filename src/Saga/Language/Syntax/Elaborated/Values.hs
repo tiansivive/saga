@@ -20,7 +20,7 @@ import           Saga.Utils.TypeLevel                  (type (§))
 import           Data.Data                             (Data)
 
 type Expr = Node Elaborated NT.Expression
-data instance Node Elaborated Expression where
+data instance Node Elaborated NT.Expression where
   Var         :: (Variable § Node Elaborated Expression) -> Node Elaborated Expression
   Hole        :: String -> Node Elaborated Expression
   Literal     :: Literal -> Node Elaborated Expression
@@ -35,6 +35,8 @@ data instance Node Elaborated Expression where
   FieldAccess :: AST Elaborated Expression -> String -> Node Elaborated Expression
 deriving instance Show (Node Elaborated NT.Expression)
 deriving instance Show (AST Elaborated NT.Expression)
+deriving instance Eq (Node Elaborated NT.Expression)
+deriving instance Eq (AST Elaborated NT.Expression)
 deriving instance Data (Node Elaborated NT.Expression)
 deriving instance Data (AST Elaborated NT.Expression)
 
@@ -45,6 +47,8 @@ data instance Node Elaborated Statement where
   Declaration  :: Node Elaborated NT.Declaration ->  Node Elaborated Statement
 deriving instance Show (Node Elaborated NT.Statement)
 deriving instance Show (AST Elaborated NT.Statement)
+deriving instance Eq (Node Elaborated NT.Statement)
+deriving instance Eq (AST Elaborated NT.Statement)
 deriving instance Data (Node Elaborated NT.Statement)
 deriving instance Data (AST Elaborated NT.Statement)
 
@@ -54,6 +58,7 @@ data instance Node Elaborated NT.Declaration where
   Type :: String -> AST Elaborated NT.Type -> Node Elaborated NT.Declaration
   Kind :: String -> AST Elaborated NT.Kind -> Node Elaborated NT.Declaration
 deriving instance Show (Node Elaborated NT.Declaration)
+deriving instance Eq (Node Elaborated NT.Declaration)
 deriving instance Data (Node Elaborated NT.Declaration)
 
 
@@ -61,6 +66,8 @@ data instance Node Elaborated (NT.Case Expression) where
   Case :: AST Elaborated (Pattern NT.Expression) -> AST Elaborated NT.Expression -> Node Elaborated (NT.Case NT.Expression)
 deriving instance Show (Node Elaborated (NT.Case Expression))
 deriving instance Show (AST Elaborated (NT.Case Expression))
+deriving instance Eq (Node Elaborated (NT.Case Expression))
+deriving instance Eq (AST Elaborated (NT.Case Expression))
 deriving instance Data (Node Elaborated (NT.Case Expression))
 deriving instance Data (AST Elaborated (NT.Case Expression))
 
@@ -75,6 +82,8 @@ data instance Node Elaborated (Pattern Expression) where
   PatData   :: String -> [AST Elaborated (Pattern Expression)]  -> Node Elaborated (Pattern Expression)
 deriving instance Show (Node Elaborated (NT.Pattern Expression))
 deriving instance Show (AST Elaborated (NT.Pattern Expression))
+deriving instance Eq (Node Elaborated (NT.Pattern Expression))
+deriving instance Eq (AST Elaborated (NT.Pattern Expression))
 deriving instance Data (Node Elaborated (NT.Pattern Expression))
 deriving instance Data (AST Elaborated (NT.Pattern Expression))
 
@@ -83,4 +92,5 @@ data instance Variable (Node Elaborated Expression) where
     Identifier    :: String -> Variable § Node Elaborated Expression
     Protocol      :: String -> Variable § Node Elaborated Expression
 deriving instance Show (Variable § Node Elaborated Expression)
+deriving instance Eq (Variable § Node Elaborated Expression)
 deriving instance Data (Variable § Node Elaborated Expression)

@@ -28,7 +28,9 @@ import           Saga.Language.Typechecker.Elaboration.Monad         (Instantiat
 
 import           Saga.Language.Typechecker.Env                       (CompilerState (..),
                                                                       Proofs (..))
-import           Saga.Language.Typechecker.Errors                    (SagaError (UnboundVariable))
+import           Saga.Language.Typechecker.Errors                    (Exception (Unexpected),
+                                                                      SagaError (UnboundVariable),
+                                                                      crash)
 
 import qualified Saga.Language.Typechecker.Solving.Constraints       as Solver
 import           Saga.Language.Typechecker.Solving.Constraints       (Evidence)
@@ -53,6 +55,7 @@ import           Saga.Language.Typechecker.Substitution              (Subst,
                                                                       mkSubst,
                                                                       nullSubst)
 
+import           Data.Generics.Uniplate.Data                         (transform)
 import qualified Saga.Language.Typechecker.Traversals                as Traverse
 import           Saga.Language.Typechecker.Traversals
 
@@ -61,12 +64,14 @@ lookup ::
   (Eff.Reader (CompilerState Elaborated) :> es, Eff.Reader Var.Level :> es, Eff.State State :> es, Eff.Error SagaError :> es)
   => String -> Eff es (AST Elaborated NT.Type)
 lookup x = do
-  Saga { types, extra } <- Eff.ask
+  Saga { values, extra } <- Eff.ask
 
-  ty <- case Map.lookup x types of
-    Just (EL.Raw node)           -> decorate <$> walk node
-    Just (EL.Annotated node ann) -> EL.Annotated <$> walk node <*> pure ann
-    Nothing                      -> Eff.throwError $ UnboundVariable x
+  ty <- case Map.lookup x values of
+    Nothing                                 -> Eff.throwError $ UnboundVariable x
+    Just node@(EL.Raw {})                   -> crash $ Unexpected node "Value not annotated"
+    Just node@(EL.Annotated _ (EL.Raw {}))  -> crash $ Unexpected node "Type not annotated"
+
+    Just (EL.Annotated _ (EL.Annotated node ann)) -> EL.Annotated <$> walk node <*> pure ann
 
   case Map.lookup (EL.node ty) (narrowings extra) of
     Just t' -> return $ EL.Annotated t' (EL.annotation ty)
@@ -124,11 +129,11 @@ fresh :: (Eff.Reader Var.Level :> es, Eff.State State :> es) => Constructor -> E
 fresh constructor = do
   iType <- Eff.gets $ tvars |> (+1)
   Eff.modify $ \s -> s { tvars = iType }
-  let typeCount = show ([1 ..] !! iType)
+  let typeCount = show ([0 ..] !! iType)
 
   iKind <- Eff.gets $ kvars |> (+1)
   Eff.modify $ \s -> s { kvars = iKind }
-  let kindCount = show ([1 ..] !! iKind)
+  let kindCount = show ([0 ..] !! iKind)
   let kvar = K.Var $ K.Unification ("k" ++ kindCount)
   let tvar = constructor ("t" ++ typeCount) kvar
   lvl <- Eff.ask @Var.Level
@@ -142,8 +147,8 @@ mkEvidence :: (Eff.State State :> es) => Eff es § Variable Solver.Constraint
 mkEvidence = do
   i <- Eff.gets $ evars |> (+1)
   Eff.modify $ \s -> s { evars = i }
-  let count = show ([1 ..] !! i)
-  return $ Solver.Evidence ("ev_" ++ count)
+  let count = show ([0 ..] !! i)
+  return $ Solver.Evidence ("ev" ++ count)
 
 
 extract :: Show (Node Elaborated e) => AST Elaborated e -> Node Elaborated (Annotation e)
@@ -155,6 +160,11 @@ decorate ty@(T.Singleton {})              = EL.Annotated ty $ EL.Raw K.Type
 decorate ty@(T.Tuple {})                  = EL.Annotated ty $ EL.Raw K.Type
 decorate ty@(T.Record {})                 = EL.Annotated ty $ EL.Raw K.Type
 decorate ty@(T.Arrow {})                  = EL.Annotated ty $ EL.Raw K.Type
+decorate ty@(T.Union {})                  = EL.Annotated ty $ EL.Raw K.Type
+
+decorate ty@(T.Data "String")             = EL.Annotated ty $ EL.Raw K.Type
+decorate ty@(T.Data "Int")                = EL.Annotated ty $ EL.Raw K.Type
+decorate ty@(T.Data "Bool")               = EL.Annotated ty $ EL.Raw K.Type
 
 decorate ty@(T.Var (T.Unification t k))   = EL.Annotated ty $ EL.Raw k
 decorate ty@(T.Var (T.Instantiation t k)) = EL.Annotated ty $ EL.Raw k
@@ -166,6 +176,13 @@ decorate ty@(T.Var (T.Skolem t k))        = EL.Annotated ty $ EL.Raw k
 
 decorate ty                               = error $ "decorate: " ++ show ty
 
+
+rigidify :: Node Elaborated NT.Type -> Node Elaborated NT.Type
+rigidify = transform rigidify'
+  where
+    rigidify' (T.Var (T.Poly v k)) = T.Var $ T.Rigid v k
+    rigidify' (T.Polymorphic (Forall tvars t)) = T.Polymorphic $ Forall (tvars ||> fmap (\(T.Poly v k) -> T.Rigid v k)) (rigidify' t)
+    rigidify' t                    = t
 
 type Bindings = Map (Variable Type) Type
 type Constructor = String -> K.Kind -> Variable Type

@@ -18,6 +18,7 @@ import           Saga.Language.Typechecker.Solving.Monad       (Count (..),
 import           Saga.Language.Typechecker.Substitution        (Subst, compose)
 import           Saga.Language.Typechecker.Variables           (Variable)
 import           Saga.Utils.Operators                          ((|>))
+import Data.Generics.Uniplate.Data (transform)
 
 
 
@@ -26,6 +27,15 @@ import           Saga.Utils.Operators                          ((|>))
 flatten :: Solver.Constraint -> [Solver.Constraint]
 flatten (Solver.Conjunction left right) = flatten left ++ flatten right
 flatten c                               = pure c
+
+
+compact :: Solver.Constraint -> Solver.Constraint
+compact = transform simplify
+    where
+        simplify (Solver.Conjunction Solver.Empty b) = b
+        simplify (Solver.Conjunction a Solver.Empty) = a
+        simplify c                                   = c
+
 
 
 merge :: [Solver.Constraint] -> Solver.Constraint
@@ -59,18 +69,18 @@ fresh :: Solving es => Tag a -> Eff es (Var a)
 fresh E = do
     i <- Eff.gets $ evs |> (+1)
     Eff.modify $ \s -> s { evs = i}
-    let count = show ([1 ..] !! i)
+    let count = show ([0 ..] !! i)
     return $ Solver.Evidence $ "ev" ++ count
 fresh T = do
     i <- Eff.gets $ tvs |> (+1)
     Eff.modify $ \s -> s {tvs  = i}
-    let count = show ([1 ..] !! i)
+    let count = show ([0 ..] !! i)
     kvar <- K.Var <$> fresh K
     return $ T.Unification ("soT" ++ count) kvar
 fresh K = do
     i <- Eff.gets $ kvs |> (+1)
     Eff.modify $ \s -> s {kvs  = i}
-    let count = show ([1 ..] !! i)
+    let count = show ([0 ..] !! i)
     return $ K.Unification ("soK" ++ count)
 
 

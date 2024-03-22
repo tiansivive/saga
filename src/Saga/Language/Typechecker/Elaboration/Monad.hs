@@ -4,14 +4,24 @@
 
 module Saga.Language.Typechecker.Elaboration.Monad where
 
-import qualified Data.Kind                         as GHC
+import qualified Data.Kind                                     as GHC
 
-import           Effectful                         (Eff, (:>))
-import qualified Effectful                         as Eff
-import qualified Effectful.State.Static.Local      as Eff
+import           Effectful                                     (Eff, (:>))
+import qualified Effectful                                     as Eff
+import qualified Effectful.State.Static.Local                  as Eff
 
+import qualified Effectful.Error.Static                        as Eff
+import qualified Effectful.Fail                                as Eff
+import qualified Effectful.Reader.Static                       as Eff
+import qualified Effectful.Writer.Static.Local                 as Eff
 import           Saga.Language.Syntax.AST
-import           Saga.Language.Syntax.Polymorphism (Polymorphic (..))
+import           Saga.Language.Syntax.Polymorphism             (Polymorphic (..))
+import           Saga.Language.Typechecker.Env                 (CompilerState,
+                                                                Info)
+import           Saga.Language.Typechecker.Errors              (SagaError)
+import qualified Saga.Language.Typechecker.Solving.Constraints as Solver
+import qualified Saga.Language.Typechecker.Variables           as Var
+import           Saga.Utils.Operators                          ((|>))
 
 
 
@@ -30,12 +40,13 @@ class Generalize t where
 
 
 
--- run initialEnv initialState = Eff.runWriter @Solver.Constraint
---         |> Eff.runState initialState
---         |> Eff.runReader (Var.Level 0)
---         |> Eff.runReader @(CompilerState Elaborated) initialEnv
---         |> Eff.runWriter @Info
---         |> Eff.runError @SagaError
---         |> Eff.runFail
---         |> Eff.runEff
+run initialEnv level initialState = elaborate
+        |> Eff.runWriter @Solver.Constraint
+        |> Eff.runState initialState
+        |> Eff.runReader (Var.Level level)
+        |> Eff.runReader @(CompilerState Elaborated) initialEnv
+        |> Eff.runWriter @Info
+        |> Eff.runError @SagaError
+        |> Eff.runFail
+        |> Eff.runEff
 

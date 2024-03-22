@@ -37,18 +37,18 @@ fresh' :: Elaboration es => Tag a -> Eff es (Var a)
 fresh' E = do
     i <- Eff.gets $ evars |> (+1)
     Eff.modify $ \s -> s { evars = i}
-    let count = show ([1 ..] !! i)
+    let count = show ([0 ..] !! i)
     return $ Solver.Evidence $ "ev" ++ count
 fresh' T = do
     i <- Eff.gets $ tvars |> (+1)
     Eff.modify $ \s -> s {tvars  = i}
-    let count = show ([1 ..] !! i)
+    let count = show ([0 ..] !! i)
     kvar <- EK.Var <$> fresh' K
     return $ EL.Unification ("t" ++ count) kvar
 fresh' K = do
     i <- Eff.gets $ kvars |> (+1)
     Eff.modify $ \s -> s {kvars  = i}
-    let count = show ([1 ..] !! i)
+    let count = show ([0 ..] !! i)
     return $ EK.Unification ("k" ++ count)
 
 data Tag a where

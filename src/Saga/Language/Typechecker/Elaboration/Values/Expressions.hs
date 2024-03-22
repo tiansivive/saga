@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE TypeFamilies    #-}
+{-# LANGUAGE ViewPatterns    #-}
 
 
 module Saga.Language.Typechecker.Elaboration.Values.Expressions where
@@ -43,6 +44,7 @@ import           Saga.Language.Typechecker.Elaboration.Types.Types     hiding
 import           Saga.Language.Typechecker.Elaboration.Values.Patterns
 import qualified Saga.Language.Typechecker.Elaboration.Values.Shared   as Shared
 
+import           Saga.Language.Typechecker.Elaboration.Values.Shared   (rigidify)
 import           Saga.Language.Typechecker.Env                         (CompilerState (..),
                                                                         Proofs (..))
 import           Saga.Language.Typechecker.Errors                      (Exception (NotYetImplemented),
@@ -146,9 +148,9 @@ instance Elaboration Expression where
                         0 -> Nothing
                         _ -> Just . ET.Union $ fmap Shared.decorate tys
 
-                for_ ty' $ \t -> do
-                    ev <- Shared.mkEvidence
-                    Eff.tell $ Solver.Equality ev (Solver.Ty ty) (Solver.Ty t)
+                let patterns = cases' ||> foldl (\acc (EL.node -> EL.Case pat _) -> EL.annotation pat : acc) [] 
+                ev <- Shared.mkEvidence
+                Eff.tell $ Solver.Equality ev (Solver.Ty $ ET.Union patterns) (Solver.Ty ty)
 
                 forM_ tvars $ \v -> do
                     ev <- Shared.mkEvidence
@@ -211,6 +213,16 @@ instance Elaboration Expression where
                     -- | QUESTION: Do we need to also annotate types here or de we expand it during Zonking?
                     | Solver.Implementation (Solver.Evidence e) _ protocol <- c = EL.Application (EL.Raw expr) [EL.Raw (EL.Var $ EL.Protocol e)]
                     | otherwise                                 = expr
+
+    elaborate (RD.Annotated expr ty) = do
+
+        EL.Annotated ty' k <- elaborate ty
+        let rigid = rigidify ty'
+        expr' <- elaborate $ RD.Raw expr
+
+        ev <- Shared.mkEvidence
+        Eff.tell $ Solver.Equality ev (Solver.Ty $ Shared.extract expr') (Solver.Ty rigid) 
+        return $ EL.Annotated (EL.node expr') (EL.Annotated rigid k)
 
 
 instance Elaboration (Case Expression) where

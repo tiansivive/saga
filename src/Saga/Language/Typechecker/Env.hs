@@ -19,12 +19,18 @@ import qualified Saga.Language.Syntax.Reduced.Values as RD
 
 data CompilerState (phase :: Phase) = Saga
   { protocols   :: [Protocol phase]
-  , values      :: Map String RD.Expr
+  , values      :: Map String (AST phase NT.Expression)
   , types       :: Map String (AST phase NT.Type)
   , kinds       :: Map String (AST phase NT.Kind)
   , extra       :: ExtraData phase
   }
-deriving instance (Show (Protocol phase), Show (AST phase NT.Type), Show (AST phase NT.Kind), Show (ExtraData phase)) => (Show (CompilerState phase))
+deriving instance 
+  ( Show (Protocol phase)
+  , Show (AST phase NT.Expression)
+  , Show (AST phase NT.Type)
+  , Show (AST phase NT.Kind)
+  , Show (ExtraData phase)
+  ) => (Show (CompilerState phase))
 
 
 data Info = Info

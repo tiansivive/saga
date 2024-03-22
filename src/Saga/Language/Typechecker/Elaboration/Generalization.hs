@@ -30,7 +30,7 @@ import           Saga.Utils.Operators                              ((<$$>),
 
 
 instance Generalize Type where
-  generalize e | pTrace ("Generalize Type:\n" ++ show e) False = undefined
+  --generalize e | pTrace ("Generalize Type:\n" ++ show e) False = undefined
   generalize (T.Tuple tys) = do
     tys <- forM tys (AST.node |> generalize)
     let (bs, cs, tvars) = foldl accumulate (Map.empty, [], []) (fmap T.Polymorphic tys)
@@ -84,13 +84,13 @@ instance Generalize Type where
       fresh = do
         Eff.modify @Int (+1)
         i <- Eff.get
-        let count = show ([1 ..] !! i)
+        let count = show ([0 ..] !! i)
         let tvar = T.Poly ("g" ++ count) K.Type
         return tvar
 
 
 instance Generalize Kind where
-  generalize e | pTrace ("Generalize Kind:\n" ++ show e) False = undefined
+  --generalize e | pTrace ("Generalize Kind:\n" ++ show e) False = undefined
 
   generalize (K.Protocol k) = do
     Forall kvars k' <- generalize $ AST.node k
