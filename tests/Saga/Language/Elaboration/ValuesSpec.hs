@@ -7,41 +7,44 @@ import           Test.Hspec
 
 import           Saga.Language.Typechecker.Elaboration.Values.Expressions
 
-import           Data.Either                                   (isLeft)
-import qualified Data.Map                                      as Map
-import           Saga.Language.Syntax.AST                      (AST,
-                                                                Phase (Elaborated))
-import qualified Saga.Language.Syntax.Elaborated.AST           as ES
-import qualified Saga.Language.Syntax.Elaborated.Kinds         as EK
-import qualified Saga.Language.Syntax.Elaborated.Types         as ET
-import qualified Saga.Language.Syntax.Elaborated.Values        as EV
+import           Data.Either                                              (isLeft)
+import qualified Data.Map                                                 as Map
+import           Saga.Language.Syntax.AST                                 (AST,
+                                                                           Phase (Elaborated))
+import qualified Saga.Language.Syntax.Elaborated.AST                      as ES
+import qualified Saga.Language.Syntax.Elaborated.Kinds                    as EK
+import qualified Saga.Language.Syntax.Elaborated.Types                    as ET
+import qualified Saga.Language.Syntax.Elaborated.Values                   as EV
 
-import qualified Saga.Language.Syntax.Reduced.AST              as RS
-import           Saga.Language.Syntax.Reduced.Types            as RT
-import           Saga.Language.Syntax.Reduced.Values           as RV
+import qualified Saga.Language.Syntax.Reduced.AST                         as RS
+import           Saga.Language.Syntax.Reduced.Types                       as RT
+import           Saga.Language.Syntax.Reduced.Values                      as RV
 
 import           Saga.Language.Syntax.Literals
-import           Saga.Language.Syntax.Polymorphism             (Given (..),
-                                                                Polymorphic (..),
-                                                                Qualified (..))
+import           Saga.Language.Syntax.Polymorphism                        (Given (..),
+                                                                           Polymorphic (..),
+                                                                           Qualified (..))
 
-import           Saga.Language.Typechecker.Elaboration.Effects (State (..))
-import qualified Saga.Language.Typechecker.Elaboration.Monad   as EM
-import           Saga.Language.Typechecker.Env                 (CompilerState (..),
-                                                                Info,
-                                                                Proofs (..))
-import           Saga.Language.Typechecker.Errors              (SagaError (UnboundVariable))
-import qualified Saga.Language.Typechecker.Solving.Constraints as Solver
-import qualified Saga.Language.Typechecker.Solving.Shared      as Solver
-import           Saga.Language.Typechecker.Solving.Shared      (compact)
+import           Saga.Language.Typechecker.Elaboration.Effects            (State (..))
+import qualified Saga.Language.Typechecker.Elaboration.Monad              as EM
+import           Saga.Language.Typechecker.Env                            (CompilerState (..),
+                                                                           Info,
+                                                                           Proofs (..))
+import           Saga.Language.Typechecker.Errors                         (SagaError (UnboundVariable))
+import qualified Saga.Language.Typechecker.Solving.Constraints            as Solver
+import qualified Saga.Language.Typechecker.Solving.Shared                 as Solver
+import           Saga.Language.Typechecker.Solving.Shared                 (compact)
 
-import           Saga.Utils.Common                             (fmap2)
-import           Saga.Utils.Operators                          ((|>), (||>))
+import           Saga.Utils.Common                                        (fmap2)
+import           Saga.Utils.Operators                                     ((|>),
+                                                                           (||>))
 
-import           Data.Functor          ((<&>))
-import           Data.Generics.Biplate (transform)
-import           Data.List             (find)
-import           Debug.Pretty.Simple   (pTrace, pTraceM)
+import           Data.Functor                                             ((<&>))
+import           Data.Generics.Biplate                                    (transform)
+import           Data.List                                                (find)
+import           Debug.Pretty.Simple                                      (pTrace,
+                                                                           pTraceM)
+import           Saga.Language.Shared
 
 spec :: Spec
 spec = do
@@ -223,26 +226,6 @@ spec = do
                                     )
 
 
-            -- it "annotates match expressions as a type variable" $ do
-            --     match <- run $ RS.Raw (RV.Match (RS.Raw $ int 1) [RS.Raw $ RV.Case (RS.Raw RV.Wildcard) (RS.Raw $ int 2)])
-            --     check match $ ast |> \(ES.Annotated expr (ES.node -> ty)) -> do
-            --         ty `shouldBe`  ET.Var (ET.Unification "t1" (EK.Var (EK.Unification "k1")))
-
-            -- it "elaborated higher order functions" $ do
-            --     lam <- run $ RS.Raw (RV.Lambda ["f"] (RS.Raw $ RV.Application (RS.Raw $ RV.Var "f") [RS.Raw $ int 1]))
-            --     lam $ ast |> \(ES.Annotated expr (ES.node -> ty)) -> do
-            --         pTraceM $ "\n" ++ show lam
-            --         ty `shouldBe` ET.Var (ET.Unification "t1" (EK.Var (EK.Unification "k1")))
-
-
-check result action = case result of
-    Left x -> expectationFailure $ "Expected Right value.\nGot: " ++ show x
-    Right (Left err) -> expectationFailure $ "Expected Right value.\nGot: " ++ show err
-    Right (Right res) -> action res
-
-
-
-
 int = RV.Literal . LInt
 str = RV.Literal . LString
 
@@ -257,14 +240,4 @@ state ((_, x), _) = x
 info :: Result node st -> Info
 info ((_, _), x) = x
 
-emptyEnv :: CompilerState Elaborated
-emptyEnv = Saga [] Map.empty Map.empty Map.empty (Proofs ET.Void Map.empty)
 
-emptyState :: State
-emptyState = IST 0 0 0 Map.empty
-
-
-simplify :: Solver.Constraint -> Solver.Constraint
-simplify (Solver.Conjunction Solver.Empty b) = b
-simplify (Solver.Conjunction a Solver.Empty) = a
-simplify c                                   = c

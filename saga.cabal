@@ -104,8 +104,9 @@ test-suite saga-test
   other-modules:
       Saga.Language.Elaboration.TypesSpec
       Saga.Language.Elaboration.ValuesSpec
-      Saga.Language.SubtypingSpec
-      Saga.Language.UnificationSpec
+      Saga.Language.Shared
+      Saga.Language.Solver.EqualitySpec
+      Saga.Language.Solver.UnificationSpec
       SpecHook
       Paths_saga
   hs-source-dirs:

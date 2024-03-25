@@ -60,6 +60,7 @@ import           Saga.Utils.Operators                                 ((|$>),
 instance Elaboration NT.Type where
   type Effects NT.Type es = Effs.Elaboration es
 
+  elaborate (RD.Annotated ty k) = crash . NotYetImplemented $ "Elaboration of Annotated Types:\nType: " ++ show ty ++ "\nKind: " ++ show k
   elaborate (RD.Raw node) = case node of
     RD.Identifier x -> lookup x
 
@@ -106,9 +107,10 @@ instance Elaboration NT.Type where
       let pairs = tvars' ||> fmap (\tvar@(EL.Poly p k) -> (p, EL.Annotated (EL.Var tvar) (EL.Raw k)))
       Eff.local (\e -> e { types = Map.fromList pairs `Map.union` types e  }) $ do
         body' <- elaborate body
-        return $ EL.Annotated (EL.Polymorphic $ Forall tvars' (EL.node body')) (EL.Raw $ Shared.extract body')
+        return $ EL.Annotated (EL.Polymorphic $ Forall tvars' (EL.node body')) (EL.Raw $ EK.Arrow (arrow tvars') (EL.annotation body'))
 
       where
+        arrow tvars = init tvars ||> foldr (\(EL.Poly p k) arr -> EL.Raw $ EK.Arrow (EL.Raw k) arr) (last tvars ||> \(EL.Poly _ k) -> EL.Raw k)
         tvars = sequence $ do
           p <- params
           return $ Shared.fresh' K >>= \kvar -> let k = EK.Var kvar in return $ EL.Poly p k
@@ -121,18 +123,17 @@ instance Elaboration NT.Type where
         where
             not_field r = Fail $ field ++ " is not a field of " ++ show r
 
-    RD.Application (RD.Raw -> f) [RD.Raw -> arg] -> do
+    RD.Application f [arg] -> do
       sub@(EL.Unification _ k) <- Shared.fresh' T
-      out <- EK.Var <$> Shared.fresh' K
-      f' <- elaborate f
-      arg' <- elaborate arg
+      f' <- elaborate $ RD.Raw f
+      arg' <- elaborate $ RD.Raw arg
 
-      inferred <- generalize' $ EL.annotation arg' `EK.Arrow` EL.Raw out
+      inferred <- generalize' $ EL.annotation arg' `EK.Arrow` EL.Raw k
       evidence <- Shared.fresh' E
       Eff.tell $ Solver.Equality evidence (Solver.K $ Shared.extract f') (Solver.K $ EK.Polymorphic inferred)
-      Eff.tell $ Solver.Equality evidence (Solver.K out) (Solver.K k)
 
-      let ast = EL.Annotated (EL.Var sub) (EL.Raw out)
+
+      let ast = EL.Annotated (EL.Var sub) (EL.Raw k)
       Eff.tell $ Solver.Evaluate ast (EL.Applied f' arg')
       return ast
 
@@ -153,8 +154,6 @@ instance Elaboration NT.Type where
 
       subject' <- elaborate subject
       cases' <- forM cases (elaborate . RD.Raw)
-
-      EL.Unification id _ <- Shared.fresh' T -- only for string gen
 
       sub@(EL.Unification _ k) <- Shared.fresh' T
       let annotated = EL.Annotated (EL.Var sub) (EL.Raw k)

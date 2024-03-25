@@ -37,7 +37,8 @@ import qualified Saga.Language.Typechecker.Lib                     as Lib
 import qualified Saga.Language.Typechecker.Solving.Constraints     as Solver
 import           Saga.Language.Typechecker.Solving.Cycles          (Cycle)
 import           Saga.Language.Typechecker.Solving.Monad           (Proofs,
-                                                                    Solving)
+                                                                    Solving,
+                                                                    run')
 import qualified Saga.Language.Typechecker.Solving.Shared          as Shared
 import           Saga.Language.Typechecker.Solving.Shared          (Tag (..))
 import           Saga.Language.Typechecker.Substitution            (Subst,
@@ -51,6 +52,7 @@ import           Saga.Utils.Operators                              ((|$>), (|>),
                                                                     (||>))
 
 
+
 type UnificationEff es t = (Solving es, Eff.Writer [Cycle t] :> es, Eff.Writer Proofs :> es, Eff.Writer Solver.Constraint :> es)
 
 
@@ -60,6 +62,10 @@ class Substitutable t => Unification t where
     bind        :: UnificationEff es t => Variable t -> t -> Eff es (Subst t)
     occursCheck :: Variable t -> t -> Bool
 
+run env = Eff.runWriter @[Cycle Type]
+   |> Eff.runWriter @Proofs
+   |> Eff.runWriter @Solver.Constraint
+   |> run' env
 
 
 type TypeUnification es = UnificationEff es Type

@@ -38,7 +38,7 @@ data instance Node Elaborated NT.Type where
     Arrow       :: AST Elaborated NT.Type -> AST Elaborated NT.Type     -> Type
     Union       :: [AST Elaborated NT.Type]                             -> Type
    -- Closure     :: [String] -> TypeExpr -> Scope                 -> Type
-    -- Computed    :: [String] -> AST Elaborated NT.Type                   -> Type
+    -- Lambda    :: String -> AST Elaborated NT.Type                   -> Type
     Match       :: { subject :: AST Elaborated NT.Type, cases :: [AST Elaborated (NT.Case NT.Type)] } -> Type
     Polymorphic :: Polymorphic Type                                     -> Type
     Qualified   :: Qualified Type                                       -> Type

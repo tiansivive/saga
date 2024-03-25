@@ -41,6 +41,7 @@ import           Saga.Language.Syntax.Elaborated.Kinds         (Kind)
 import           Saga.Language.Typechecker.Env                 (CompilerState,
                                                                 Info)
 import           Saga.Language.Typechecker.Traversals
+import           Saga.Utils.Operators                          ((|>))
 
 
 type Solving es =   ( Eff.Reader (CompilerState Elaborated) :> es
@@ -60,7 +61,7 @@ data Count = Count { evs :: Int, tvs :: Int, kvs :: Int }
 
 data Solution = Solution { evidence :: Witness, tvars :: Subst Type, kvars :: Subst Kind, witnessed :: Witnessed, proofs :: Proofs }
   deriving (Show)
-data Status = Solved | Deferred | Impossible deriving Show
+data Status = Solved | Deferred | Impossible deriving (Show, Eq)
 
 type Witness = Map (Variable Constraint) Evidence
 type Witnessed = Map (Variable Constraint) (Variable Constraint)
@@ -94,3 +95,15 @@ initialCount = Count 0 0 0
 
 run :: Eff (Eff.State [Cycle Type] : Eff.State Solution : Eff.State Count : es) a -> Eff es (((a, [Cycle Type]), Solution), Count)
 run =  Eff.runState initialCount . Eff.runState initialSolution . Eff.runState []
+
+
+run' env = Eff.runState initialSolution
+        |> Eff.runState (Count 0 0 0)
+        |> Eff.runState @[Cycle Type] []
+        |> Eff.runReader @Levels Map.empty
+        |> Eff.runReader (Var.Level 0)
+        |> Eff.runReader @(CompilerState Elaborated) env
+        |> Eff.runWriter @Info
+        |> Eff.runError @SagaError
+        |> Eff.runFail
+        |> Eff.runEff

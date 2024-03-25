@@ -56,38 +56,7 @@ solve (Solver.Equality _ (Solver.Ty ty) (Solver.Ty ty')) = do
 
     return (Solved, constraint)
 
-
-    -- case (it, it') of
-    -- (Mono ty, Mono ty')                     -> ty `equals` ty'
-    -- (Mono ty, Poly ty')                     -> instAndUnify ty' ty
-    -- (Mono ty, Var tvar)           -> ty `equals` T.Var tvar
-
-
-    -- (Poly ty, Mono ty')                     -> instAndUnify ty ty'
-    -- (Poly ty, Var tvar)           -> instAndUnify ty (T.Var tvar)
-
-    -- (Var tvar, Mono ty)           -> ty `equals` T.Var tvar
-    -- (Var tvar, Poly ty)           -> instAndUnify ty (T.Var tvar)
-    -- (Var tvar, Var tvar')         -> T.Var tvar `equals` T.Var tvar'
-
-    -- eq -> crash $ NotYetImplemented $ "Solving equality: " ++ show eq
-
     where
-        -- ty `equals`  ty' = do
-        --    constraint <- Eff.execWriter @Solver.Constraint (unify' ty ty')
-        --    return (Solved, constraint)
-
-        -- instAndUnify poly ty = do
-        --     (t, constraint) <- Eff.runWriter $ inst poly
-        --     constraint' <- Eff.execWriter @Solver.Constraint $ unify' ty t
-        --     let constraint'' = Solver.Conjunction constraint constraint'
-        --     case t of
-        --         T.Qualified (bs :| cs :=> qt) -> do
-        --             result <- Shared.propagate cs
-        --             return (Solved, Solver.Conjunction constraint'' result)
-        --         _ -> return (Solved, constraint'')
-
-
         unify' ty ty' = do
             ((sub, cycles), proofs') <- Eff.runWriter @Proofs . Eff.runWriter @[Cycle Type]  $ unify ty ty'
             Eff.modify $ \sol -> sol{ proofs = proofs' `Map.union` proofs sol }
