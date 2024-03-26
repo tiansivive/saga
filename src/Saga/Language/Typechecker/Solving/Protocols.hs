@@ -52,6 +52,8 @@ solve (Solver.Implementation e@(Solver.Evidence ev) ty prtcl) =
             impl <- Eff.asks @(CompilerState Elaborated) $ protocols
                 |> List.find (\P.Protocol { id } -> id == prtcl) >=>
                     -- | HACK This needs to search via unification. How to make the monads fit though?
+                    -- | SUGGESTION: First we should rigidify the protocol type, then unify it with the given type
+                    -- | NOTE: Unifying will also propagate any constraints required by the implementation, ensuring the current type satisfies all constraints
                     implementations |> List.find (\(P.Implementation (id, t', expr)) -> t == t')
 
 
@@ -59,9 +61,11 @@ solve (Solver.Implementation e@(Solver.Evidence ev) ty prtcl) =
                 (Eff.throwError $ MissingProtocolImplementation prtcl t)
                 (\impl'@(P.Implementation (id, ty', expr)) -> do
                     Shared.update E $ Map.singleton e (Solver.Protocol impl')
-                    case ty' of
-                        T.Qualified (_ :| cs :=> _) -> (Solved,) <$> Shared.propagate cs
-                        _ -> return (Solved, Solver.Empty)
+                    return (Solved, Solver.Empty)
+                    -- | See lines #54-57)
+                    -- | case ty' of
+                    -- |    T.Qualified (_ :| cs :=> _) -> (Solved,) <$> Shared.propagate cs
+                    -- |   _ -> return (Solved, Solver.Empty)
                 )
 
 

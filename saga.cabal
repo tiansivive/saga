@@ -106,6 +106,7 @@ test-suite saga-test
       Saga.Language.Elaboration.ValuesSpec
       Saga.Language.Shared
       Saga.Language.Solver.EqualitySpec
+      Saga.Language.Solver.ProtocolSpec
       Saga.Language.Solver.UnificationSpec
       SpecHook
       Paths_saga

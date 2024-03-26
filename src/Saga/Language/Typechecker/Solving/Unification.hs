@@ -69,6 +69,7 @@ run env = Eff.runWriter @[Cycle Type]
 
 
 type TypeUnification es = UnificationEff es Type
+-- TODO:ENHANCEMENT Run unification on Annotated types only and emit the respective kind constraints
 instance Unification Type where
     unify :: TypeUnification es => Type -> Type -> Eff es (Subst Type)
     --unify t t' | pTrace ("\nUnifying:\n" ++ show t ++ "\nWith:\n" ++ show t') False = undefined
